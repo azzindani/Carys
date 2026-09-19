@@ -1,0 +1,27 @@
+node_modules/
+dist/
+packages/*/dist/
+.tmp-digest/
+
+test/e2e/shots/
+
+# V3 translator output (regenerated, never vendored)
+samples/precomputed_demo/
+
+# Build caches
+*.tsbuildinfo
+__pycache__/
+
+# Runtime state of a local preview: logs and the live quick-tunnel URL
+*.log
+.deploy/
+LIVE_URL.txt
+
+# Sample volumes are mounted, never committed (see samples/.gitkeep)
+samples/*
+!samples/.gitkeep
+
+# Scratch probes (mirrors .dockerignore)
+test/e2e/demos/
+verify-app.tmp.mjs
+probe*.tmp.mjs

@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carys — 3D surface</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #111; color: #eee; margin: 16px; }
+  canvas { background: #111; max-width: 100%; }
+  #status { color: #9c9; min-height: 1.2em; }
+  label { margin-right: 12px; }
+</style>
+<script type="importmap">
+{ "imports": { "@carys/volume-core": "/packages/volume-core/dist/index.js", "fflate": "/node_modules/fflate/esm/browser.js" } }
+</script>
+</head>
+<body>
+<h1>Carys 3D surface (CPU)</h1>
+<div id="status">loading…</div>
+<div>
+  <label>Segmentation <select id="series"></select></label>
+  <label>Open .nii mask <input type="file" id="upload" accept=".nii"></label>
+  <label>Orbit <input type="range" id="orbit" min="0" max="6.283" step="0.01" value="0.7"></label>
+  <label>Tilt <input type="range" id="tilt" min="-1.2" max="1.2" step="0.01" value="0.3"></label>
+  <label>Threshold <input type="range" id="threshold" min="0" max="1000" step="1" value="0"> <span id="tval">0</span></label>
+  <label>Method
+    <select id="method">
+      <option value="blocky">blocky (boundary faces)</option>
+      <option value="smooth">smooth (surface nets)</option>
+    </select>
+  </label>
+</div>
+<canvas id="view" width="480" height="480"></canvas>
+<script type="module">
+import { extractBoundary, surfaceNets, renderMesh } from '/packages/render-cpu/dist/index.js';
+import { loadNii, loadNiiBuffer, toMask } from './viewer-lib.js';
+
+// NOTE: liver_33_img.nii holds the labels (upstream naming swap).
+const SERIES = {
+  'skull (partial bone)': { url: '/samples/skull_case_0001_seg.nii', color: [225, 215, 200] },
+  'skull CT bone (t=250)': { url: '/samples/skull_case_0001_img.nii', color: [225, 215, 200], threshold: 250 },
+  'brats tumor': { url: '/samples/brain_tumor_BraTS19_CBICA_AQN_1_seg.nii', color: [230, 80, 80] },
+  'liver mask': { url: '/samples/liver_33_img.nii', color: [90, 200, 120] },
+  'spine': { url: '/samples/spine_ct_case_0010_seg.nii', color: [225, 215, 200] },
+  'covid lesions': { url: '/samples/volume-covid19-A-0329_seg.nii', color: [230, 80, 80] },
+};
+const status = document.getElementById('status');
+const sel = document.getElementById('series');
+sel.innerHTML = Object.keys(SERIES).map((k) => `<option>${k}</option>`).join('');
+
+let mesh = null, dims = null, color = [225, 215, 200], curData = null;
+
+// Real Worker first (transferable buffers), main-thread fallback.
+let worker = null, workerDead = false, nextId = 1;
+const pending = new Map();
+function getWorker() {
+  if (worker || workerDead) return worker;
+  try {
+    worker = new Worker('./extract.worker.js', { type: 'module' });
+    worker.onmessage = (e) => {
+      const p = pending.get(e.data.id);
+      if (!p) return;
+      pending.delete(e.data.id);
+      if (e.data.ok) {
+        p.resolve({
+          positions: new Float32Array(e.data.positions),
+          normals: new Float32Array(e.data.normals),
+          indices: new Uint32Array(e.data.indices),
+          tris: e.data.tris,
+        });
+      } else p.reject(new Error(e.data.error));
+    };
+    worker.onerror = () => { workerDead = true; worker = null; };
+  } catch {
+    workerDead = true;
+  }
+  return worker;
+}
+
+async function extractRemote(data, dims, t, smooth) {
+  const w = getWorker();
+  if (!w) throw new Error('no worker');
+  const id = nextId++;
+  const copy = data.slice().buffer; // transfer neuters; keep curData alive
+  const p = new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+  w.postMessage({ id, method: smooth ? 'smooth' : 'blocky', dims, threshold: t, dtype: 'float64', buffer: copy }, [copy]);
+  return p;
+}
+
+function extractLocal(data, dims, t, smooth) {
+  const mesh = smooth
+    ? surfaceNets(data, dims[0], dims[1], dims[2], t + 0.5)
+    : extractBoundary(toMask(data, t), dims[0], dims[1], dims[2]);
+  return { ...mesh, tris: mesh.indices.length / 3 };
+}
+
+async function extractCurrent() {
+  const t = Number(document.getElementById('threshold').value);
+  const smooth = document.getElementById('method').value === 'smooth';
+  try {
+    const r = await extractRemote(curData, dims, t, smooth);
+    mesh = r; usedWorker = true;
+  } catch {
+    mesh = extractLocal(curData, dims, t, smooth);
+    usedWorker = false;
+  }
+}
+let usedWorker = false;
+
+function paint() {
+  if (!mesh) return;
+  const cv = document.getElementById('view');
+  const out = renderMesh(mesh, dims, {
+    width: cv.width, height: cv.height,
+    angleY: Number(document.getElementById('orbit').value),
+    tiltX: Number(document.getElementById('tilt').value),
+    color,
+  });
+  cv.getContext('2d').putImageData(new ImageData(out, cv.width, cv.height), 0, 0);
+}
+
+let uploaded = null; // {name, dims, data} from file input
+
+async function load(name) {
+  const spec = SERIES[name];
+  status.textContent = `extracting ${name}…`;
+  try {
+    const t0 = performance.now();
+    const { dims: d, data } = uploaded && name === uploaded.name
+      ? uploaded
+      : await loadNii(spec.url);
+    curData = data;
+    dims = d; color = spec.color;
+    const t = spec.threshold ?? 0;
+    document.getElementById('threshold').value = t;
+    document.getElementById('tval').textContent = t;
+    await extractCurrent();
+    status.textContent = `${name}: ${d[0]}×${d[1]}×${d[2]}, ${mesh.tris} tris via ${usedWorker ? 'worker' : 'main thread'}, ${((performance.now() - t0) / 1000).toFixed(1)}s — drag orbit`;
+    paint();
+  } catch (e) {
+    status.textContent = `failed: ${e.message}`;
+  }
+}
+document.getElementById('orbit').oninput = paint;
+document.getElementById('tilt').oninput = paint;
+async function reextract() {
+  if (!curData || !dims) return;
+  const t = Number(document.getElementById('threshold').value);
+  document.getElementById('tval').textContent = t;
+  status.textContent = 're-extracting…';
+  await new Promise((r) => setTimeout(r, 10));
+  await extractCurrent();
+  status.textContent = `${mesh.tris} tris via ${usedWorker ? 'worker' : 'main thread'} — drag orbit`;
+  paint();
+}
+document.getElementById('threshold').onchange = reextract;
+document.getElementById('method').onchange = reextract;
+sel.onchange = () => load(sel.value);
+document.getElementById('upload').onchange = async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const { dims, data } = loadNiiBuffer(await f.arrayBuffer());
+    const name = `uploaded: ${f.name}`;
+    uploaded = { name, dims, data };
+    SERIES[name] = { url: '', color: [90, 200, 120] };
+    sel.innerHTML = Object.keys(SERIES).map((k) => `<option>${k}</option>`).join('');
+    sel.value = name;
+    await load(name);
+  } catch (err) {
+    status.textContent = `upload failed: ${err.message}`;
+  }
+};
+await load(sel.value);
+</script>
+</body>
+</html>

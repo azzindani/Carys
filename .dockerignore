@@ -1,0 +1,17 @@
+# Build from source; never ship these.
+node_modules/
+packages/*/dist/
+packages/*/tsconfig.tsbuildinfo
+dist/
+tsconfig.tsbuildinfo
+.tmp-digest/
+samples/
+.git/
+.gitignore
+*.log
+test/e2e/shots/
+test/e2e/demos/
+verify-app.tmp.mjs
+probe*.tmp.mjs
+/tmp/carys-*.log
+.DS_Store

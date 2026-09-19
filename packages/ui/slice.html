@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carys — slice viewer</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #111; color: #eee; margin: 16px; }
+  #panes { display: flex; gap: 12px; flex-wrap: wrap; }
+  figure { margin: 0; } canvas { background: #000; max-width: 100%; }
+  #status { color: #9c9; min-height: 1.2em; }
+  label { margin-right: 12px; }
+</style>
+<script type="importmap">
+{ "imports": { "@carys/volume-core": "/packages/volume-core/dist/index.js", "fflate": "/node_modules/fflate/esm/browser.js" } }
+</script>
+</head>
+<body>
+<h1>Carys slice viewer</h1>
+<div id="status">loading…</div>
+<div>
+  <label>Series <select id="series"></select></label>
+  <label>Preset <select id="preset"></select></label>
+  <label><input type="checkbox" id="overlay" checked> mask overlay</label>
+</div>
+<div>
+  <label>Mode
+    <select id="mode">
+      <option value="view">view</option>
+      <option value="paint">paint</option>
+      <option value="erase">erase</option>
+    </select>
+  </label>
+  <label>Brush <input type="range" id="brush" min="1" max="12" step="1" value="3"></label>
+  <button id="undo">undo</button>
+  <button id="clear">clear mask</button>
+  <button id="save">save axial PNG</button>
+  <button id="savemask">save mask .nii</button>
+</div>
+<div id="panes">
+  <figure><figcaption>axial <input type="range" id="s-axial"></figcaption><canvas id="c-axial"></canvas></figure>
+  <figure><figcaption>coronal <input type="range" id="s-coronal"></figcaption><canvas id="c-coronal"></canvas></figure>
+  <figure><figcaption>sagittal <input type="range" id="s-sagittal"></figcaption><canvas id="c-sagittal"></canvas></figure>
+</div>
+<script type="module">
+import { loadNii, loadDicomSeries, autoWindow } from './viewer-lib.js';
+import { PRESETS } from '@carys/volume-core';
+import { reslice } from '/packages/render-cpu/dist/mpr.js';
+import { writeNifti1 } from '/packages/io/dist/nifti-write.js';
+import { drawPt, drawPenLine, UndoStack } from '/packages/editor-seg/dist/drawing.js';
+
+// NOTE: liver pair naming is swapped upstream (img=labels, seg=CT) — mapped correctly here.
+const SERIES = {
+  'brats-flair-seg': { img: ['/samples/brain_tumor_BraTS19_CBICA_AQN_1_flair.nii'], seg: ['/samples/brain_tumor_BraTS19_CBICA_AQN_1_seg.nii'], axialFrac: 0.72 },
+  'liver-ct-seg': { img: ['/samples/liver_33_seg.nii'], seg: ['/samples/liver_33_img.nii'] },
+  'covid-chest-seg': { img: ['/samples/volume-covid19-A-0329.nii'], seg: ['/samples/volume-covid19-A-0329_seg.nii'] },
+  'cardiac-frame01': { img: ['/samples/cardiac_patient021_frame01.nii'] },
+  'skull-seg': { img: ['/samples/skull_case_0001_img.nii'], seg: ['/samples/skull_case_0001_seg.nii'] },
+  'lung-ct-dicom': { dicom: [1, 2, 3, 4, 5].map((i) => `/samples/lung_ct_0${i}.dcm`) },
+  'cardiac-dicom': { dicom: [1, 2, 4, 5].map((i) => `/samples/cardiac_0${i}.dcm`) },
+  'prostate-dicom': { dicom: [1, 2, 3, 4, 5].map((i) => `/samples/prostate_mri_0${i}.dcm`) },
+};
+const status = document.getElementById('status');
+
+const planes = ['axial', 'coronal', 'sagittal'];
+const vols = {};
+let wl, autoWl, axialFrac = 0.5;
+
+function paint(plane) {
+  const { dims, data } = vols.img;
+  const [nx, ny, nz] = dims;
+  const idx = Number(document.getElementById('s-' + plane).value);
+  const vol = { dims, spacing: [1, 1, 1], origin: [0, 0, 0], dtype: 'float64', data };
+  const out = reslice(vol, plane, idx, wl);
+  if (document.getElementById('overlay').checked && vols.seg) {
+    const s = vols.seg.data;
+    const W = plane === 'axial' ? nx : plane === 'coronal' ? nx : ny;
+    for (let j = 0; j < out.length / 4 / W; j++) {
+      for (let i = 0; i < W; i++) {
+        const v = plane === 'axial' ? s[idx * nx * ny + j * nx + i]
+          : plane === 'coronal' ? s[j * nx * ny + idx * nx + i]
+          : s[j * nx * ny + i * nx + idx];
+        if (v > 0) { const o = (j * W + i) * 4; out[o] = 255; out[o + 1] = 60; out[o + 2] = 60; }
+      }
+    }
+  }
+  const W = plane === 'axial' ? nx : plane === 'coronal' ? nx : ny;
+  const H = plane === 'axial' ? ny : nz;
+  const cv = document.getElementById('c-' + plane);
+  cv.width = W; cv.height = H;
+  cv.getContext('2d').putImageData(new ImageData(out, W, H), 0, 0);
+}
+const paintAll = () => planes.forEach(paint);
+
+const seriesSel = document.getElementById('series');
+seriesSel.innerHTML = Object.keys(SERIES).map((k) => `<option>${k}</option>`).join('');
+const presetSel = document.getElementById('preset');
+presetSel.innerHTML = '<option value="auto">auto (p2–p98)</option>' +
+  Object.keys(PRESETS).map((k) => `<option>${k}</option>`).join('');
+presetSel.onchange = () => { wl = presetSel.value === 'auto' ? autoWl : PRESETS[presetSel.value]; paintAll(); };
+document.getElementById('overlay').onchange = paintAll;
+
+const undo = new UndoStack(16);
+let editMask = null; // Uint8Array, same dims as vols.img
+
+async function loadSeries(name) {
+  const spec = SERIES[name];
+  status.textContent = `fetching ${name}…`;
+  try {
+    vols.img = spec.dicom ? await loadDicomSeries(spec.dicom) : await loadNii(spec.img[0]);
+    const base = spec.seg ? await loadNii(spec.seg[0]) : null;
+    if (base && base.data.length !== vols.img.data.length) {
+      status.textContent = `seg dims mismatch — starting empty mask`;
+      editMask = new Uint8Array(vols.img.data.length);
+    } else if (base) {
+      editMask = new Uint8Array(vols.img.data.length);
+      for (let i = 0; i < editMask.length; i++) editMask[i] = base.data[i] > 0 ? 1 : 0;
+      status.textContent = `${name}: editing copy of seg`;
+    } else {
+      editMask = new Uint8Array(vols.img.data.length);
+    }
+    vols.seg = { dims: vols.img.dims, data: editMask };
+    undo.clear();
+    undo.push(editMask);
+    autoWl = autoWindow(vols.img.data);
+    wl = presetSel.value === 'auto' ? autoWl : PRESETS[presetSel.value];
+    axialFrac = spec.axialFrac ?? 0.5;
+    const [nx, ny, nz] = vols.img.dims;
+    const ranges = { axial: nz, coronal: ny, sagittal: nx };
+    for (const p of planes) {
+      const s = document.getElementById('s-' + p);
+      s.min = 0; s.max = ranges[p] - 1;
+      s.value = p === 'axial' ? Math.floor(nz * axialFrac) : Math.floor((ranges[p] - 1) / 2);
+      s.oninput = () => paint(p);
+    }
+    document.getElementById('overlay').disabled = !vols.seg;
+    status.textContent = `${name}: dims ${nx}×${ny}×${nz} — drag sliders`;
+    paintAll();
+  } catch (e) {
+    status.textContent = `failed: ${e.message}`;
+  }
+}
+seriesSel.onchange = () => loadSeries(seriesSel.value);
+
+// --- painting on the axial canvas (mask overlay doubles as edit layer) ---
+const axialCv = document.getElementById('c-axial');
+let lastPt = null;
+function eventVoxel(e) {
+  const r = axialCv.getBoundingClientRect();
+  const [nx, ny] = vols.img.dims;
+  return [
+    Math.floor(((e.clientX - r.left) / r.width) * nx),
+    Math.floor(((e.clientY - r.top) / r.height) * ny),
+  ];
+}
+function stamp(x, y, z, value) {
+  const [nx, ny, nz] = vols.img.dims;
+  const rad = Number(document.getElementById('brush').value);
+  for (let dy = -rad; dy <= rad; dy++) {
+    for (let dx = -rad; dx <= rad; dx++) {
+      if (dx * dx + dy * dy <= rad * rad) drawPt(editMask, nx, ny, nz, x + dx, y + dy, z, value);
+    }
+  }
+}
+axialCv.addEventListener('pointerdown', (e) => {
+  const mode = document.getElementById('mode').value;
+  if (mode === 'view' || !editMask) return;
+  axialCv.setPointerCapture(e.pointerId);
+  undo.push(editMask);
+  const [x, y] = eventVoxel(e);
+  const z = Number(document.getElementById('s-axial').value);
+  stamp(x, y, z, mode === 'paint' ? 1 : 0);
+  lastPt = [x, y, z];
+  paintAll();
+});
+axialCv.addEventListener('pointermove', (e) => {
+  const mode = document.getElementById('mode').value;
+  if (mode === 'view' || !editMask || !lastPt || !(e.buttons & 1)) return;
+  const [x, y] = eventVoxel(e);
+  const z = Number(document.getElementById('s-axial').value);
+  const [nx, ny] = vols.img.dims;
+  drawPenLine(editMask, nx, ny, vols.img.dims[2], lastPt, [x, y, z], mode === 'paint' ? 1 : 0);
+  stamp(x, y, z, mode === 'paint' ? 1 : 0);
+  lastPt = [x, y, z];
+  paintAll();
+});
+axialCv.addEventListener('pointerup', () => { lastPt = null; });
+document.getElementById('undo').onclick = () => {
+  const prev = undo.undo(editMask.length);
+  if (prev && editMask) {
+    editMask.set(prev);
+    vols.seg = { dims: vols.img.dims, data: editMask };
+    paintAll();
+  }
+};
+document.getElementById('clear').onclick = () => {
+  if (!editMask) return;
+  undo.push(editMask);
+  editMask.fill(0);
+  paintAll();
+};
+document.getElementById('save').onclick = () => {
+  const a = document.createElement('a');
+  a.download = `axial-${seriesSel.value}.png`;
+  a.href = axialCv.toDataURL('image/png');
+  a.click();
+};
+document.getElementById('savemask').onclick = () => {
+  if (!editMask || !vols.img) return;
+  const buf = writeNifti1({
+    dims: vols.img.dims,
+    spacing: vols.img.spacing ?? [1, 1, 1],
+    origin: [0, 0, 0], dtype: 'uint8', data: editMask,
+  });
+  const a = document.createElement('a');
+  a.download = `mask-${seriesSel.value}.nii`;
+  a.href = URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+};
+await loadSeries(seriesSel.value);
+</script>
+</body>
+</html>

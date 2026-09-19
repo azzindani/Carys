@@ -1,0 +1,69 @@
+{
+ "format": "carys-digests/1",
+ "digests": [
+  {
+   "id": "bodyparts3d-longbones",
+   "kind": "digest",
+   "license_spdx": "CC-BY-4.0",
+   "mode": "digest",
+   "lane": "A1",
+   "status": "shipped",
+   "source_url": "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html"
+  },
+  {
+   "id": "bodyparts3d-terms",
+   "kind": "digest",
+   "license_spdx": "CC-BY-4.0",
+   "mode": "digest",
+   "lane": "K1",
+   "status": "shipped",
+   "source_url": "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html"
+  },
+  {
+   "id": "rcsb-pathogens",
+   "kind": "digest",
+   "license_spdx": "CC0-1.0",
+   "mode": "digest",
+   "lane": "M1",
+   "status": "shipped",
+   "source_url": "https://www.rcsb.org/"
+  },
+  {
+   "id": "idr-catalog",
+   "kind": "digest",
+   "license_spdx": "CC0-1.0",
+   "mode": "digest",
+   "lane": "C1",
+   "status": "shipped",
+   "source_url": "https://idr.openmicroscopy.org/"
+  },
+  {
+   "id": "idr-screens",
+   "kind": "digest",
+   "license_spdx": "CC-BY-4.0",
+   "mode": "digest",
+   "lane": "M2",
+   "status": "shipped",
+   "source_url": "https://idr.openmicroscopy.org/"
+  },
+  {
+   "id": "openanatomy-brain",
+   "kind": "digest",
+   "license_spdx": "UNVERIFIED",
+   "license_note": "atlas page names '3D Slicer License section B' (redistributable with attribution, verified 2026-09-17 by reading the Slicer License Part B grant); SPDX mapping still unchecked by a human \u2014 row stays honest-proposed until then",
+   "mode": "digest",
+   "lane": "A3",
+   "status": "proposed",
+   "source_url": "https://github.com/mhalle/spl-brain-atlas"
+  },
+  {
+   "id": "openneuro-ds000001",
+   "kind": "digest",
+   "license_spdx": "CC0-1.0",
+   "mode": "digest",
+   "lane": "D1",
+   "status": "shipped",
+   "source_url": "https://openneuro.org/datasets/ds000001/snapshots/1.0.0"
+  }
+ ]
+}

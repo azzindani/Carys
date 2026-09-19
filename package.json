@@ -1,0 +1,53 @@
+{
+  "name": "carys",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "build:app": "vite build --config packages/app/vite.config.ts",
+    "typecheck:app": "tsc --noEmit -p packages/app/tsconfig.json",
+    "test": "node --test packages/*/dist/test/*.test.js",
+    "test:unit": "node --test packages/volume-core/dist/test/smoke.test.js packages/volume-core/dist/test/core.test.js packages/volume-core/dist/test/lut-table.test.js packages/volume-core/dist/test/hist-table.test.js packages/volume-core/dist/test/mol.test.js packages/volume-core/dist/test/molql-string.test.js packages/volume-core/dist/test/history.test.js packages/volume-core/dist/test/spatial.test.js packages/volume-core/dist/test/registry.test.js packages/volume-core/dist/test/verify.test.js packages/volume-core/dist/test/orientation.test.js packages/volume-core/dist/test/unmix.test.js packages/volume-core/dist/test/cells.test.js packages/volume-core/dist/test/mapfit.test.js packages/volume-core/dist/test/pocket.test.js packages/volume-core/dist/test/view-cache.test.js packages/volume-core/dist/test/atlas.test.js packages/volume-core/dist/test/bundles.test.js packages/volume-core/dist/test/cohorts.test.js packages/volume-core/dist/test/selftest.test.js packages/volume-core/dist/test/plane-trainer.test.js packages/volume-core/dist/test/brain-regions.test.js packages/volume-core/dist/test/plane-atlas.test.js packages/io/dist/test/smoke.test.js packages/io/dist/test/parsers.test.js packages/io/dist/test/adapters.test.js packages/io/dist/test/dicom-vr.test.js packages/io/dist/test/dicom-tags.test.js packages/io/dist/test/fixtures.test.js packages/io/dist/test/nifti-write.test.js packages/io/dist/test/nifti-gzip.test.js packages/io/dist/test/nrrd.test.js packages/io/dist/test/ome-tiff.test.js packages/io/dist/test/ome-dims.test.js packages/io/dist/test/vcf-depth.test.js packages/io/dist/test/codon-map.test.js packages/io/dist/test/gtf-cds.test.js packages/io/dist/test/dicomdir.test.js packages/io/dist/test/us.test.js packages/io/dist/test/tomo.test.js packages/io/dist/test/rt.test.js packages/io/dist/test/wsi.test.js packages/io/dist/test/tiled-volume.test.js packages/io/dist/test/nifti-time.test.js packages/io/dist/test/pdb.test.js packages/io/dist/test/cif.test.js packages/io/dist/test/precomputed.test.js packages/io/dist/test/omezarr.test.js packages/io/dist/test/idr-catalog.test.js packages/io/dist/test/ome-view.test.js packages/io/dist/test/ome-plate.test.js packages/io/dist/test/dcm-codec.test.js packages/io/dist/test/dicom-compressed.test.js packages/io/dist/test/dicom-jpegls.test.js packages/io/dist/test/corrupt.test.js packages/io/dist/test/seg-rt.test.js packages/io/dist/test/enhanced-groups.test.js packages/io/dist/test/samples-matrix.test.js packages/io/dist/test/samples.test.js packages/io/dist/test/samples-measure.test.js packages/io/dist/test/dtypes.test.js packages/editor-seg/dist/test/smoke.test.js packages/editor-seg/dist/test/ops.test.js packages/editor-seg/dist/test/draw.test.js packages/editor-seg/dist/test/segments.test.js packages/editor-seg/dist/test/segops.test.js packages/editor-seg/dist/test/watershed.test.js packages/editor-seg/dist/test/props.test.js packages/editor-seg/dist/test/multilabel.test.js packages/editor-seg/dist/test/oblique-paint.test.js packages/editor-seg/dist/test/livewire.test.js packages/measure/dist/test/smoke.test.js packages/measure/dist/test/cases.test.js packages/measure/dist/test/annotations.test.js packages/measure/dist/test/track.test.js packages/measure/dist/test/oblique-measure.test.js packages/measure/dist/test/recist.test.js packages/measure/dist/test/oncology.test.js packages/measure/dist/test/tid1500.test.js packages/measure/dist/test/radiomics.test.js packages/measure/dist/test/tid1500-import.test.js packages/measure/dist/test/measure-trainer.test.js packages/measure/dist/test/delta.test.js packages/render-cpu/dist/test/smoke.test.js packages/render-cpu/dist/test/surface.test.js packages/render-cpu/dist/test/nets.test.js packages/render-cpu/dist/test/stl.test.js packages/render-cpu/dist/test/mesh-formats.test.js packages/render-cpu/dist/test/tck.test.js packages/render-cpu/dist/test/trk.test.js packages/render-cpu/dist/test/trx.test.js packages/render-cpu/dist/test/cursor3d.test.js packages/render-cpu/dist/test/fibers.test.js packages/render-cpu/dist/test/slab.test.js packages/render-cpu/dist/test/fusion.test.js packages/render-cpu/dist/test/tract-roi.test.js packages/render-cpu/dist/test/cpr.test.js packages/render-cpu/dist/test/mip-rotate.test.js packages/render-cpu/dist/test/layout.test.js packages/render-cpu/dist/test/vr.test.js packages/render-cpu/dist/test/oracle.test.js packages/render-cpu/dist/test/vr-table.test.js packages/render-cpu/dist/test/goldens.test.js packages/render-cpu/dist/test/surface-golden.test.js packages/render-cpu/dist/test/corrupt.test.js packages/render-cpu/dist/test/perf.test.js packages/study/dist/test/worklist.test.js packages/study/dist/test/privacy.test.js packages/study/dist/test/matrix.test.js packages/study/dist/test/hanging.test.js packages/study/dist/test/report.test.js packages/study/dist/test/repro.test.js packages/study/dist/test/present.test.js packages/study/dist/test/safety.test.js packages/study/dist/test/qc-registry.test.js packages/study/dist/test/sources.test.js packages/study/dist/test/atlas-digest.test.js packages/study/dist/test/tract-presets.test.js packages/study/dist/test/terms.test.js packages/study/dist/test/pathogens.test.js packages/study/dist/test/audit.test.js packages/study/dist/test/deidentify.test.js packages/study/dist/test/readstatus.test.js packages/study/dist/test/parity.test.js packages/dicomweb/dist/test/multipart.test.js packages/dicomweb/dist/test/model.test.js packages/dicomweb/dist/test/client.test.js packages/dicomweb/dist/test/fuzz.test.js",
+    "test:e2e": "node test/e2e/smoke.mjs && node --test test/e2e/markers.mjs && node test/e2e/undo.mjs && node test/e2e/wire.mjs && node test/e2e/journeys.mjs",
+    "test:undo": "node test/e2e/undo.mjs",
+    "test:wire": "node test/e2e/wire.mjs",
+    "test:markers": "node --test test/e2e/markers.mjs",
+    "test:pacs": "node test/e2e/pacs-verify.mjs",
+    "test:shots": "node test/e2e/shots.mjs",
+    "demo": "node test/e2e/demo.mjs",
+    "audit:mobile": "node test/e2e/mobile-audit.mjs",
+    "gen:cells": "node scripts/gen-cells-zarr.mjs",
+    "gen:plate": "node scripts/gen-plate-zarr.mjs",
+    "gen:ometiff": "node scripts/gen-tiny-ometiff.mjs",
+    "gen:tczyx": "node scripts/gen-tczyx-ometiff.mjs",
+    "gen:foundry": "python3 test/e2e/foundry.py gen",
+    "xval": "python3 test/e2e/foundry.py xval",
+    "verify": "npm run build && npm test && npm run test:e2e",
+    "serve:root": "python3 -m http.server 8000 --directory .",
+    "serve": "python3 -m http.server 8000 --directory .",
+    "deploy": "bash scripts/deploy.sh",
+    "update": "bash scripts/update.sh",
+    "test:journeys": "node test/e2e/journeys.mjs",
+    "gen:precomputed": "node scripts/gen-precomputed.mjs",
+    "parity": "python3 test/e2e/foundry.py parity",
+    "test:dimse": "python3 test/e2e/dimse-echo.py"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "playwright": "^1.63.0",
+    "typescript": "^5.5.0",
+    "vite": "^5.4.0",
+    "zarrita": "^0.7.5"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  }
+}

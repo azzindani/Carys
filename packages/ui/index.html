@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carys</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05070b;
+    --glass: rgba(16, 20, 27, 0.72);
+    --panel: rgba(255, 255, 255, 0.035);
+    --panel2: rgba(255, 255, 255, 0.06);
+    --panel3: rgba(255, 255, 255, 0.09);
+    --line: rgba(255, 255, 255, 0.08); --line2: rgba(255, 255, 255, 0.15);
+    --text: #f2f4f7; --muted: #a7aeb8; --faint: #6b7280;
+    --accent: #2dd4bf; --accent2: #818cf8; --accent-dim: rgba(45, 212, 191, 0.12);
+    --danger: #f0564a;
+    --stage: #020304; --on-accent: #06110f; --accent-hi: #5eead4; --white: #fff;
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --disp: "Space Grotesk", "Inter", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    --r-lg: 20px; --r-md: 14px; --r-sm: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; color: var(--text);
+    font: 13px/1.55 var(--sans); -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column; overflow: hidden;
+    background:
+      radial-gradient(1100px 480px at 12% -8%, rgba(45, 212, 191, 0.09), transparent 60%),
+      radial-gradient(900px 520px at 88% -12%, rgba(129, 140, 248, 0.11), transparent 60%),
+      radial-gradient(700px 700px at 50% 115%, rgba(45, 212, 191, 0.05), transparent 60%),
+      var(--bg);
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 75%);
+  }
+  body > * { position: relative; z-index: 1; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 8px; border: 3px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::selection { background: rgba(45, 212, 191, 0.3); }
+
+  /* ---------- floating nav ---------- */
+  .top {
+    flex: none; display: flex; align-items: center; gap: 12px;
+    margin: 14px 18px 0; padding: 9px 12px;
+    background: var(--glass); border: 1px solid var(--line); border-radius: 18px;
+    backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255,255,255,0.07);
+  }
+  .logo { display: flex; align-items: center; gap: 9px; padding-right: 4px; }
+  .logo .mark {
+    width: 26px; height: 26px; border-radius: 8px; flex: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 12px rgba(45, 212, 191, 0.4);
+  }
+  .logo .word { font: 600 15px var(--disp); letter-spacing: -0.01em; }
+  .logo .word span { color: var(--muted); font-weight: 500; }
+  .logo .tag {
+    font: 500 9.5px var(--mono); letter-spacing: 0.08em; color: var(--accent);
+    border: 1px solid rgba(45, 212, 191, 0.35); background: var(--accent-dim);
+    border-radius: 999px; padding: 2px 7px; text-transform: uppercase;
+  }
+
+  /* view switch lives in the nav now: a segmented pill (keeps .rail for tests) */
+  .rail {
+    display: flex; align-items: center; gap: 2px; margin: 0 auto;
+    background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line);
+    border-radius: 999px; padding: 3px;
+  }
+  .rail button {
+    border: none; background: transparent; color: var(--muted);
+    font: 500 12.5px var(--sans); padding: 6px 16px; border-radius: 999px;
+    cursor: pointer; display: flex; align-items: center; gap: 7px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .rail button svg { width: 14px; height: 14px; }
+  .rail button:hover { color: var(--text); }
+  .rail button.on {
+    color: var(--on-accent); background: linear-gradient(135deg, var(--accent-hi), var(--accent));
+    font-weight: 600; box-shadow: 0 2px 10px rgba(45, 212, 191, 0.35);
+  }
+  .rail .key { font: 10px var(--mono); opacity: 0.55; }
+  .kbd-btn {
+    color: var(--muted); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 999px; padding: 7px 8px 7px 14px;
+    font: 12.5px var(--sans); cursor: pointer; display: flex; gap: 9px; align-items: center;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .kbd-btn:hover { color: var(--text); border-color: var(--line2); }
+  .kbd-btn kbd {
+    font: 500 11px var(--mono); background: var(--panel3); border: 1px solid var(--line);
+    border-radius: 6px; padding: 2px 7px; color: var(--text);
+  }
+
+  /* ---------- main grid ---------- */
+  .main { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 296px; gap: 14px; min-height: 0; padding: 14px 18px 0; }
+  @media (max-width: 980px) { .main { grid-template-columns: minmax(0, 1fr); } .inspector { display: none; } }
+
+  /* ---------- viewport ---------- */
+  .viewport { position: relative; min-width: 0; min-height: 0; overflow: auto; padding: 2px 2px 90px; scrollbar-gutter: stable; }
+  .view-title { display: flex; align-items: baseline; gap: 12px; margin: 6px 4px 12px; }
+  .view-title[hidden] { display: none; }
+  #pane-3d { flex: 1 1 560px; max-width: 700px; }
+  .view-title h1 { font: 600 21px/1.2 var(--disp); letter-spacing: -0.02em; margin: 0; }
+  .view-title p { margin: 0; color: var(--faint); font-size: 12.5px; }
+  .panes { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+  .pane {
+    background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    overflow: hidden; min-width: 0; flex: 1 1 300px; max-width: 520px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .pane-head {
+    display: flex; align-items: center; gap: 9px; padding: 11px 15px;
+    font-size: 12.5px;
+  }
+  .pane-head .name { font: 600 13px var(--disp); letter-spacing: 0.01em; }
+  .pane-head .sub { color: var(--faint); font-size: 11px; font-family: var(--mono); }
+  .chip {
+    font: 500 11px var(--mono); color: var(--muted); background: rgba(0,0,0,0.32);
+    border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px;
+    font-variant-numeric: tabular-nums;
+  }
+  .chip.zoom { margin-left: auto; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+  .chip.zoom:hover { color: var(--text); border-color: var(--line2); }
+  .stage { position: relative; background: var(--stage); overflow: hidden; margin: 0 8px 8px; border-radius: 13px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); }
+  .stage canvas { display: block; width: 100%; height: auto; transform-origin: center; cursor: crosshair; border-radius: 13px; }
+  #view3d { aspect-ratio: 1; }
+  .stage input[type="range"] { position: absolute; left: 14px; right: 14px; bottom: 12px; width: calc(100% - 28px); }
+  .pane.loading .stage::after {
+    content: ""; position: absolute; inset: 0; border-radius: 13px;
+    background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.07) 50%, transparent 70%);
+    background-size: 200% 100%; animation: shimmer 1.2s infinite;
+  }
+  @keyframes shimmer { from { background-position: 180% 0; } to { background-position: -80% 0; } }
+
+  /* ---------- floating dock ---------- */
+  .dock[hidden], .panes[hidden] { display: none; }
+  .dock {
+    position: sticky; top: 2px; z-index: 5; display: flex; gap: 2px; align-items: center;
+    background: var(--glass); border: 1px solid var(--line2);
+    border-radius: 16px; padding: 7px 10px; margin: 0 auto 16px; width: fit-content;
+    max-width: 100%; flex-wrap: wrap; justify-content: center;
+    box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+    backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3);
+    font-size: 12px; color: var(--muted);
+  }
+  .dock .grp { display: flex; align-items: center; gap: 7px; padding: 0 5px; }
+  .dock .sep { width: 1px; align-self: stretch; background: var(--line); margin: 5px 3px; }
+  .dock label.lbl { font-size: 10px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: 0.09em; }
+  .seg { display: flex; background: rgba(0,0,0,0.35); border: 1px solid var(--line); border-radius: 999px; padding: 2px; gap: 2px; }
+  .seg button {
+    border: none; background: transparent; color: var(--muted); font: 500 12px var(--sans);
+    padding: 5px 13px; border-radius: 999px; cursor: pointer; transition: all 0.15s;
+  }
+  .seg button:hover { color: var(--text); }
+  .seg button.on { background: var(--panel3); color: var(--text); box-shadow: inset 0 0 0 1px var(--line2); }
+  .iconbtn {
+    border: 1px solid transparent; background: transparent; color: var(--muted);
+    border-radius: 9px; padding: 6px 9px; font: 500 12px var(--sans); cursor: pointer;
+    display: flex; align-items: center; gap: 6px; transition: all 0.15s;
+  }
+  .iconbtn:hover { color: var(--text); background: var(--panel2); }
+  .iconbtn svg { width: 14px; height: 14px; }
+  .iconbtn.accent { color: var(--accent); font-weight: 600; }
+  .iconbtn.accent:hover { background: var(--accent-dim); }
+  select.dark {
+    appearance: none; -webkit-appearance: none;
+    background: rgba(0,0,0,0.35) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23a7aeb8' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center;
+    color: var(--text); border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 28px 7px 13px; font: 500 12px var(--sans); cursor: pointer; max-width: 210px;
+    transition: border-color 0.15s;
+  }
+  select.dark:hover { border-color: var(--line2); }
+  .top select.dark { background-color: var(--panel); }
+  /* switch */
+  .switch { position: relative; width: 34px; height: 19px; flex: none; cursor: pointer; }
+  .switch input { opacity: 0; width: 100%; height: 100%; position: absolute; margin: 0; cursor: pointer; }
+  .switch .tr { position: absolute; inset: 0; background: rgba(0,0,0,0.4); border: 1px solid var(--line2); border-radius: 999px; transition: 0.15s; }
+  .switch .tr::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px;
+    border-radius: 50%; background: var(--muted); transition: 0.15s;
+  }
+  .switch input:checked + .tr { background: rgba(45, 212, 191, 0.3); border-color: var(--accent); }
+  .switch input:checked + .tr::after { left: 17px; background: var(--accent); box-shadow: 0 0 8px rgba(45,212,191,0.7); }
+  /* range */
+  input[type="range"] { accent-color: var(--accent); }
+  input[type="range"].styled { -webkit-appearance: none; appearance: none; height: 20px; background: transparent; cursor: pointer; }
+  input[type="range"].styled::-webkit-slider-runnable-track { height: 3px; background: rgba(255,255,255,0.16); border-radius: 2px; }
+  input[type="range"].styled::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--white); margin-top: -5.5px; border: none;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.7), 0 0 0 4px rgba(45,212,191,0.15);
+  }
+  input[type="range"].styled::-moz-range-track { height: 3px; background: rgba(255,255,255,0.16); border-radius: 2px; }
+  input[type="range"].styled::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--white); border: none; }
+  .dock input[type="range"].styled { width: 100px; }
+  .stage input[type="range"].styled::-webkit-slider-runnable-track { background: rgba(255,255,255,0.25); }
+
+  /* ---------- inspector ---------- */
+  .inspector {
+    background: var(--glass); border: 1px solid var(--line); border-radius: var(--r-lg);
+    backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+    overflow-y: auto; padding: 6px 18px 18px; margin-bottom: 14px;
+    display: flex; flex-direction: column; align-self: start; max-height: 100%;
+  }
+  .inspector section { padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .inspector section:last-child { border-bottom: none; }
+  .inspector h2 {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--faint); margin: 0 0 10px; display: flex; align-items: center;
+  }
+  .inspector h2 .act { margin-left: auto; display: flex; gap: 4px; }
+  .inspector h2 .act button {
+    background: transparent; border: 1px solid transparent; color: var(--faint); cursor: pointer;
+    font-size: 12px; padding: 2px 7px; border-radius: 7px; transition: all 0.15s;
+  }
+  .inspector h2 .act button:hover { color: var(--text); background: var(--panel2); border-color: var(--line); }
+  .bigstat { font: 600 30px/1.1 var(--disp); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .bigstat small { font: 500 12px var(--sans); color: var(--faint); letter-spacing: 0; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: 12px; margin: 10px 0 0; }
+  .kv dt { color: var(--faint); }
+  .kv dd { margin: 0; text-align: right; font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .meter { height: 5px; background: rgba(255,255,255,0.08); border-radius: 3px; margin-top: 12px; overflow: hidden; }
+  .meter i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 3px; transition: width 0.25s; }
+  .hint { color: var(--faint); font-size: 11.5px; }
+  .hint kbd { font: 500 10.5px var(--mono); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; color: var(--muted); }
+
+  /* ---------- status: floating pill ---------- */
+  .status {
+    position: fixed; left: 18px; bottom: 14px; z-index: 40;
+    display: flex; align-items: center; gap: 8px; max-width: min(560px, 60vw);
+    padding: 7px 13px; background: var(--glass); border: 1px solid var(--line);
+    border-radius: 999px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden;
+  }
+  .status .dot { color: var(--accent); font-size: 8px; animation: pulse 2s infinite; }
+  @keyframes pulse { 50% { opacity: 0.35; } }
+  .status .sp { display: none; }
+  .status .pill {
+    font-family: var(--mono); font-size: 10px; border: 1px solid var(--line);
+    border-radius: 999px; padding: 1px 8px; color: var(--faint);
+  }
+
+  /* ---------- toasts ---------- */
+  #toasts { position: fixed; bottom: 62px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast {
+    background: rgba(20, 25, 33, 0.92); border: 1px solid var(--line2); color: var(--text);
+    font-size: 12.5px; border-radius: 999px; padding: 9px 18px;
+    box-shadow: 0 12px 34px rgba(0,0,0,0.55); animation: tin 0.2s ease-out;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  @keyframes tin { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
+
+  /* ---------- palette ---------- */
+  .pal-wrap {
+    position: fixed; inset: 0; background: rgba(3, 4, 6, 0.65); display: none;
+    align-items: flex-start; justify-content: center; padding-top: 12vh; z-index: 50;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .pal-wrap.open { display: flex; }
+  .pal {
+    width: min(580px, 92vw); background: rgba(17, 21, 28, 0.96);
+    border: 1px solid var(--line2); border-radius: 18px; overflow: hidden;
+    box-shadow: 0 32px 90px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(0,0,0,0.4), 0 0 60px rgba(45,212,191,0.06);
+  }
+  .pal input {
+    width: 100%; background: transparent; border: none; outline: none;
+    color: var(--text); font: 15px var(--sans); padding: 16px 19px;
+    border-bottom: 1px solid var(--line);
+  }
+  .pal input::placeholder { color: var(--faint); }
+  .pal ul { list-style: none; margin: 0; padding: 8px; max-height: 330px; overflow-y: auto; }
+  .pal li {
+    padding: 9px 12px; border-radius: 10px; font-size: 13px; cursor: pointer;
+    color: var(--muted); display: flex; align-items: center; gap: 9px;
+  }
+  .pal li.sel, .pal li:hover { background: var(--accent-dim); color: var(--text); }
+  .pal li span { margin-left: auto; color: var(--faint); font: 11px var(--mono); }
+  .pal-foot { display: flex; gap: 12px; padding: 9px 16px; border-top: 1px solid var(--line); color: var(--faint); font-size: 11px; }
+  .pal-foot kbd { font: 10px var(--mono); background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+</style>
+<script type="importmap">
+{ "imports": { "@carys/volume-core": "/packages/volume-core/dist/index.js", "fflate": "/node_modules/fflate/esm/browser.js" } }
+</script>
+</head>
+<body>
+<header class="top">
+  <div class="logo">
+    <span class="mark"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="stroke:var(--on-accent)"><rect x="1" y="1" width="5" height="5" rx="1.2" stroke-width="1.5"/><rect x="8" y="1" width="5" height="5" rx="1.2" stroke-width="1.5"/><rect x="1" y="8" width="5" height="5" rx="1.2" stroke-width="1.5"/><rect x="8" y="8" width="5" height="5" rx="2.5" style="fill:var(--on-accent)" stroke="none"/></svg></span>
+    <span class="word">Carys</span>
+    <span class="tag">cpu</span>
+  </div>
+  <nav class="rail" aria-label="Views">
+    <button data-view="mpr" class="on" title="MPR slices (1)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>
+      Slices <span class="key">1</span>
+    </button>
+    <button data-view="3d" title="3D surface (2)">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M10 2l7 4v8l-7 4-7-4V6l7-4z"/><path d="M10 10l7-4M10 10L3 6m7 4v8"/></svg>
+      3D <span class="key">2</span>
+    </button>
+  </nav>
+  <select id="series" class="dark" title="Series"></select>
+  <button class="kbd-btn" id="openpal" title="Command palette">Search <kbd>⌘K</kbd></button>
+</header>
+<div class="main">
+  <section class="viewport">
+    <div class="view-title" id="title-mpr"><h1>Slices</h1><p>axial · coronal · sagittal — scroll to navigate, paint to segment</p></div>
+    <div class="view-title" id="title-3d" hidden><h1>Surface</h1><p>drag to orbit — extracted on demand, cached per edit</p></div>
+    <div class="dock" id="dock-mpr">
+      <div class="grp"><span class="lbl">Preset</span><select id="preset" class="dark"></select></div>
+      <div class="sep"></div>
+      <div class="grp">
+        <div class="seg" id="modeseg" role="tablist" aria-label="Tool">
+          <button data-mode="view" class="on">Select</button>
+          <button data-mode="paint">Paint</button>
+          <button data-mode="erase">Erase</button>
+        </div>
+      </div>
+      <div class="grp"><span class="lbl">Brush</span><input type="range" id="brush" class="styled" min="1" max="12" step="1" value="3"></div>
+      <div class="sep"></div>
+      <div class="grp">
+        <button class="iconbtn" id="undo" title="Undo stroke">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3L3 6l3 3M3 6h6a4 4 0 010 8h-2"/></svg>Undo</button>
+        <button class="iconbtn" id="clear" title="Clear mask">Clear</button>
+      </div>
+      <div class="sep"></div>
+      <div class="grp">
+        <label class="switch" title="Mask overlay"><input type="checkbox" id="overlay" checked><span class="tr"></span></label>
+        <span class="lbl">Mask</span>
+      </div>
+      <div class="sep"></div>
+      <div class="grp">
+        <button class="iconbtn accent" id="savepng" title="Export axial PNG">PNG</button>
+        <button class="iconbtn accent" id="savenii" title="Export mask as .nii">.NII</button>
+      </div>
+    </div>
+    <div class="dock" id="dock-3d" hidden>
+      <div class="grp"><span class="lbl">Orbit</span><input type="range" id="orbit" class="styled" min="0" max="6.283" step="0.01" value="0.7"></div>
+      <div class="grp"><span class="lbl">Tilt</span><input type="range" id="tilt" class="styled" min="-1.2" max="1.2" step="0.01" value="0.3"></div>
+      <div class="sep"></div>
+      <div class="grp"><span class="lbl">Source</span>
+        <div class="seg" id="srcseg">
+          <button data-s="mask" class="on">Mask</button>
+          <button data-s="image">Image</button>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="grp"><span class="lbl">Threshold</span><input type="range" id="threshold" class="styled" min="0" max="1000" step="1" value="0"><span class="chip" id="tval">0</span></div>
+      <div class="grp"><span class="lbl">Surface</span>
+        <div class="seg" id="methodseg">
+          <button data-m="blocky" class="on">Blocky</button>
+          <button data-m="smooth">Smooth</button>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="grp">
+        <label class="iconbtn" for="upload" title="Open a .nii mask file">Open .nii</label>
+        <input type="file" id="upload" accept=".nii" hidden>
+      </div>
+    </div>
+    <div id="view-mpr" class="panes">
+      <div class="pane loading" id="pane-axial">
+        <div class="pane-head"><span class="name">Axial</span><span class="chip" id="ro-axial">—</span><span class="chip zoom" data-zoom="axial" title="Double-click canvas also resets">100%</span></div>
+        <div class="stage"><canvas id="c-axial" role="img" aria-label="Axial slice. Paint here with the paint tool."></canvas><input type="range" id="s-axial" class="styled" aria-label="Axial slice"></div>
+      </div>
+      <div class="pane loading" id="pane-coronal">
+        <div class="pane-head"><span class="name">Coronal</span><span class="chip" id="ro-coronal">—</span><span class="chip zoom" data-zoom="coronal" title="Double-click canvas also resets">100%</span></div>
+        <div class="stage"><canvas id="c-coronal" role="img" aria-label="Coronal slice"></canvas><input type="range" id="s-coronal" class="styled" aria-label="Coronal slice"></div>
+      </div>
+      <div class="pane loading" id="pane-sagittal">
+        <div class="pane-head"><span class="name">Sagittal</span><span class="chip" id="ro-sagittal">—</span><span class="chip zoom" data-zoom="sagittal" title="Double-click canvas also resets">100%</span></div>
+        <div class="stage"><canvas id="c-sagittal" role="img" aria-label="Sagittal slice"></canvas><input type="range" id="s-sagittal" class="styled" aria-label="Sagittal slice"></div>
+      </div>
+    </div>
+    <div id="view-3d" class="panes" hidden>
+      <div class="pane" id="pane-3d" style="min-width:min(620px,100%)">
+        <div class="pane-head"><span class="name">Surface</span><span class="chip" id="ro-3d">—</span><span class="chip zoom" id="zoom3d" title="Double-click canvas also resets">100%</span></div>
+        <div class="stage"><canvas id="view3d" width="560" height="560" role="img" aria-label="3D surface. Drag sliders to orbit."></canvas></div>
+      </div>
+    </div>
+  </section>
+  <aside class="inspector">
+    <section>
+      <h2>Series</h2>
+      <div class="bigstat" id="series-big">—</div>
+      <div class="hint" id="series-note"></div>
+    </section>
+    <section>
+      <h2>Volume</h2>
+      <dl class="kv" id="volinfo"></dl>
+    </section>
+    <section>
+      <h2>Mask
+        <span class="act">
+          <button id="mask-undo" title="Undo">↩</button>
+          <button id="mask-clear" title="Clear">✕</button>
+        </span>
+      </h2>
+      <div class="bigstat" id="mask-big">—</div>
+      <dl class="kv" id="maskinfo"></dl>
+      <div class="meter"><i id="maskbar" style="width:0%"></i></div>
+    </section>
+    <section>
+      <h2>Shortcuts</h2>
+      <div class="hint"><kbd>1</kbd> <kbd>2</kbd> views · <kbd>↑</kbd><kbd>↓</kbd> slice · <kbd>[</kbd><kbd>]</kbd> brush · <kbd>⌘K</kbd> palette · wheel zoom · dbl-click resets</div>
+    </section>
+  </aside>
+</div>
+<footer class="status" id="status" role="status">
+  <span class="dot">●</span><span id="status-text">loading…</span>
+  <span class="sp"></span>
+  <span class="pill" id="pill-view">mpr</span>
+  <span class="pill" id="pill-tool">select</span>
+  <span class="pill" id="pill-engine">cpu</span>
+</footer>
+<div id="toasts"></div>
+<div class="pal-wrap" id="palwrap"><div class="pal">
+  <input id="palinput" placeholder="Type a command or series…" autocomplete="off">
+  <ul id="pallist"></ul>
+  <div class="pal-foot"><span><kbd>↑↓</kbd> navigate</span><span><kbd>↵</kbd> run</span><span><kbd>esc</kbd> close</span></div>
+</div></div>
+<script type="module">
+import { loadNii, loadDicomSeries, loadNiiBuffer, autoWindow, toMask, createExtractor } from './viewer-lib.js';
+import { PRESETS } from '@carys/volume-core';
+import { reslice } from '/packages/render-cpu/dist/mpr.js';
+import { writeNifti1 } from '/packages/io/dist/nifti-write.js';
+import { extractBoundary, surfaceNets, renderMesh } from '/packages/render-cpu/dist/index.js';
+import { drawPt, drawPenLine, UndoStack } from '/packages/editor-seg/dist/drawing.js';
+
+// NOTE: liver_33 naming is swapped upstream (img=labels, seg=CT).
+const SERIES = {
+  'brats-flair-seg': { img: ['/samples/brain_tumor_BraTS19_CBICA_AQN_1_flair.nii'], seg: ['/samples/brain_tumor_BraTS19_CBICA_AQN_1_seg.nii'], axialFrac: 0.72, color: [230, 80, 80] },
+  'liver-ct-seg': { img: ['/samples/liver_33_seg.nii'], seg: ['/samples/liver_33_img.nii'], color: [90, 200, 120] },
+  'covid-chest-seg': { img: ['/samples/volume-covid19-A-0329.nii'], seg: ['/samples/volume-covid19-A-0329_seg.nii'], color: [230, 80, 80] },
+  'cardiac-frame01': { img: ['/samples/cardiac_patient021_frame01.nii'], color: [225, 215, 200] },
+  'skull-seg': { img: ['/samples/skull_case_0001_img.nii'], seg: ['/samples/skull_case_0001_seg.nii'], color: [225, 215, 200] },
+  'skull-ct-bone': { img: ['/samples/skull_case_0001_img.nii'], color: [225, 215, 200], threshold3d: 250 },
+  'lung-ct-dicom': { dicom: [1, 2, 3, 4, 5].map((i) => `/samples/lung_ct_0${i}.dcm`), color: [225, 215, 200] },
+  'cardiac-dicom': { dicom: [1, 2, 4, 5].map((i) => `/samples/cardiac_0${i}.dcm`), color: [225, 215, 200] },
+  'prostate-dicom': { dicom: [1, 2, 3, 4, 5].map((i) => `/samples/prostate_mri_0${i}.dcm`), color: [225, 215, 200] },
+};
+/* ---------- typed DOM boundary: every lookup asserts the expected type.
+   No unchecked `.value` / `.checked` anywhere below. ---------- */
+/**
+ * @param {string} id
+ * @returns {HTMLElement}
+ */
+function el(id) {
+  const n = document.getElementById(id);
+  if (!n) throw new Error(`missing #${id}`);
+  return n;
+}
+/**
+ * @template {new (...args: any) => HTMLElement} T
+ * @param {string} id
+ * @param {T} kind
+ * @returns {InstanceType<T>}
+ */
+function asEl(id, kind) {
+  const n = el(id);
+  if (!(n instanceof kind)) throw new Error(`#${id} is not a ${kind.name}`);
+  return /** @type {InstanceType<T>} */ (n);
+}
+const sel = (id) => asEl(id, HTMLSelectElement);
+const inp = (id) => asEl(id, HTMLInputElement);
+const cnv = (id) => asEl(id, HTMLCanvasElement);
+
+/* ---------- central UI state: the single source of truth.
+   Buttons/sliders REFLECT `ui` via syncChrome(); nothing reads the DOM
+   for app state (slice-slider positions are ephemeral view offsets and
+   stay in the DOM). ---------- */
+/**
+ * @typedef {'mpr' | '3d'} View
+ * @typedef {'view' | 'paint' | 'erase'} Tool
+ * @typedef {'mask' | 'image'} Source
+ * @typedef {'blocky' | 'smooth'} Method
+ * @typedef {{ view: View, tool: Tool, src: Source, method: Method,
+ *   preset: string, overlay: boolean, brush: number, threshold: number,
+ *   series: string }} UiState
+ */
+/** @type {UiState} */
+const ui = {
+  view: 'mpr', tool: 'view', src: 'mask', method: 'blocky',
+  preset: 'auto', overlay: true, brush: 3, threshold: 0, series: '',
+};
+/** Mirror `ui` into every control + pill. Call after any mutation. */
+function syncChrome() {
+  document.querySelectorAll('.rail button').forEach((b) => {
+    const on = b.dataset.view === ui.view;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  for (const [segId, key] of [['modeseg', 'mode'], ['methodseg', 'm'], ['srcseg', 's']]) {
+    document.querySelectorAll(`#${segId} button`).forEach((b) => {
+      const val = key === 'mode' ? ui.tool : key === 'm' ? ui.method : ui.src;
+      const on = b.dataset[key] === val;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+  }
+  sel('preset').value = ui.preset;
+  inp('overlay').checked = ui.overlay;
+  inp('brush').value = String(ui.brush);
+  inp('threshold').value = String(ui.threshold);
+  el('tval').textContent = String(ui.threshold);
+  if (ui.series) sel('series').value = ui.series;
+  el('pill-view').textContent = ui.view;
+  el('pill-tool').textContent = ui.tool;
+}
+
+const status = (t) => { el('status-text').textContent = t; };
+const planes = ['axial', 'coronal', 'sagittal'];
+const vols = {};
+let wl, autoWl, axialFrac = 0.5, editMask = null, mesh3d = null;
+const zoom = { axial: 1, coronal: 1, sagittal: 1 };
+const undo = new UndoStack(16);
+const extractor = createExtractor({ extractBoundary, surfaceNets });
+
+function toast(msg) {
+  const node = document.createElement('div');
+  node.className = 'toast';
+  node.textContent = msg;
+  el('toasts').appendChild(node);
+  setTimeout(() => node.remove(), 2600);
+}
+
+/* ---------- shared ---------- */
+function fmtDims(d) { return `${d[0]}×${d[1]}×${d[2]}`; }
+/** @param {Tool} m */
+function setMode(m) {
+  ui.tool = m;
+  syncChrome();
+}
+
+function refreshInspector() {
+  if (!vols.img) return;
+  const [nx, ny, nz] = vols.img.dims;
+  const sp = vols.img.spacing ?? [1, 1, 1];
+  el('volinfo').innerHTML =
+    `<dt>dims</dt><dd>${fmtDims(vols.img.dims)}</dd>` +
+    `<dt>spacing</dt><dd>${sp.map((v) => Number(v).toFixed(2)).join(' · ')}</dd>` +
+    `<dt>voxels</dt><dd>${(nx * ny * nz).toLocaleString()}</dd>`;
+  if (editMask) {
+    let n = 0;
+    for (let i = 0; i < editMask.length; i += 7) if (editMask[i]) n++;
+    const vox = n * 7;
+    const est = Math.round(vox * sp[0] * sp[1] * sp[2] / 1000);
+    el('mask-big').innerHTML = `≈ ${est.toLocaleString()} <small>cm³</small>`;
+    el('maskinfo').innerHTML = `<dt>volume</dt><dd>≈ ${est.toLocaleString()} cm³</dd><dt>voxels</dt><dd>${vox.toLocaleString()}</dd>`;
+    el('maskbar').style.width = `${Math.min(100, (vox / editMask.length) * 100).toFixed(1)}%`;
+  } else {
+    el('mask-big').textContent = '—';
+    el('maskinfo').innerHTML = `<dt>volume</dt><dd>—</dd>`;
+    el('maskbar').style.width = '0%';
+  }
+  el('series-big').textContent = ui.series;
+}
+
+/* ---------- MPR ---------- */
+function paint(plane) {
+  const { dims, data } = vols.img;
+  const [nx, ny, nz] = dims;
+  const idx = Number(inp('s-' + plane).value);
+  const max = plane === 'axial' ? nz - 1 : plane === 'coronal' ? ny - 1 : nx - 1;
+  const out = reslice({ dims, spacing: [1, 1, 1], origin: [0, 0, 0], dtype: 'float64', data }, plane, idx, wl);
+  if (ui.overlay && vols.seg) {
+    const s = vols.seg.data;
+    const W = plane === 'axial' ? nx : plane === 'coronal' ? nx : ny;
+    for (let j = 0; j < out.length / 4 / W; j++) {
+      for (let i = 0; i < W; i++) {
+        const v = plane === 'axial' ? s[idx * nx * ny + j * nx + i]
+          : plane === 'coronal' ? s[j * nx * ny + idx * nx + i]
+          : s[j * nx * ny + i * nx + idx];
+        if (v > 0) { const o = (j * W + i) * 4; out[o] = 255; out[o + 1] = 60; out[o + 2] = 60; }
+      }
+    }
+  }
+  const W = plane === 'axial' ? nx : plane === 'coronal' ? nx : ny;
+  const H = plane === 'axial' ? ny : nz;
+  const cv = cnv('c-' + plane);
+  cv.width = W; cv.height = H;
+  cv.style.transform = `scale(${zoom[plane]})`;
+  cv.getContext('2d').putImageData(new ImageData(out, W, H), 0, 0);
+  el('ro-' + plane).textContent = `${idx} / ${max}`;
+  document.querySelector(`[data-zoom="${plane}"]`).textContent = `${Math.round(zoom[plane] * 100)}%`;
+  el('pane-' + plane).classList.remove('loading');
+  status(`${fmtDims(dims)} · ${plane} ${idx} · ${ui.series}`);
+}
+const paintAll = () => planes.forEach(paint);
+
+/* ---------- 3D ---------- */
+// Source/method come from `ui`, never scraped from the DOM.
+
+/* ---------- JIT caches: fetch once, extract once, pre-build when idle ---------- */
+const volCache = new Map(); // name -> {vol, bytes}
+let volBytes = 0;
+const VOL_BUDGET = 300 * 1024 * 1024;
+function cacheVol(name, v) {
+  const bytes = v.data.byteLength;
+  volCache.delete(name);
+  volCache.set(name, v);
+  volBytes += bytes;
+  for (const [k, old] of volCache) {
+    if (volBytes <= VOL_BUDGET || volCache.size <= 1) break;
+    volCache.delete(k);
+    volBytes -= old.data.byteLength;
+  }
+}
+const meshCache = new Map(); // key -> mesh (cap 5, LRU-ish)
+function meshKey() {
+  return `${ui.series}|m${maskVer}|${ui.src}|${ui.threshold}|${ui.method}`;
+}
+function cacheMesh(key, mesh) {
+  meshCache.delete(key);
+  meshCache.set(key, mesh);
+  while (meshCache.size > 5) meshCache.delete(meshCache.keys().next().value);
+}
+let maskVer = 0; // bumped on every committed mask change
+let paintToken = 0; // stale-guard for in-flight extractions
+
+async function paint3d() {
+  if (!vols.img) return;
+  syncChrome();
+  const cv = cnv('view3d');
+  const t = ui.threshold;
+  const smooth = ui.method === 'smooth';
+  let field = vols.img.data;
+  if (ui.src === 'mask') {
+    if (!editMask || !editMask.some((v) => v > 0)) {
+      mesh3d = null;
+      cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+      el('ro-3d').textContent = 'empty mask';
+      status('mask empty — paint in MPR or switch source to image');
+      return;
+    }
+    field = Float64Array.from(editMask);
+  }
+  const key = meshKey();
+  const hit = meshCache.get(key);
+  if (hit) {
+    mesh3d = hit;
+    status(`${mesh3d.tris.toLocaleString()} tris (cached) · ${ui.series}`);
+  } else {
+    status('extracting…');
+    await new Promise((r) => setTimeout(r, 10));
+    const mine = ++paintToken;
+    const mesh = await extractor.extract(field, vols.img.dims, t, smooth);
+    if (mine !== paintToken || ui.view !== '3d') return; // stale: user moved on
+    mesh3d = mesh;
+    cacheMesh(key, mesh);
+    status(`${mesh3d.tris.toLocaleString()} tris via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${ui.series}`);
+  }
+  if (!mesh3d) return;
+  // auto-frame small objects: zoom so the mask bbox fills ~70% of view
+  if (ui.src === 'mask' && editMask) {
+    const [nx, ny, nz] = vols.img.dims;
+    let x0 = nx, x1 = 0, y0 = ny, y1 = 0, z0 = nz, z1 = 0;
+    for (let i = 0; i < editMask.length; i += 3) {
+      if (!editMask[i]) continue;
+      const x = i % nx, y = Math.floor(i / nx) % ny, z = Math.floor(i / (nx * ny));
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (z < z0) z0 = z; if (z > z1) z1 = z;
+    }
+    const span = Math.max(x1 - x0 + 1, y1 - y0 + 1, z1 - z0 + 1, 1);
+    zoom3d = Math.min(8, Math.max(0.5, (Math.max(nx, ny, nz) / span) * 0.85));
+  } else {
+    zoom3d = 1;
+  }
+  paint3dOrbit();
+  el('pill-engine').textContent = extractor.usedWorker ? 'worker' : 'main';
+  status(`${mesh3d.tris.toLocaleString()} tris via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${ui.series}`);
+  refreshInspector();
+}
+let zoom3d = 1;
+function paint3dOrbit() {
+  const cv = cnv('view3d');
+  const out = renderMesh(mesh3d, vols.img.dims, {
+    width: cv.width, height: cv.height,
+    angleY: Number(inp('orbit').value), tiltX: Number(inp('tilt').value),
+    color: (SERIES[ui.series] || {}).color || [225, 215, 200],
+    zoom: zoom3d,
+  });
+  cv.getContext('2d').putImageData(new ImageData(out, cv.width, cv.height), 0, 0);
+  el('zoom3d').textContent = `${Math.round(zoom3d * 100)}%`;
+  const tris = mesh3d.tris ? mesh3d.tris.toLocaleString() + ' tris · ' : '';
+  el('ro-3d').textContent = `${tris}${Math.round(zoom3d * 100)}%`;
+}
+cnv('view3d').addEventListener('wheel', (e) => {
+  e.preventDefault();
+  zoom3d = Math.min(8, Math.max(0.5, zoom3d * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+  if (mesh3d) paint3dOrbit();
+}, { passive: false });
+cnv('view3d').addEventListener('dblclick', () => { zoom3d = 1; if (mesh3d) paint3dOrbit(); });
+el('zoom3d').onclick = () => { zoom3d = 1; if (mesh3d) paint3dOrbit(); };
+
+/* ---------- load ---------- */
+function idle(fn) {
+  if ('requestIdleCallback' in window) requestIdleCallback(fn, { timeout: 4000 });
+  else setTimeout(fn, 1500);
+}
+
+// Async hygiene: switching series aborts the in-flight fetch so a slow
+// volume can never paint over the newly selected one.
+let loadCtrl = null;
+async function loadSeries(name, uploadedVol = null) {
+  const spec = SERIES[name] || {};
+  loadCtrl?.abort();
+  const ctrl = loadCtrl = new AbortController();
+  const signal = ctrl.signal;
+  ui.series = name;
+  syncChrome();
+  document.querySelectorAll('.pane').forEach((p) => p.classList.add('loading'));
+  try {
+    const cached = !uploadedVol && volCache.get(name);
+    status(cached ? `loading ${name} (cached)…` : `fetching ${name}…`);
+    vols.img = uploadedVol || cached ||
+      (spec.dicom ? await loadDicomSeries(spec.dicom, { signal }) : await loadNii(spec.img[0], { signal }));
+    if (signal.aborted) return;
+    if (!uploadedVol && !cached) cacheVol(name, vols.img);
+    const base = (!uploadedVol && spec.seg) ? await loadNii(spec.seg[0], { signal }) : null;
+    if (signal.aborted) return;
+    if (base && base.data.length !== vols.img.data.length) {
+      editMask = new Uint8Array(vols.img.data.length);
+      el('series-note').textContent = 'seg dims mismatch — empty mask';
+    } else if (base) {
+      editMask = new Uint8Array(vols.img.data.length);
+      for (let i = 0; i < editMask.length; i++) editMask[i] = base.data[i] > 0 ? 1 : 0;
+      el('series-note').textContent = 'editing copy of seg';
+    } else {
+      editMask = new Uint8Array(vols.img.data.length);
+      el('series-note').textContent = uploadedVol ? 'uploaded volume' : 'no seg — empty mask';
+    }
+    vols.seg = { dims: vols.img.dims, data: editMask };
+    undo.clear();
+    undo.push(editMask);
+    maskVer++;
+    meshCache.clear();
+    autoWl = autoWindow(vols.img.data);
+    wl = ui.preset === 'auto' ? autoWl : PRESETS[ui.preset];
+    axialFrac = spec.axialFrac ?? 0.5;
+    const [nx, ny, nz] = vols.img.dims;
+    const ranges = { axial: nz, coronal: ny, sagittal: nx };
+    for (const p of planes) {
+      const s = inp('s-' + p);
+      s.min = 0; s.max = ranges[p] - 1;
+      s.value = p === 'axial' ? Math.floor(nz * axialFrac) : Math.floor((ranges[p] - 1) / 2);
+      s.oninput = () => paint(p);
+    }
+    if (spec.threshold3d !== undefined) { ui.threshold = spec.threshold3d; syncChrome(); }
+    if (ui.view === 'mpr') {
+      paintAll();
+      // pre-reconstruct the default 3D surface while idle: opening 3D is instant
+      const v0 = maskVer, n0 = name;
+      idle(async () => {
+        if (v0 !== maskVer || ui.view !== 'mpr') return;
+        try {
+          const useMask = ui.src === 'mask' && editMask && editMask.some((v) => v > 0);
+          const field = useMask ? Float64Array.from(editMask) : vols.img.data;
+          if (ui.series !== n0) return;
+          const mesh = await extractor.extract(field, vols.img.dims, ui.threshold, ui.method === 'smooth');
+          if (v0 !== maskVer) return;
+          cacheMesh(meshKey(), mesh);
+        } catch { /* idle best-effort only */ }
+      });
+    } else { await paint3d(); }
+    refreshInspector();
+  } catch (e) {
+    if (signal.aborted || e?.name === 'AbortError') return; // superseded: stay silent
+    status(`failed: ${e.message}`);
+    document.querySelectorAll('.pane').forEach((p) => p.classList.remove('loading'));
+  }
+}
+
+/* ---------- zoom ---------- */
+for (const p of planes) {
+  const cv = cnv('c-' + p);
+  cv.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    zoom[p] = Math.min(8, Math.max(0.5, zoom[p] * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+    paint(p);
+  }, { passive: false });
+  cv.addEventListener('dblclick', () => { zoom[p] = 1; paint(p); });
+  document.querySelector(`[data-zoom="${p}"]`).onclick = () => { zoom[p] = 1; paint(p); };
+}
+
+/* ---------- painting ---------- */
+const axialCv = cnv('c-axial');
+let lastPt = null;
+function eventVoxel(e) {
+  const r = axialCv.getBoundingClientRect();
+  const [nx, ny] = vols.img.dims;
+  return [
+    Math.floor(((e.clientX - r.left) / r.width) * nx),
+    Math.floor(((e.clientY - r.top) / r.height) * ny),
+  ];
+}
+function stamp(x, y, z, value) {
+  const [nx, ny, nz] = vols.img.dims;
+  const rad = ui.brush;
+  for (let dy = -rad; dy <= rad; dy++)
+    for (let dx = -rad; dx <= rad; dx++)
+      if (dx * dx + dy * dy <= rad * rad) drawPt(editMask, nx, ny, nz, x + dx, y + dy, z, value);
+}
+// Perf: during a stroke repaint ONLY the axial pane per event; the other
+// panes + inspector refresh once on pointerup. (Was: 3 panes + full-mask
+// scan per mousemove — the main-thread hog.)
+axialCv.addEventListener('pointerdown', (e) => {
+  if (ui.tool === 'view' || !editMask) return;
+  axialCv.setPointerCapture(e.pointerId);
+  undo.push(editMask);
+  const [x, y] = eventVoxel(e);
+  const z = Number(inp('s-axial').value);
+  stamp(x, y, z, ui.tool === 'paint' ? 1 : 0);
+  lastPt = [x, y, z];
+  paint('axial');
+});
+axialCv.addEventListener('pointermove', (e) => {
+  if (ui.tool === 'view' || !editMask || !lastPt || !(e.buttons & 1)) return;
+  const [x, y] = eventVoxel(e);
+  const z = Number(inp('s-axial').value);
+  drawPenLine(editMask, vols.img.dims[0], vols.img.dims[1], vols.img.dims[2], lastPt, [x, y, z], ui.tool === 'paint' ? 1 : 0);
+  stamp(x, y, z, ui.tool === 'paint' ? 1 : 0);
+  lastPt = [x, y, z];
+  paint('axial');
+});
+axialCv.addEventListener('pointerup', () => {
+  if (lastPt) { lastPt = null; maskVer++; paintAll(); refreshInspector(); }
+  else lastPt = null;
+});
+
+/* ---------- chrome: every control writes `ui`, then syncChrome() + paint ---------- */
+sel('preset').innerHTML = '<option value="auto">auto (p2–p98)</option>' +
+  Object.keys(PRESETS).map((k) => `<option>${k}</option>`).join('');
+sel('preset').onchange = () => {
+  ui.preset = sel('preset').value;
+  wl = ui.preset === 'auto' ? autoWl : PRESETS[ui.preset];
+  syncChrome();
+  paintAll();
+};
+inp('overlay').onchange = () => { ui.overlay = inp('overlay').checked; syncChrome(); paintAll(); };
+inp('brush').oninput = () => { ui.brush = Number(inp('brush').value); };
+document.querySelectorAll('#modeseg button').forEach((b) => { b.onclick = () => setMode(/** @type {Tool} */ (b.dataset.mode)); });
+document.querySelectorAll('#methodseg button').forEach((b) => {
+  b.onclick = () => {
+    ui.method = /** @type {Method} */ (b.dataset.m);
+    syncChrome();
+    if (ui.view === '3d') paint3d();
+  };
+});
+document.querySelectorAll('#srcseg button').forEach((b) => {
+  b.onclick = () => {
+    ui.src = /** @type {Source} */ (b.dataset.s);
+    syncChrome();
+    if (ui.view === '3d') paint3d();
+  };
+});
+function doUndo() {
+  const prev = undo.undo(editMask.length);
+  if (prev && editMask) { editMask.set(prev); maskVer++; vols.seg = { dims: vols.img.dims, data: editMask }; paintAll(); refreshInspector(); }
+  else toast('Nothing to undo');
+}
+el('undo').onclick = doUndo;
+el('mask-undo').onclick = doUndo;
+function doClear() {
+  if (!editMask) return;
+  undo.push(editMask);
+  editMask.fill(0);
+  maskVer++;
+  paintAll(); refreshInspector();
+  toast('Mask cleared');
+}
+el('clear').onclick = doClear;
+el('mask-clear').onclick = doClear;
+el('savepng').onclick = () => {
+  const a = document.createElement('a');
+  a.download = `axial-${ui.series}.png`;
+  a.href = axialCv.toDataURL('image/png');
+  a.click();
+  toast('Axial PNG saved');
+};
+el('savenii').onclick = () => {
+  if (!editMask || !vols.img) return;
+  const buf = writeNifti1({
+    dims: vols.img.dims, spacing: vols.img.spacing ?? [1, 1, 1],
+    origin: [0, 0, 0], dtype: 'uint8', data: editMask,
+  });
+  const a = document.createElement('a');
+  a.download = `mask-${ui.series}.nii`;
+  a.href = URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast('Mask .nii saved — open it in the 3D view upload');
+};
+// Perf: orbit/tilt drags repaint a full 560² software raster per input event —
+// coalesce to one frame via rAF.
+let orbitQueued = false;
+function queueOrbit() {
+  if (!mesh3d || orbitQueued) return;
+  orbitQueued = true;
+  requestAnimationFrame(() => { orbitQueued = false; paint3dOrbit(); });
+}
+inp('orbit').oninput = queueOrbit;
+inp('tilt').oninput = queueOrbit;
+inp('threshold').onchange = () => { ui.threshold = Number(inp('threshold').value); syncChrome(); paint3d(); };
+inp('upload').onchange = async (e) => {
+  const f = /** @type {HTMLInputElement} */ (e.target).files[0];
+  if (!f) return;
+  try {
+    const v = loadNiiBuffer(await f.arrayBuffer());
+    const name = `uploaded: ${f.name}`;
+    SERIES[name] = { img: [], color: [90, 200, 120] };
+    sel('series').innerHTML = Object.keys(SERIES).map((k) => `<option>${k}</option>`).join('');
+    refreshCommands();
+    await loadSeries(name, v);
+    toast(`Loaded ${f.name}`);
+  } catch (err) {
+    status(`upload failed: ${err.message}`);
+  }
+};
+
+/* views */
+/** @param {View} v */
+function setView(v) {
+  ui.view = v;
+  syncChrome();
+  el('view-mpr').hidden = v !== 'mpr';
+  el('view-3d').hidden = v !== '3d';
+  el('dock-mpr').hidden = v !== 'mpr';
+  el('dock-3d').hidden = v !== '3d';
+  el('title-mpr').hidden = v !== 'mpr';
+  el('title-3d').hidden = v !== '3d';
+  if (v === 'mpr') paintAll(); else paint3d();
+}
+document.querySelectorAll('.rail button').forEach((b) => { b.onclick = () => setView(/** @type {View} */ (b.dataset.view)); });
+/** Step the axial slice without touching the slider (keyboard parity). */
+function stepSlice(d) {
+  if (ui.view !== 'mpr' || !vols.img) return;
+  const s = inp('s-axial');
+  s.value = String(Math.min(Number(s.max), Math.max(Number(s.min), Number(s.value) + d)));
+  paint('axial');
+}
+document.addEventListener('keydown', (e) => {
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' && e.target.type !== 'range' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+  if (e.key === '1') setView('mpr');
+  else if (e.key === '2') setView('3d');
+  else if (e.key === '[') { ui.brush = Math.max(1, ui.brush - 1); syncChrome(); }
+  else if (e.key === ']') { ui.brush = Math.min(12, ui.brush + 1); syncChrome(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); stepSlice(1); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); stepSlice(-1); }
+  else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openPal(); }
+  else if (e.key === 'Escape') closePal();
+});
+
+/* command palette: one delegated click listener, commands rebuilt on demand */
+let COMMANDS = [];
+function refreshCommands() {
+  COMMANDS = [
+    ...Object.keys(SERIES).map((s) => ({ label: `Open ${s}`, hint: 'series', run: () => loadSeries(s) })),
+    { label: 'View: Slices', hint: '1', run: () => setView('mpr') },
+    { label: 'View: 3D surface', hint: '2', run: () => setView('3d') },
+    { label: 'Toggle mask overlay', hint: 'mpr', run: () => { ui.overlay = !ui.overlay; syncChrome(); paintAll(); } },
+    { label: 'Tool: select', hint: 'mpr', run: () => setMode('view') },
+    { label: 'Tool: paint', hint: 'mpr', run: () => setMode('paint') },
+    { label: 'Tool: erase', hint: 'mpr', run: () => setMode('erase') },
+    { label: 'Undo stroke', hint: 'mpr', run: () => doUndo() },
+    { label: 'Export mask .nii', hint: 'mpr', run: () => el('savenii').click() },
+  ];
+}
+let palSel = 0, palItems = COMMANDS;
+function openPal() {
+  el('palwrap').classList.add('open');
+  inp('palinput').value = '';
+  renderPal('');
+  inp('palinput').focus();
+}
+function closePal() { el('palwrap').classList.remove('open'); }
+function renderPal(q) {
+  palItems = COMMANDS.filter((c) => c.label.toLowerCase().includes(q.toLowerCase()));
+  palSel = 0;
+  el('pallist').innerHTML = palItems.map((c, i) =>
+    `<li data-i="${i}" class="${i === palSel ? 'sel' : ''}" role="option" aria-selected="${i === palSel}">${c.label}<span>${c.hint}</span></li>`).join('');
+}
+function palHighlight() {
+  document.querySelectorAll('#pallist li').forEach((li, i) => {
+    li.classList.toggle('sel', i === palSel);
+    li.setAttribute('aria-selected', String(i === palSel));
+  });
+  document.querySelectorAll('#pallist li')[palSel]?.scrollIntoView({ block: 'nearest' });
+}
+el('openpal').onclick = openPal;
+el('palwrap').addEventListener('click', (e) => { if (e.target.id === 'palwrap') closePal(); });
+// Delegated: one listener for all rows, present and future.
+el('pallist').addEventListener('click', (e) => {
+  const li = /** @type {HTMLElement} */ (e.target).closest('li[data-i]');
+  if (!li || !palItems[Number(li.dataset.i)]) return;
+  closePal();
+  palItems[Number(li.dataset.i)].run();
+});
+inp('palinput').addEventListener('input', (e) => renderPal(/** @type {HTMLInputElement} */ (e.target).value));
+inp('palinput').addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') { e.preventDefault(); palSel = Math.min(palItems.length - 1, palSel + 1); palHighlight(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); palSel = Math.max(0, palSel - 1); palHighlight(); }
+  else if (e.key === 'Enter' && palItems[palSel]) { closePal(); palItems[palSel].run(); }
+});
+
+/* boot */
+refreshCommands();
+setMode('view');
+sel('series').innerHTML = Object.keys(SERIES).map((k) => `<option>${k}</option>`).join('');
+sel('series').onchange = () => loadSeries(sel('series').value);
+await loadSeries(sel('series').value);
+</script>
+</body>
+</html>
