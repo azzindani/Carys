@@ -255,10 +255,14 @@
 #c-cells { width: 100%; height: auto; image-rendering: pixelated; aspect-ratio: 1; }
 #chaninfo .mrow dd, #cellinfo .mrow dd, #track-list .mrow dd { white-space: normal; text-align: right; line-height: 1.5; }
 /* Inline row links inside data lists. They read as text, but they are real
-   buttons, so they still clear the 24px floor (§22). */
+   buttons, so they clear the 24px floor on BOTH axes (§22) — several of
+   these share one `dd`, and flex was squeezing each to a 15px sliver that
+   wrapped one character per line. */
 .cellrow, #track-list .reslink {
+  display: inline-flex; align-items: center;
   font: inherit; background: none; border: 0;
-  min-height: 24px; padding: var(--sp-1) var(--sp-1); text-align: right;
+  min-height: 24px; min-width: 24px;
+  padding: var(--sp-1) var(--sp-1); text-align: right;
 }
 #cellinfo .cellrow { color: inherit; }
 #cellinfo .cellrow:hover { color: var(--color-text); }

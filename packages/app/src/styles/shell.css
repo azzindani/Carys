@@ -157,6 +157,14 @@
 .panes:has(canvas) > .pane { max-width: min(980px, 100%); }
 .panes:has(canvas) > .pane .stage { display: flex; align-items: center; justify-content: center; }
 .panes:has(canvas) > .pane canvas { max-width: 100%; height: auto; }
+/* …but NOT inside a viewport. The viewer's 3D pane is also a `.panes` group
+   with a canvas, and the rules above overrode its `height: 100%` with
+   `height: auto`, so the render letterboxed to its natural ratio and left a
+   third of the pane black on portrait tablets. A viewport pane is sized by
+   its pane, always. */
+.vp .panes:has(canvas) > .pane { max-width: none; }
+.vp .panes:has(canvas) > .pane .stage { display: flex; align-items: stretch; justify-content: stretch; }
+.vp .panes:has(canvas) > .pane canvas { max-width: none; height: 100%; }
 
 /* ------------------------------------------------------------- inspector
    A drawer over the image, not a column beside it. Closed by default; the
