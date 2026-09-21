@@ -7,30 +7,40 @@
    `three` import exists; verify.test.ts enforces both.
    ========================================================================= */
 
-/* Tool column + viewports. The strip is fixed; the grid takes the rest. */
-.workarea { flex: 1; min-height: 0; min-width: 0; display: flex; gap: var(--sp-3); }
-.toolstrip { flex: none; width: 152px; min-height: 0; display: flex; flex-direction: column; }
+/* Tool column + viewports. A tool palette is an icon strip, not a menu:
+   56px of glyphs against the viewport edge instead of 152px of labelled
+   rows, so the image keeps the width. */
+.workarea { flex: 1; min-height: 0; min-width: 0; display: flex; gap: var(--sp-2); }
+.toolstrip { flex: none; width: 56px; min-height: 0; display: flex; flex-direction: column; }
 
 /* A dock laid out as a column: groups stack, controls go full width. */
 .dock.column {
   width: 100%; flex-direction: column; align-items: stretch; flex-wrap: nowrap;
-  gap: var(--sp-2); overflow-y: auto;
+  gap: var(--sp-2); overflow-y: auto; padding: var(--sp-2) var(--sp-1);
 }
 .dock.column .grp { flex-direction: column; align-items: stretch; gap: var(--sp-1); padding: 0; }
-.dock.column .seg { flex-direction: column; gap: 1px; }
+.dock.column .seg { flex-direction: column; gap: 1px; background: transparent; border: 0; padding: 0; }
 .dock.column .seg button {
-  justify-content: flex-start; gap: var(--sp-2);
-  display: flex; align-items: center; padding: 0 var(--sp-2);
-  min-height: var(--ctl-h);
+  flex-direction: column; justify-content: center; gap: 2px;
+  display: flex; align-items: center; padding: var(--sp-1) 0;
+  min-height: 42px; border-radius: var(--radius-xs);
 }
-.dock.column .seg button svg { width: 15px; height: 15px; flex: none; }
-.dock.column .seg button .tl { font-size: var(--fs-sm); }
+.dock.column .seg button svg { width: 17px; height: 17px; flex: none; }
+.dock.column .seg button .tl { font-size: var(--fs-3xs); font-weight: 600; letter-spacing: 0.02em; }
+/* value-only field: no room for a label in a 56px palette */
+.dock.column .field { padding: 0 var(--sp-2); }
+.dock.column .field-lbl { display: none; }
+.dock.column .field-val { padding-left: 0; margin: 0 auto; }
+.dock.column #undogrp { flex-direction: column; gap: 1px; }
+.dock.column #undogrp .iconbtn { padding: 0; font-size: var(--fs-3xs); width: 100%; }
+.dock.column #undogrp .iconbtn svg { width: 13px; height: 13px; }
+.dock.column .switch { margin: 0 auto; }
+.dock.column .grp:has(.switch) .lbl { display: none; }
 .dock.column .sep { width: auto; height: 1px; align-self: stretch; margin: var(--sp-1) 0; }
 .dock.column .field { width: 100%; min-width: 0; }
 /* A switch and its label belong on one line; only stacked groups go column. */
 .dock.column .grp:has(.switch) { flex-direction: row; align-items: center; gap: var(--sp-2); }
-.dock.column #undogrp { flex-direction: row; }
-.dock.column #undogrp .iconbtn { flex: 1; }
+
 
 .viewgrid {
   flex: 1; min-height: 0; min-width: 0;
@@ -85,9 +95,10 @@
   position: relative; flex: 1; min-width: 0; min-height: 0;
   display: flex; align-items: center; justify-content: center;
 }
-/* floor grid — perspective-free, low contrast, masked to the lower half so
-   it reads as a ground plane rather than graph paper */
-.viewport-canvas::before {
+/* Floor grid — a ground-plane reference, so it belongs to the 3D viewport
+   only. Behind a reconstructed slice it is not scenery, it is contamination
+   over the thing being read. */
+.vp3d .viewport-canvas::before {
   content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background-image:
     linear-gradient(rgb(255 255 255 / 0.04) 1px, transparent 1px),
@@ -98,24 +109,30 @@
 }
 .viewport-canvas > canvas { position: relative; z-index: 1; }
 
-/* ---- HUD: orientation letters + readouts floating over the stage ------- */
-.vp-hud {
+/* ---- viewport corner overlay ------------------------------------------
+   Study identity in the four corners, the way a reading workstation shows
+   it. Never intercepts the pointer: painting and window/level drags belong
+   to the canvas underneath. */
+.vp-ov {
   position: absolute; inset: 0; pointer-events: none; z-index: 2;
-  font-family: var(--font-mono); font-size: var(--fs-3xs);
-  color: var(--color-faint); letter-spacing: 0.08em;
+  font-family: var(--font-mono); font-size: var(--fs-3xs); line-height: 1.45;
+  color: rgb(255 255 255 / 0.5);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
 }
-.vp-hud span { position: absolute; text-transform: uppercase; }
-.vp-hud .n { top: var(--sp-3); left: 50%; transform: translateX(-50%); }
-.vp-hud .s { bottom: var(--sp-3); left: 50%; transform: translateX(-50%); }
-.vp-hud .w { left: var(--sp-3); top: 50%; transform: translateY(-50%); }
-.vp-hud .e { right: var(--sp-3); top: 50%; transform: translateY(-50%); }
-/* corner brackets: the framing marks every 3D viewport uses */
-.vp-hud::before, .vp-hud::after {
-  content: ""; position: absolute; width: 14px; height: 14px;
-  border: 1px solid rgb(255 255 255 / 0.13);
+.vp-ov > div { position: absolute; display: flex; flex-direction: column; max-width: 46%; }
+.vp-ov span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vp-ov-tl { top: var(--sp-2); left: var(--sp-3); }
+.vp-ov-tr { top: var(--sp-2); right: var(--sp-3); text-align: right; align-items: flex-end; }
+.vp-ov-bl { bottom: var(--sp-2); left: var(--sp-3); }
+.vp-ov-br { bottom: var(--sp-2); right: var(--sp-3); text-align: right; align-items: flex-end; }
+/* The first line of each corner is the identifying one — brighten it. */
+.vp-ov-tl span:first-child { color: rgb(255 255 255 / 0.74); }
+.vp-ov-warn {
+  top: var(--sp-2); left: 50%; transform: translateX(-50%);
+  color: var(--color-warn); opacity: 0.7; letter-spacing: 0.06em;
+  max-width: 56%; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.vp-hud::before { top: var(--sp-3); left: var(--sp-3); border-right: 0; border-bottom: 0; border-top-left-radius: var(--radius-2xs); }
-.vp-hud::after { bottom: var(--sp-3); right: var(--sp-3); border-left: 0; border-top: 0; border-bottom-right-radius: var(--radius-2xs); }
 
 /* ---- axis gizmo: SVG, bottom-left of the 3D viewport ------------------- */
 .gizmo {
