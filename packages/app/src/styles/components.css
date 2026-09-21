@@ -324,7 +324,10 @@ input[type="range"].styled::-moz-range-thumb {
 .switch input:focus-visible + .tr { box-shadow: var(--ring-accent); }
 
 /* ------------------------------------------------------------ data lists */
-.kv { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-2) var(--sp-4); font-size: var(--fs-xs); margin: var(--sp-3) 0 0; }
+/* The value column keeps a floor: with a bare `auto 1fr` a long label ate
+   the row and the value collapsed to 15px, wrapping its buttons one
+   character per line. */
+.kv { display: grid; grid-template-columns: minmax(0, auto) minmax(96px, 1fr); gap: var(--sp-2) var(--sp-4); font-size: var(--fs-xs); margin: var(--sp-3) 0 0; }
 .kv dt, .kv dd { min-width: 0; }
 .kv dt { color: var(--color-faint); }
 .kv dd {
@@ -337,7 +340,7 @@ input[type="range"].styled::-moz-range-thumb {
   border-radius: var(--radius-2xs); color: var(--color-muted); font: inherit;
 }
 .mrow { display: contents; }
-.mrow dd { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-2); }
+.mrow dd { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-2); flex-wrap: wrap; }
 .mx {
   background: transparent; border: 1px solid transparent; color: var(--color-faint);
   font-size: var(--fs-3xs); padding: 2px var(--sp-2); border-radius: var(--radius-2xs);

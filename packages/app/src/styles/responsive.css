@@ -38,6 +38,39 @@
   .kbd-btn kbd { display: none; }
 }
 
+/* -------------------------------------- narrow enough to stop sharing rows
+   Two panes side by side leave a canvas ~450px wide on a 1024 tablet. Below
+   1280 a canvas pane takes the whole row and its companions drop beneath. */
+@media (max-width: 1280px) {
+  .panes:has(canvas) > .pane { flex: 1 1 100%; max-width: 100%; }
+}
+
+/* ------------------------------------------- tablet portrait (981px up)
+   A side-by-side split wastes a tall screen: each column got ~500px of
+   width while 1366px of height went to letterbox. Stack instead — 3D full
+   width on top, the three slices in a row beneath, so every pane gets the
+   full width of the device. */
+@media (min-width: 981px) and (orientation: portrait) {
+  .viewgrid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1.05fr) minmax(0, 1fr);
+  }
+  /* `.vp > .panes` sets column and out-ranks a bare `.panes-2d`, so this
+     has to match at least as specifically to win. */
+  .vp > .panes.panes-2d { flex-direction: row; }
+  .vp > .panes.panes-2d[data-layout="axial"] #pane-axial,
+  .vp > .panes.panes-2d[data-layout="coronal"] #pane-coronal,
+  .vp > .panes.panes-2d[data-layout="sagittal"] #pane-sagittal { flex-grow: 1.8; }
+  /* slice panes are narrow in a row of three: trim the rail and head */
+  .vp2d .vrail { width: 44px; }
+  .vp2d .pane-head { padding: 0 var(--sp-2); }
+  /* fullscreen still collapses to the single chosen viewport */
+  .viewgrid[data-full="v3d"], .viewgrid[data-full="axial"],
+  .viewgrid[data-full="coronal"], .viewgrid[data-full="sagittal"] {
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+
 /* ------------------------------------------------------- mobile: 980 down
    Imaging on top, controls on the bottom half — the deck is a permanent
    surface, not an overlay, so the image is never covered by its own tools. */
@@ -181,6 +214,16 @@
 
   .mp-head { display: flex; align-items: center; justify-content: space-between; }
   .mp-head .name { font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 600; }
+
+  /* `grid-template-columns: auto 1fr` lets a long label eat the row: the
+     value column collapsed to 15px and its buttons wrapped one character
+     per line. One column, label over value, and they get the full width. */
+  .kv { grid-template-columns: minmax(0, 1fr); gap: var(--sp-1) 0; }
+  .kv dd { text-align: left; }
+  .kv dt { margin-top: var(--sp-2); }
+  .mrow dd { justify-content: flex-start; }
+  .cellrow, #track-list .reslink, #cellinfo .cellrow { text-align: left; }
+  #chaninfo .mrow dd, #cellinfo .mrow dd, #track-list .mrow dd { text-align: left; }
 
   /* non-viewer routes: ordinary page flow, deck absent */
   .main:not(:has(.viewgrid)) { display: block; padding: var(--sp-4) var(--sp-3); }
