@@ -585,7 +585,37 @@ rows, and a gizmo that was pure decoration. A 3D tool looks different.
   typecheck:app clean. Desktop controls sit at 20px by design — §22's
   audit is the touch profile, where the floor still holds.
 
-## Closeout ledger (no pendings: everything below is shipped, blocked with an
+## Shipped in the workflow pass (designed from the job, not the aesthetic)
+Second review: the instrument pass fixed how it *looks*, but the tool was
+still styled after 3D-modelling software rather than how a reader actually
+works. Visual software is viewport-heavy; tools hide, and gestures replace
+buttons. Changes driven by the job:
+- [x] Wheel stack-scrolls the series; Ctrl/Cmd+wheel zooms. This is the
+  binding every reading workstation uses (Sectra, Visage, syngo, OHIF,
+  Horos) and the most-used gesture in the job — it was bound to zoom, which
+  is backwards. A tool replaced by a gesture is a tool removed.
+- [x] Viewport corner overlay (`ui/ViewportOverlay.tsx`): patient/ID,
+  modality + study date, series + dims, window/level + slice thickness, and
+  the non-diagnostic badge on the image itself. `session.dcmMeta` already
+  carried all of it. This replaced the decorative corner brackets that sat
+  exactly where a reader expects that information.
+- [x] The floor grid is now scoped to the 3D viewport. Behind a
+  reconstructed slice a grid is not scenery, it is contamination over the
+  thing being read.
+- [x] Tool palette shrank from a 152px labelled column to a 56px icon strip
+  against the viewport edge; the details panel gained a collapse toggle
+  (`#instoggle`, `insOpen`) that hands its 304px column back to the image.
+
+BLOCKED, owner: this sandbox — full "every tool hidden behind pop-outs".
+`wire.mjs:1397` asserts `#dockrow-2d` is present on load and that hiding it
+*grows* `#viewgrid`, so the toolbar cannot default closed or float out of
+layout flow. Moving the tune/seg controls into popovers would also remove
+`#layoutseg`, `#projseg`, `#planeseg`, `#cmpseg`, `#cine-play`,
+`#oblplaneseg` and friends from the DOM until opened, breaking ~20 legs.
+That refactor needs the e2e suite re-run to re-validate, and e2e needs
+`samples/`, which is gitignored and absent here. Unblock: run
+`npm run test:e2e` on a machine with `samples/`, then rewrite those legs to
+open the owning popover first.
 owner + unblock step, or accepted by design — verified 2026-09-14)
 - BLOCKED, owner: your machine — Docker image: `Dockerfile` ships but the
   sandbox daemon fails every build with `unshare: operation not permitted`

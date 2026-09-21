@@ -137,6 +137,7 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
   const mSheet = useUiPick('mSheet');
   const series = useUiPick('series');
   const docksOpen = useUiPick('docksOpen');
+  const insOpen = useUiPick('insOpen');
 
   if (!mobile) {
     return (
@@ -150,6 +151,14 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
             onClick={() => setUi({ docksOpen: !docksOpen })}
           >
             <IconPanel />Toolbar
+          </button>
+          <button
+            className={`iconbtn instoggle${insOpen ? ' on' : ''}`} id="instoggle"
+            title={insOpen ? 'Hide details (more viewport)' : 'Show details'}
+            aria-label="Toggle details panel" aria-pressed={insOpen}
+            onClick={() => setUi({ insOpen: !insOpen })}
+          >
+            <IconPanel />Details
           </button>
         </div>
         {docksOpen && (

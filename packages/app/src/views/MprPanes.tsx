@@ -15,6 +15,7 @@ import { getUi, setUi, useUiPick } from '../lib/store';
 import { toast } from '../lib/toasts';
 import { bump, useVersion } from '../lib/version';
 import { Chip, IconBtn } from '../ui/primitives';
+import { ViewportOverlay } from '../ui/ViewportOverlay';
 import { undoBus } from '../lib/undoBus';
 import type { FullVp, MeasureKind, Plane } from '../lib/types';
 import type { SliceInit } from '../lib/sessionOps';
@@ -603,10 +604,30 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     }
   };
 
+  /**
+   * Wheel stack-scrolls the series; Ctrl/Cmd+wheel zooms.
+   *
+   * This is the binding every reading workstation uses (Sectra, Visage,
+   * syngo, OHIF, Horos) and it is the most-used gesture in the job: a
+   * radiologist scrolls a stack far more often than they zoom. Zoom keeps
+   * the modifier, the ± buttons and the zoom chip.
+   */
   const wheelZoom = (plane: Plane) => (e: React.WheelEvent): void => {
     e.preventDefault();
-    zoomRef.current[plane] = Math.min(8, Math.max(0.5, zoomRef.current[plane] * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
-    setZoomTick((t) => t + 1);
+    if (e.ctrlKey || e.metaKey) {
+      zoomRef.current[plane] = Math.min(8, Math.max(0.5, zoomRef.current[plane] * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+      setZoomTick((t) => t + 1);
+      paint(plane);
+      return;
+    }
+    const s = sliderRefs.current[plane];
+    if (!s) return;
+    // Trackpads emit many small deltas; one notch per event keeps the stack
+    // controllable instead of flying past the anatomy.
+    const step = e.deltaY > 0 ? 1 : -1;
+    const next = Math.min(Number(s.max), Math.max(Number(s.min), Number(s.value) + step));
+    if (next === Number(s.value)) return;
+    s.value = String(next);
     paint(plane);
   };
   const zoomStep = (plane: Plane, f: number): void => {
@@ -661,10 +682,9 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
                 onPointerMove={(e) => { paintMove(hostRef.current, strokeState.current, p, e, planeVoxelRef.current); onViewMove(e); }}
                 onPointerUp={(e) => { onAxialUp(); onViewUp(p, e); }}
               />
-              {/* Framing brackets only. The anatomical edge letters are
-                  rasterised onto the canvas from iopEdgeLabels — one
-                  implementation, not two (§4). */}
-              <div className="vp-hud" aria-hidden="true" />
+              {/* Study identity in the corners, the way a reading workstation
+                  shows it. Edge letters + scale bar stay on the canvas. */}
+              <ViewportOverlay />
             </div>
             <div className="vrail" aria-label={`${TITLES[p]} slice slider`}>
               <input

@@ -19,6 +19,7 @@ import { useIsMobile } from '../lib/isMobile';
 import { bump, useVersion } from '../lib/version';
 import { Chip, DarkSelect, IconBtn, Seg, SliderRow, Switch } from '../ui/primitives';
 import { AxisGizmo } from '../ui/Icons';
+import { ViewportOverlay } from '../ui/ViewportOverlay';
 import type { Method, Render3D, Source } from '../lib/types';
 import { TfEditor } from './TfEditor';
 
@@ -621,7 +622,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
               />
               {/* Viewport chrome, drawn as SVG/CSS over the CPU raster — the
                   orientation read every 3D tool gives you, with no GL context. */}
-              <div className="vp-hud" aria-hidden="true" />
+              <ViewportOverlay compact />
               <AxisGizmo
                 orbit={orbit} tilt={tilt}
                 onSnap={(o, t) => { setOrbit(o); setTilt(t); queueOrbit(); }}

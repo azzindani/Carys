@@ -40,7 +40,7 @@ const initial: UiState = {
   compareSeries: '', compareMode: 'off' as CompareMode, compareAlpha: 0.5,
   // mSheet starts on 'tools' so the mobile control deck opens populated
   // rather than as an empty strip. Desktop ignores it entirely.
-  tabs: [], fullVp: null, mView: 'v3d', mSheet: 'tools', docksOpen: true, cineFps: 4, invert: false, lut: 'Grayscale',
+  tabs: [], fullVp: null, mView: 'v3d', mSheet: 'tools', docksOpen: true, insOpen: true, cineFps: 4, invert: false, lut: 'Grayscale',
   ...loadAppearance(),
 };
 

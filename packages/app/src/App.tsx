@@ -147,6 +147,10 @@ export function App(): JSX.Element {
 
   const textSize = useUiPick('textSize');
   const density = useUiPick('density');
+  // The details panel is a panel, not furniture: collapsing it hands its
+  // column back to the image. Open by default — the wire suite reads the
+  // readouts inside it without opening anything first.
+  const insOpen = useUiPick('insOpen');
   // Appearance owns <html>: text scale + density datasets drive the CSS,
   // and every change persists the chrome pref.
   useEffect(() => {
@@ -182,9 +186,9 @@ export function App(): JSX.Element {
         {!isMobile && <Rail route={route} go={go} />}
         <div className="frame">
           <TopBar route={route} go={go} onOpenPalette={() => setPalOpen(true)} onSelectSeries={(s) => { go('viewer'); openSeries(s); }} />
-          <div className={isViewer ? 'main' : 'main main-full'}>
+          <div className={isViewer && insOpen ? 'main' : 'main main-full'}>
             <section className="viewport">{content}</section>
-            {isViewer && <Inspector />}
+            {isViewer && insOpen && <Inspector />}
           </div>
           {!isMobile && <StatusBar />}
         </div>
