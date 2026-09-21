@@ -81,7 +81,12 @@
   .workarea { display: contents; }
   .toolstrip { display: none; }
 
-  .ftop { padding: 0 0 var(--sp-2); }
+  /* The tab strip is one chip tall on a phone; it was costing ~6% of the
+     screen to show a single filename. */
+  .ftop { padding: 0 0 var(--sp-1); }
+  .ftop .filetabs .tab { min-height: 30px; padding: 0 var(--sp-3); }
+  .ftop .filetabs .tab.plus { min-width: 34px; justify-content: center; }
+  .top { padding: var(--sp-1) var(--sp-2); }
   .ftop .filetabs { flex-wrap: nowrap; overflow: hidden; }
   .ftop .filetabs .tab:not(.on):not(.plus) { display: none; }
   .ftop .filetabs .tab.on { flex: 1 1 auto; min-width: 0; }

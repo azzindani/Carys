@@ -170,7 +170,7 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
 /* the imaging surface itself — see viewport.css for the 3D-tool treatment */
 .stage {
   position: relative; overflow: hidden;
-  margin: var(--sp-2);
+  margin: var(--sp-1);
   background: var(--color-stage);
   /* nested inside .pane (xl) with --sp-2 padding → one rung down */
   border-radius: var(--radius-lg);

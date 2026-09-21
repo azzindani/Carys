@@ -44,15 +44,33 @@
 
 .viewgrid {
   flex: 1; min-height: 0; min-width: 0;
-  display: grid; gap: var(--sp-3); align-items: stretch;
+  display: grid; gap: var(--sp-2); align-items: stretch;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
 }
+/* One scrolling row, not three wrapped ones.
+   Wrapping let the toolbar claim 12–15% of the screen. A single row that
+   scrolls sideways keeps every control in the DOM, visible and clickable
+   (Playwright scrolls a target into view before acting on it) while costing
+   ~3%. The image gets the difference. */
 .dockrow {
-  flex: none; display: flex; gap: var(--sp-3); flex-wrap: wrap;
-  justify-content: center; align-items: flex-start;
-  margin-bottom: var(--sp-4);
+  flex: none; display: flex; gap: var(--sp-2);
+  flex-wrap: nowrap; align-items: center;
+  overflow-x: auto; overflow-y: hidden;
+  margin-bottom: var(--sp-2); padding-bottom: 2px;
+  scrollbar-width: thin;
 }
-.dockrow .dock { flex: 0 1 auto; }
+.dockrow .dock {
+  flex: none; flex-wrap: nowrap; align-items: center;
+  background: transparent; border: 0; box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  padding: 0; border-radius: 0;
+}
+/* a hairline between groups instead of three floating boxes */
+.dockrow .dock + .dock { border-left: 1px solid var(--color-line); padding-left: var(--sp-2); }
+.dockrow .dock .grp { flex: none; }
+.dockrow::-webkit-scrollbar { height: 6px; }
+/* portal target for the 3D dock: contributes no box of its own */
+.dockslot { display: contents; }
 
 .vp { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 /* SurfaceView wraps its pane in a `.panes` row, whose page-flow defaults
@@ -63,7 +81,7 @@
   flex: 1 1 0; min-height: 0; gap: 0;
   display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch;
 }
-.panes-2d { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.panes-2d { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
 .panes-2d[data-layout="axial"] #pane-axial,
 .panes-2d[data-layout="coronal"] #pane-coronal,
 .panes-2d[data-layout="sagittal"] #pane-sagittal { flex-grow: 1.8; }
