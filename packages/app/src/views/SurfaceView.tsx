@@ -179,7 +179,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       setStatus(`VR ${r.w}×${r.h} · ${(r.ms / 1000).toFixed(1)}s via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
     } catch (e) {
       if (mine !== vrToken.current) return;
-      setStatus(`VR failed: ${(e as Error).message}`);
+      setStatus(`VR failed: ${(e as Error).message}`, 'error');
     }
   };
 
@@ -430,7 +430,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       if (ro) ro.textContent = `${keep.length.toLocaleString()} tract${keep.length === 1 ? '' : 's'} · preset ${preset.id} · ${Math.round(session.zoom3d * 100)}%`;
       setStatus(`${preset.title}: ${keep.length}/${pinned.count} pass · ${preset.lesson} · teaching waypoints, not patient anatomy · ${EDUCATION_BADGE}`);
     } catch (e) {
-      setStatus(`preset filter failed: ${(e as Error).message}`);
+      setStatus(`preset filter failed: ${(e as Error).message}`, 'error');
     }
   };
 

@@ -224,7 +224,7 @@ export function CellsView(): JSX.Element {
       viewHist.current.clear(); // new document drops view history (mirrors mask undo)
       await paint(s, [true, true], 'synthetic demo (2ch blobs+ring)', 0);
     } catch (err) {
-      setStatus(`demo open failed: ${(err as Error).message}`);
+      setStatus(`demo open failed: ${(err as Error).message}`, 'error');
     }
   };
 
@@ -281,7 +281,7 @@ export function CellsView(): JSX.Element {
       await showStore(s, base);
     } catch (err) {
       if (!live()) return;
-      setStatus(`zarr open failed: ${(err as Error).message}`);
+      setStatus(`zarr open failed: ${(err as Error).message}`, 'error');
     }
   };
 
@@ -317,12 +317,12 @@ export function CellsView(): JSX.Element {
     if (!plate) return;
     const well = plate.meta.wells.find((w) => w.path === path);
     if (!well) return;
-    void openWell(plate.base, plate.meta, well).catch((err) => setStatus(`well open failed: ${(err as Error).message}`));
+    void openWell(plate.base, plate.meta, well).catch((err) => setStatus(`well open failed: ${(err as Error).message}`, 'error'));
   };
 
   const doUndoCells = (): void => {
     if (!viewHist.current.canUndo) {
-      toast('Nothing to undo');
+      toast('Nothing to undo', 'error');
       return;
     }
     const prev = viewHist.current.undo()!;
@@ -422,7 +422,7 @@ export function CellsView(): JSX.Element {
       void paint(s, vis, label || 'store', level, { auto: autoLevel });
       setStatus(`${label || 'store'} · ${table.count} cells (C${cc} L${level} thr ${t}) · click a row or the canvas`);
     } catch (err) {
-      setStatus(`cell table failed: ${(err as Error).message}`);
+      setStatus(`cell table failed: ${(err as Error).message}`, 'error');
     }
   };
 

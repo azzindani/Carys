@@ -87,7 +87,7 @@ export async function importDicomSeg(buf: ArrayBuffer, name: string): Promise<vo
   session.maskVer++;
   session.seg = { dims: img.dims, data: session.editMask };
   bump();
-  toast(`Imported ${label}`);
+  toast(`Imported ${label}`, 'ok');
   setStatus(`imported ${label} from ${name}`);
 }
 

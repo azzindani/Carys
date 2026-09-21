@@ -280,7 +280,7 @@ function PlaneAtlasCard(): JSX.Element {
     try {
       return planeCardLine(card, frac, tilted);
     } catch (e) {
-      setStatus(`plane card failed: ${(e as Error).message}`);
+      setStatus(`plane card failed: ${(e as Error).message}`, 'error');
       return null;
     }
   })();

@@ -67,10 +67,10 @@ export function savePresentState(): void {
     });
     downloadFile(`present-${ui.series || 'series'}.json`, presentStateToJSON(st), 'application/json');
     audit('report.export', ui.series, `GSPS presentation ${annotations.length} annotation(s)`);
-    toast(`Presentation saved: ${st.series} · ${mv.slices.axial}/${mv.slices.coronal}/${mv.slices.sagittal} · ${annotations.length} annotation(s)`);
+    toast(`Presentation saved: ${st.series} · ${mv.slices.axial}/${mv.slices.coronal}/${mv.slices.sagittal} · ${annotations.length} annotation(s)`, 'ok');
     setStatus(`presentation saved: ${st.series} (GSPS ${GSPS_SOP_CLASS}, JSON shape)`);
   } catch (err) {
-    setStatus(`presentation save failed: ${(err as Error).message}`);
+    setStatus(`presentation save failed: ${(err as Error).message}`, 'error');
   }
 }
 
@@ -93,7 +93,7 @@ export async function loadPresentStateFile(f: File): Promise<void> {
   try {
     st = parsePresentState(text);
   } catch (err) {
-    setStatus(`presentation rejected: ${(err as Error).message}`);
+    setStatus(`presentation rejected: ${(err as Error).message}`, 'error');
     return;
   }
   if (st.series !== ui.series) {
@@ -107,7 +107,7 @@ export async function loadPresentStateFile(f: File): Promise<void> {
   }
   session.wl = { ...st.wl };
   if (st.proj !== 'slice' && st.proj !== 'mip' && st.proj !== 'minip' && st.proj !== 'mean') {
-    setStatus(`presentation rejected: unknown projection "${st.proj}"`);
+    setStatus(`presentation rejected: unknown projection "${st.proj}"`, 'error');
     return;
   }
   setUi({

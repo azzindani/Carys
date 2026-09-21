@@ -84,7 +84,7 @@ export function LearnView({ onOpenPathogen }: { onOpenPathogen: (id: string) => 
       setStatus(`self-test ready · 95 questions · seed ${s} · ${EDUCATION_BADGE}`);
     } catch (e) {
       setSelfErr((e as Error).message);
-      setStatus(`self-test failed: ${(e as Error).message}`);
+      setStatus(`self-test failed: ${(e as Error).message}`, 'error');
     }
   };
 
@@ -332,7 +332,7 @@ function MeasureTrainerCard(): JSX.Element {
     try {
       v = gradeTrainerCase(c, measured, c.kind === 'recist-sum' ? (cat as RecistCategory) : null);
     } catch (e) {
-      setStatus(`trainer grading failed: ${(e as Error).message}`);
+      setStatus(`trainer grading failed: ${(e as Error).message}`, 'error');
       return;
     }
     const line = `${MEASURETRAINER_SERIES}/${c.id} measured=${measured} ${v.agree ? 'agree' : 'outside'} (published ${v.publishedSum}, diff ${v.diff >= 0 ? '+' : ''}${Math.round(v.diff * 1000) / 1000})`;
