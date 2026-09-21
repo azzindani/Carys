@@ -1,19 +1,36 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import type { JSX } from 'react';
+import { Popover as RxPopover, Tooltip as RxTooltip } from 'radix-ui';
 
-// Headless-styled primitives. Unstyled behavior + token styling; composition
-// over configuration. This file is the entire design system.
+/**
+ * The design system's component layer.
+ *
+ * Radix backs the pieces where hand-rolled behaviour was actually broken —
+ * popovers (no outside-click, no Escape, no focus restore) and tooltips.
+ * Sliders deliberately stay native `<input type="range">`: the wire suite
+ * drives them with real key events and reads `.inputValue()`, and a
+ * div-based slider would silently break every one of those legs.
+ */
 
 export function Chip({ children, className = '', title, onClick }: {
   children: ReactNode; className?: string; title?: string; onClick?: () => void;
 }): JSX.Element {
   return (
-    <span className={`chip ${className}`} title={title} onClick={onClick} role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined}>
+    <span
+      className={`chip ${className}`} title={title} onClick={onClick}
+      role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+    >
       {children}
     </span>
   );
 }
 
+/**
+ * Segmented control. Plain buttons on purpose: `data-<key>`, `.on` and
+ * `aria-pressed` are the selectors the e2e suite addresses, and a Radix
+ * ToggleGroup would swap them for radio roles.
+ */
 export function Seg<T extends string>({ id, dataKey, options, value, onChange, ariaLabel }: {
   id?: string;
   /** semantic per-option attribute, e.g. dataKey="mode" renders data-mode="…" */
@@ -76,13 +93,13 @@ export function Switch({ checked, onChange, label }: {
   );
 }
 
-export function DarkSelect({ value, onChange, title, children, ariaLabel }: {
+export function DarkSelect({ value, onChange, title, children, ariaLabel, id }: {
   value: string; onChange: (v: string) => void; title?: string;
-  children: ReactNode; ariaLabel?: string;
+  children: ReactNode; ariaLabel?: string; id?: string;
 }): JSX.Element {
   return (
     <select
-      className="dark" value={value} title={title} aria-label={ariaLabel ?? title}
+      id={id} className="dark" value={value} title={title} aria-label={ariaLabel ?? title}
       onChange={(e) => onChange((e.target as HTMLSelectElement).value)}
     >
       {children}
@@ -90,11 +107,16 @@ export function DarkSelect({ value, onChange, title, children, ariaLabel }: {
   );
 }
 
-export function IconBtn({ id, onClick, title, accent, children }: {
-  id?: string; onClick: () => void; title?: string; accent?: boolean; children: ReactNode;
+export function IconBtn({ id, onClick, title, accent, active, className = '', children }: {
+  id?: string; onClick: () => void; title?: string; accent?: boolean;
+  active?: boolean; className?: string; children: ReactNode;
 }): JSX.Element {
   return (
-    <button id={id} className={`iconbtn${accent ? ' accent' : ''}`} title={title} onClick={onClick}>
+    <button
+      id={id}
+      className={`iconbtn${accent ? ' accent' : ''}${active ? ' on' : ''}${className ? ` ${className}` : ''}`}
+      title={title} aria-label={title} aria-pressed={active} onClick={onClick}
+    >
       {children}
     </button>
   );
@@ -102,6 +124,52 @@ export function IconBtn({ id, onClick, title, accent, children }: {
 
 export function Kbd({ children }: { children: ReactNode }): JSX.Element {
   return <kbd>{children}</kbd>;
+}
+
+/** Hover/focus label. Used by icon-only chrome, where `title` alone is slow
+ *  and invisible to keyboard users. */
+export function Tip({ label, side = 'right', children }: {
+  label: string; side?: 'top' | 'right' | 'bottom' | 'left'; children: ReactNode;
+}): JSX.Element {
+  return (
+    <RxTooltip.Root>
+      <RxTooltip.Trigger asChild>{children}</RxTooltip.Trigger>
+      <RxTooltip.Portal>
+        <RxTooltip.Content className="tip" side={side} sideOffset={8} collisionPadding={8}>
+          {label}
+          <RxTooltip.Arrow className="tip-arrow" width={10} height={5} />
+        </RxTooltip.Content>
+      </RxTooltip.Portal>
+    </RxTooltip.Root>
+  );
+}
+
+export function TipProvider({ children }: { children: ReactNode }): JSX.Element {
+  return <RxTooltip.Provider delayDuration={420} skipDelayDuration={300}>{children}</RxTooltip.Provider>;
+}
+
+/**
+ * Popover with the behaviour the hand-rolled version never had: dismiss on
+ * outside click and Escape, focus returned to the trigger, collision-aware
+ * placement.
+ */
+export function Popover({ open, onOpenChange, trigger, children, align = 'end', className = '', anchorRef }: {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  trigger: ReactNode; children: ReactNode;
+  align?: 'start' | 'center' | 'end'; className?: string;
+  anchorRef?: RefObject<HTMLElement | null>;
+}): JSX.Element {
+  return (
+    <RxPopover.Root open={open} onOpenChange={onOpenChange}>
+      <RxPopover.Trigger asChild>{trigger}</RxPopover.Trigger>
+      {anchorRef ? <RxPopover.Anchor virtualRef={anchorRef as RefObject<HTMLElement>} /> : null}
+      <RxPopover.Portal>
+        <RxPopover.Content className={className} align={align} sideOffset={8} collisionPadding={10}>
+          {children}
+        </RxPopover.Content>
+      </RxPopover.Portal>
+    </RxPopover.Root>
+  );
 }
 
 /**

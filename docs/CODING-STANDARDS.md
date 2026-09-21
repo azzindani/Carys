@@ -20,9 +20,12 @@ prefer the one with a test behind it.
 
 ## No hardcoding
 
-5. **Tokens live in exactly one place** — colors and fonts in `:root` only
-   (`packages/app/src/index.css`); type flows through `--ts`, rhythm
-   through the density levels. No literal color/font/size anywhere else.
+5. **Tokens live in exactly one place** — color, type, rhythm and rounding
+   in `packages/app/src/styles/tokens.css` only (Tailwind `@theme` plus the
+   `:root` ramps). Type flows through `--ts`, rhythm through `--sp`, corners
+   through the `--radius-*` rungs. No literal color/font/size/radius in any
+   other stylesheet or component. `index.css` is an import manifest, nothing
+   else.
 6. **No magic numbers in logic** — named budgets (`render-cpu/perf`),
    named epochs (`paintToken`), cache keys that encode every input
    (series + src + threshold + method + mask version).

@@ -10,6 +10,7 @@ import { setUi, useUiPick } from '../lib/store';
 import { toast } from '../lib/toasts';
 import { useVersion } from '../lib/version';
 import { DarkSelect, Seg } from '../ui/primitives';
+import { IconPanel } from '../ui/Icons';
 import type { MSheet, MView } from '../lib/types';
 import { MprTuneDock, MprToolDock, SegDock } from './MprView';
 import { MprPanes } from './MprPanes';
@@ -98,24 +99,32 @@ function MobileInfo(): JSX.Element {
   );
 }
 
-function SheetHead({ title }: { title: string }): JSX.Element {
+/** The two viewports, shared by every breakpoint — desktop lays them side by
+ *  side, mobile shows whichever one `data-mview` names. */
+function ViewGrid({ sliceInit, axialCanvasRef, extractor, full, mView }: {
+  sliceInit: SliceInit | null;
+  axialCanvasRef: React.RefObject<HTMLCanvasElement | null>;
+  extractor: Extractor | null;
+  full: string; mView: MView;
+}): JSX.Element {
   return (
-    <div className="mp-head">
-      <span className="name">{title}</span>
-      <button
-        className="iconbtn" title={`Close ${title}`} aria-label={`Close ${title}`}
-        onClick={() => setUi({ mSheet: null })}
-      >
-        ✕
-      </button>
+    <div className="viewgrid" data-full={full} data-mview={mView} id="viewgrid">
+      <div className="vp vp3d" id="vp-3d">
+        <SurfaceView extractor={extractor} bare />
+      </div>
+      <div className="vp vp2d" id="vp-2d">
+        <MprPanes sliceInit={sliceInit} axialCanvasRef={axialCanvasRef} />
+      </div>
     </div>
   );
 }
 
 /** Professional viewport grid: file tabs on top, 3D viewport left, the
- *  three 2D viewports stacked right — each with its own tools. On mobile
- *  the same tree collapses to one filling viewport + toggle panels, so
- *  nothing ever scrolls the page. */
+ *  three 2D viewports stacked right — each with its own tools.
+ *
+ *  On mobile the same tree splits the screen instead: imaging owns the top,
+ *  and a permanent control deck owns the bottom half. The deck is a surface,
+ *  not an overlay, so tools never cover the image they act on. */
 export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries }: {
   sliceInit: SliceInit | null;
   axialCanvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -128,6 +137,7 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
   const mSheet = useUiPick('mSheet');
   const series = useUiPick('series');
   const docksOpen = useUiPick('docksOpen');
+
   if (!mobile) {
     return (
       <>
@@ -139,7 +149,7 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
             aria-label="Toggle toolbar" aria-pressed={docksOpen}
             onClick={() => setUi({ docksOpen: !docksOpen })}
           >
-            Toolbar
+            <IconPanel />Toolbar
           </button>
         </div>
         {docksOpen && (
@@ -149,82 +159,81 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
             <SegDock />
           </div>
         )}
-        <div className="viewgrid" data-full={full ?? ''} data-mview={mView} id="viewgrid">
-          <div className="vp vp3d" id="vp-3d">
-            <SurfaceView extractor={extractor} bare />
-          </div>
-          <div className="vp vp2d" id="vp-2d">
-            <MprPanes sliceInit={sliceInit} axialCanvasRef={axialCanvasRef} />
-          </div>
-        </div>
+        <ViewGrid
+          sliceInit={sliceInit} axialCanvasRef={axialCanvasRef}
+          extractor={extractor} full={full ?? ''} mView={mView}
+        />
       </>
     );
   }
-  const toggleSheet = (s: Exclude<MSheet, null>): void => {
-    setUi({ mSheet: mSheet === s ? null : s });
-  };
-  const mbtn = (s: Exclude<MSheet, null>, label: string): JSX.Element => (
+
+  // Deck tabs behave like tabs, not toggles: picking one always shows it,
+  // and re-tapping the open one collapses the deck to give the image room.
+  const pick = (s: Exclude<MSheet, null>): void => setUi({ mSheet: mSheet === s ? null : s });
+  const deckTab = (s: Exclude<MSheet, null>, label: string): JSX.Element => (
     <button
       className={`mbtn${mSheet === s ? ' on' : ''}`} aria-pressed={mSheet === s}
-      title={`${label} panel`} onClick={() => toggleSheet(s)}
+      title={`${label} panel`} onClick={() => pick(s)}
     >
       {label}
     </button>
   );
+
   return (
     <>
       <div className="ftop"><FileTabs onOpen={onOpenSeries} /></div>
-      <div className="viewgrid" data-full={full ?? ''} data-mview={mView} id="viewgrid">
-        <div className="vp vp3d" id="vp-3d">
-          <SurfaceView extractor={extractor} bare />
-        </div>
-        <div className="vp vp2d" id="vp-2d">
-          <MprPanes sliceInit={sliceInit} axialCanvasRef={axialCanvasRef} />
-        </div>
-      </div>
-      {mSheet === 'tools' && (
-        <div className="mpanel" id="mpanel-tools" role="dialog" aria-label="Tools">
-          <SheetHead title="Tools" />
-          <MprToolDock />
-        </div>
-      )}
-      {mSheet === 'display' && (
-        <div className="mpanel" id="mpanel-display" role="dialog" aria-label="Display">
-          <SheetHead title="Display" />
-          <MprTuneDock axialCanvasRef={axialCanvasRef} />
-          <SegDock />
-        </div>
-      )}
-      {mSheet === 'files' && (
-        <div className="mpanel" id="mpanel-files" role="dialog" aria-label="Files">
-          <SheetHead title="Files" />
-          <DarkSelect value={series} onChange={onOpenSeries} title="Open series" ariaLabel="Open series">
-            {Object.keys(SERIES).map((k) => <option key={k} value={k}>{k}</option>)}
-          </DarkSelect>
-          <FileTabs onOpen={onOpenSeries} id="filetabs-m" hidePlus />
-          <label className="iconbtn" htmlFor="upload-m" title="Open a volume, mesh, or tract file">Open file</label>
-          <input
-            type="file" id="upload-m" accept=".nii,.gz,.dcm,.stl,.mz3,.gii,.nrrd,.nhdr,.raw,.tif,.tiff,.tck" multiple hidden
-            onChange={(e) => {
-              handleOpenFiles([...((e.target as HTMLInputElement).files ?? [])]);
-              (e.target as HTMLInputElement).value = '';
-            }}
+      <ViewGrid
+        sliceInit={sliceInit} axialCanvasRef={axialCanvasRef}
+        extractor={extractor} full={full ?? ''} mView={mView}
+      />
+      <div className="deck" data-open={mSheet && mSheet !== 'nav' ? 'true' : 'false'}>
+        <div className="mobilebar" id="mobilebar">
+          <Seg<MView>
+            id="mviewseg" dataKey="mview" ariaLabel="Viewport"
+            value={mView} onChange={(v) => setUi({ mView: v })}
+            options={[
+              { value: 'v3d', label: '3D' }, { value: 'axial', label: 'Ax' },
+              { value: 'coronal', label: 'Cor' }, { value: 'sagittal', label: 'Sag' },
+            ]}
           />
-          <MobileInfo />
+          <div className="deck-tabs" role="tablist" aria-label="Controls">
+            {deckTab('tools', 'Tools')}
+            {deckTab('display', 'Display')}
+            {deckTab('files', 'Files')}
+          </div>
         </div>
-      )}
-      <div className="mobilebar" id="mobilebar">
-        <Seg<MView>
-          id="mviewseg" dataKey="mview" ariaLabel="Viewport"
-          value={mView} onChange={(v) => setUi({ mView: v, mSheet: null })}
-          options={[
-            { value: 'v3d', label: '3D' }, { value: 'axial', label: 'Ax' },
-            { value: 'coronal', label: 'Cor' }, { value: 'sagittal', label: 'Sag' },
-          ]}
-        />
-        {mbtn('tools', 'Tools')}
-        {mbtn('display', 'Display')}
-        {mbtn('files', 'Files')}
+        {mSheet === 'tools' && (
+          <div className="deck-body" id="mpanel-tools" role="tabpanel" aria-label="Tools">
+            <MprToolDock />
+          </div>
+        )}
+        {mSheet === 'display' && (
+          <div className="deck-body" id="mpanel-display" role="tabpanel" aria-label="Display">
+            {/* SurfaceView portals its 3D dock here while the 3D viewport is
+                the one on screen — same dock as desktop, hosted where mobile
+                controls belong. */}
+            <div id="deck-3d" />
+            <MprTuneDock axialCanvasRef={axialCanvasRef} />
+            <SegDock />
+          </div>
+        )}
+        {mSheet === 'files' && (
+          <div className="deck-body" id="mpanel-files" role="tabpanel" aria-label="Files">
+            <DarkSelect value={series} onChange={onOpenSeries} title="Open series" ariaLabel="Open series">
+              {Object.keys(SERIES).map((k) => <option key={k} value={k}>{k}</option>)}
+            </DarkSelect>
+            <FileTabs onOpen={onOpenSeries} id="filetabs-m" hidePlus />
+            <label className="btn-ghost" htmlFor="upload-m" title="Open a volume, mesh, or tract file">Open file</label>
+            <input
+              type="file" id="upload-m" accept=".nii,.gz,.dcm,.stl,.mz3,.gii,.nrrd,.nhdr,.raw,.tif,.tiff,.tck" multiple hidden
+              onChange={(e) => {
+                handleOpenFiles([...((e.target as HTMLInputElement).files ?? [])]);
+                (e.target as HTMLInputElement).value = '';
+              }}
+            />
+            <MobileInfo />
+          </div>
+        )}
       </div>
     </>
   );

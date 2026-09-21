@@ -37,16 +37,19 @@
     "test:dimse": "python3 test/e2e/dimse-echo.py"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.5.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^4.7.0",
     "playwright": "^1.63.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.5.0",
     "vite": "^5.4.0",
     "zarrita": "^0.7.5"
   },
   "dependencies": {
+    "radix-ui": "^1.6.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   }

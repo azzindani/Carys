@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { JSX } from 'react';
 import { cursorAxes, cursorOnCanvas, filterTracts, presetTF, projectCursor, projectFibers, renderMesh, TF_PRESETS, type TF, type TFPresetName } from '@carys/render-cpu';
 import { ACCENT } from '../lib/palette';
@@ -17,6 +18,7 @@ import { getUi, setUi, useUi, useUiPick } from '../lib/store';
 import { useIsMobile } from '../lib/isMobile';
 import { bump, useVersion } from '../lib/version';
 import { Chip, DarkSelect, IconBtn, Seg, SliderRow, Switch } from '../ui/primitives';
+import { AxisGizmo } from '../ui/Icons';
 import type { Method, Render3D, Source } from '../lib/types';
 import { TfEditor } from './TfEditor';
 
@@ -70,7 +72,18 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
   // Mobile keeps the 3D toolbar behind a disclosure so the viewport owns
   // the stage; desktop renders it open like before.
   const isMobile = useIsMobile();
-  const [toolsOpen, setToolsOpen] = useState(false);
+  // In the grid (`bare`) the 3D pane is one of four viewports; its dock is
+  // only relevant while that viewport is the one mobile is showing.
+  const mView = useUiPick('mView');
+  const mSheet = useUiPick('mSheet');
+  const show3dTools = !bare || mView === 'v3d';
+  // Mobile hosts this dock inside the control deck rather than above the
+  // image. The slot only exists while the Display panel is open, so resolve
+  // it after commit.
+  const [deckSlot, setDeckSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setDeckSlot(isMobile && bare ? document.getElementById('deck-3d') : null);
+  }, [isMobile, bare, mSheet, mView]);
 
   /** Data range of the current VR field (for preset construction). */
   const fieldRange = (): [number, number] => {
@@ -459,6 +472,14 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
   };
   const onOrbitUp = (): void => { orbDrag.current = null; };
 
+  /** One dock, two homes: above the viewport on desktop, inside the control
+   *  deck on mobile — so tools never cover the image they act on. */
+  const dockHost = (dock: JSX.Element): JSX.Element | null => {
+    if (!isMobile) return dock;
+    if (!show3dTools || !deckSlot) return null;
+    return createPortal(dock, deckSlot);
+  };
+
   return (
     <>
       {!bare && (
@@ -467,15 +488,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
           <p>drag to orbit — extracted on demand, cached per edit</p>
         </div>
       )}
-      {isMobile && (
-        <button
-          className={`vpdisclose${toolsOpen ? ' on' : ''}`} aria-expanded={toolsOpen}
-          onClick={() => setToolsOpen((o) => !o)}
-        >
-          3D controls
-        </button>
-      )}
-      {(!isMobile || toolsOpen) && (
+      {dockHost(
       <div className="dock" id="dock-3d">
         <div className="grp">
           <span className="lbl">Render</span>
@@ -606,6 +619,10 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
                 onPointerMove={onOrbitMove}
                 onPointerUp={onOrbitUp}
               />
+              {/* Viewport chrome, drawn as SVG/CSS over the CPU raster — the
+                  orientation read every 3D tool gives you, with no GL context. */}
+              <div className="vp-hud" aria-hidden="true" />
+              <AxisGizmo orbit={(orbit * 180) / Math.PI} tilt={(tilt * 180) / Math.PI} />
             </div>
             <div className="vrail" aria-label="3D orbit controls">
               <SliderRow vertical label="Orbit" min={0} max={6.283} step={0.01} value={orbit} onInput={(v) => { setOrbit(v); queueOrbit(); }} />
