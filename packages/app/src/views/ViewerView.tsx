@@ -165,6 +165,9 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
           <div className="dockrow" id="dockrow-2d">
             <MprTuneDock axialCanvasRef={axialCanvasRef} />
             <SegDock />
+            {/* SurfaceView portals #dock-3d here, so the 3D controls ride the
+                same strip instead of stacking above the image. */}
+            <div id="dockslot-3d" className="dockslot" />
           </div>
         )}
         {/* Tools sit in a column against the viewport edge, the way a 3D tool

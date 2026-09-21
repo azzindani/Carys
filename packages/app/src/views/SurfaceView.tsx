@@ -82,9 +82,13 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
   // image. The slot only exists while the Display panel is open, so resolve
   // it after commit.
   const [deckSlot, setDeckSlot] = useState<HTMLElement | null>(null);
+  const docksOpen = useUiPick('docksOpen');
   useEffect(() => {
-    setDeckSlot(isMobile && bare ? document.getElementById('deck-3d') : null);
-  }, [isMobile, bare, mSheet, mView]);
+    if (!bare) { setDeckSlot(null); return; }
+    // Mobile: the control deck. Desktop: the toolbar strip. Either way the
+    // dock stops stacking above the image and costing it height.
+    setDeckSlot(document.getElementById(isMobile ? 'deck-3d' : 'dockslot-3d'));
+  }, [isMobile, bare, mSheet, mView, docksOpen]);
 
   /** Data range of the current VR field (for preset construction). */
   const fieldRange = (): [number, number] => {
@@ -476,9 +480,12 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
   /** One dock, two homes: above the viewport on desktop, inside the control
    *  deck on mobile — so tools never cover the image they act on. */
   const dockHost = (dock: JSX.Element): JSX.Element | null => {
-    if (!isMobile) return dock;
-    if (!show3dTools || !deckSlot) return null;
-    return createPortal(dock, deckSlot);
+    if (!bare) return dock;                       // standalone Surface route
+    if (!show3dTools) return null;                // 3D viewport not on screen
+    if (deckSlot) return createPortal(dock, deckSlot);
+    // No slot yet (first commit) or toolbar hidden: desktop keeps it inline
+    // rather than losing the controls entirely.
+    return isMobile ? null : dock;
   };
 
   return (

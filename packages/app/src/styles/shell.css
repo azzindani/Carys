@@ -48,7 +48,7 @@
 .top {
   flex: none; position: relative; z-index: 30;
   display: flex; align-items: center; gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-5);
+  padding: var(--sp-2) var(--sp-4);
   background: var(--color-surface-1);
   border-bottom: 1px solid var(--color-line);
 }
@@ -89,7 +89,11 @@
 .kbd-btn:hover { color: var(--color-text); border-color: var(--color-line-strong); }
 
 /* ------------------------------------------------------------- file tabs */
-.ftop { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-5) 0; }
+/* The tab strip shares the toolbar band instead of owning a row of its
+   own — it was costing ~3% of the screen to show one tab. */
+.ftop { display: flex; align-items: center; gap: var(--sp-2); padding: 0 0 var(--sp-2); }
+.ftop .filetabs .tab { min-height: var(--ctl-h); padding: 0 var(--sp-3); }
+.ftop .iconbtn { min-height: var(--ctl-h); }
 .ftop .filetabs { flex: 1; min-width: 0; }
 .filetabs { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .filetabs .tab {
@@ -120,9 +124,9 @@
 /* ------------------------------------------------------------- main grid */
 .main {
   flex: 1; display: grid; gap: var(--sp-4);
-  grid-template-columns: minmax(0, 1fr) 304px;
+  grid-template-columns: minmax(0, 1fr) 268px;
   min-height: 0; min-width: 0;
-  padding: var(--sp-4) var(--sp-5) var(--sp-4);
+  padding: var(--sp-2) var(--sp-3) var(--sp-2);
 }
 .main-full { grid-template-columns: minmax(0, 1fr); }
 .viewport {
@@ -167,9 +171,9 @@
 /* ---------------------------------------------------------------- status */
 .status {
   flex: none; display: flex; align-items: center; gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-5);
+  min-height: 22px; padding: 0 var(--sp-4);
   background: var(--color-surface-1); border-top: 1px solid var(--color-line);
-  color: var(--color-muted); font-size: var(--fs-xs);
+  color: var(--color-muted); font-size: var(--fs-2xs);
   white-space: nowrap; overflow: hidden;
 }
 .status .dot { color: var(--color-accent); font-size: var(--fs-3xs); animation: pulse 2.2s infinite; }
