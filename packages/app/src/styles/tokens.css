@@ -1,0 +1,123 @@
+/* ============================================================================
+   Carys design tokens — the single source of truth for color, type, rhythm
+   and rounding. Nothing below this file may declare a literal color, font,
+   radius or spacing value (CODING-STANDARDS §5).
+
+   Two user-facing scales multiply everything:
+     --ts  text scale   (appearance pref: xs..xl)
+     --sp  space scale  (appearance pref: xs..xl)
+   Both are plain multipliers, so one pref re-proportions the whole UI
+   instead of the 30 hand-written overrides this replaces.
+   ========================================================================= */
+
+@theme {
+  /* -- surfaces: a real elevation ramp, darkest stage to lightest control -- */
+  --color-bg: #080a0e;
+  --color-sunken: #05070a;
+  --color-stage: #040507;
+  --color-surface-1: #0f1217;
+  --color-surface-2: #151920;
+  --color-surface-3: #1c212a;
+  --color-surface-4: #242b36;
+
+  /* -- hairlines -- */
+  --color-line: #1f2530;
+  --color-line-strong: #2c3440;
+  --color-line-accent: #1d4a46;
+
+  /* -- ink -- */
+  --color-text: #e9edf3;
+  --color-muted: #98a2b1;
+  --color-faint: #5f6977;
+  --color-on-accent: #04110f;
+
+  /* -- brand + semantics -- */
+  --color-accent: #2dd4bf;
+  --color-accent-hi: #5eead4;
+  --color-accent-lo: #14b8a6;
+  --color-accent-dim: #10312e;
+  --color-violet: #818cf8;
+  --color-danger: #f0564a;
+  --color-warn: #f0b429;
+  --color-ok: #34d399;
+
+  /* -- type families -- */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* -- rounding: a proportional scale. Nested corners step down one rung so
+        an inner edge stays concentric with the outer one (inner = outer − pad). */
+  --radius-2xs: 4px;
+  --radius-xs: 7px;
+  --radius-sm: 10px;
+  --radius-md: 13px;
+  --radius-lg: 17px;
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
+  --radius-pill: 999px;
+}
+
+:root {
+  /* user scales — overridden by the appearance prefs below */
+  --ts: 1;
+  --sp: 1;
+
+  /* type ramp: every size in the app resolves through one of these */
+  --fs-3xs: calc(9.5px * var(--ts));
+  --fs-2xs: calc(10.5px * var(--ts));
+  --fs-xs: calc(11.5px * var(--ts));
+  --fs-sm: calc(12.5px * var(--ts));
+  --fs-md: calc(13.5px * var(--ts));
+  --fs-lg: calc(16px * var(--ts));
+  --fs-xl: calc(20px * var(--ts));
+  --fs-2xl: calc(26px * var(--ts));
+  --fs-3xl: calc(32px * var(--ts));
+
+  /* rhythm ramp: gaps + padding all resolve through these */
+  --sp-1: calc(4px * var(--sp));
+  --sp-2: calc(6px * var(--sp));
+  --sp-3: calc(8px * var(--sp));
+  --sp-4: calc(10px * var(--sp));
+  --sp-5: calc(13px * var(--sp));
+  --sp-6: calc(16px * var(--sp));
+  --sp-7: calc(20px * var(--sp));
+  --sp-8: calc(26px * var(--sp));
+
+  /* minimum comfortable hit target; coarse pointers raise it (§22) */
+  --tap: 32px;
+
+  /* elevation: restrained. The old sheet stacked 50px blurs on every
+     surface, which reads as mud. Two levels, both tight. */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.22);
+  --shadow-2: 0 4px 14px rgb(0 0 0 / 0.42), 0 12px 38px rgb(0 0 0 / 0.3);
+  --shadow-pop: 0 10px 34px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(0 0 0 / 0.5);
+  --ring-accent: 0 0 0 3px rgb(45 212 191 / 0.16);
+
+  /* the glass used by floating chrome — one recipe, not six */
+  --glass: color-mix(in srgb, var(--color-surface-1) 82%, transparent);
+  --glass-blur: blur(14px) saturate(1.25);
+
+  --dur-fast: 110ms;
+  --dur: 170ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* -- appearance pref: text scale (5 levels, persisted) -------------------- */
+html[data-text="xs"] { --ts: 0.82; }
+html[data-text="s"]  { --ts: 0.91; }
+html[data-text="m"]  { --ts: 1; }
+html[data-text="l"]  { --ts: 1.11; }
+html[data-text="xl"] { --ts: 1.24; }
+
+/* -- appearance pref: layout rhythm (5 levels, persisted) ----------------- */
+html[data-density="xs"] { --sp: 0.68; }
+html[data-density="s"]  { --sp: 0.84; }
+html[data-density="m"]  { --sp: 1; }
+html[data-density="l"]  { --sp: 1.2; }
+html[data-density="xl"] { --sp: 1.4; }
+
+/* Coarse pointers get bigger targets everywhere at once (§22). */
+@media (pointer: coarse) {
+  :root { --tap: 44px; }
+}

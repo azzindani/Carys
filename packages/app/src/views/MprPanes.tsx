@@ -661,6 +661,10 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
                 onPointerMove={(e) => { paintMove(hostRef.current, strokeState.current, p, e, planeVoxelRef.current); onViewMove(e); }}
                 onPointerUp={(e) => { onAxialUp(); onViewUp(p, e); }}
               />
+              {/* Framing brackets only. The anatomical edge letters are
+                  rasterised onto the canvas from iopEdgeLabels — one
+                  implementation, not two (§4). */}
+              <div className="vp-hud" aria-hidden="true" />
             </div>
             <div className="vrail" aria-label={`${TITLES[p]} slice slider`}>
               <input

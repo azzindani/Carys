@@ -1,0 +1,172 @@
+/* ============================================================================
+   Viewport grid + the 3D-tool treatment.
+
+   The look is borrowed from three.js/Blender-class viewports — graded stage,
+   floor grid, corner HUD, axis gizmo — but every pixel of actual imagery is
+   still CPU-rasterised into a 2D canvas. No WebGL context is created and no
+   `three` import exists; verify.test.ts enforces both.
+   ========================================================================= */
+
+.viewgrid {
+  flex: 1; min-height: 0;
+  display: grid; gap: var(--sp-4); align-items: stretch;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+}
+.dockrow {
+  flex: none; display: flex; gap: var(--sp-3); flex-wrap: wrap;
+  justify-content: center; align-items: flex-start;
+  margin-bottom: var(--sp-4);
+}
+.dockrow .dock { flex: 0 1 auto; }
+
+.vp { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+/* SurfaceView wraps its pane in a `.panes` row, whose page-flow defaults
+   (wrap + align-items:flex-start, no flex sizing) made it size to content and
+   refuse to shrink — the 3D pane then overflowed its track. Inside a viewport
+   it is a pass-through column, exactly like `.panes-2d` already is. */
+.vp > .panes {
+  flex: 1 1 0; min-height: 0; gap: 0;
+  display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch;
+}
+.panes-2d { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.panes-2d[data-layout="axial"] #pane-axial,
+.panes-2d[data-layout="coronal"] #pane-coronal,
+.panes-2d[data-layout="sagittal"] #pane-sagittal { flex-grow: 1.8; }
+.vp .pane { flex: 1 1 0; min-height: 0; max-width: none; }
+.vp3d .pane { flex: 1; }
+.vp3d .tfpane { max-width: none; flex: none; }
+
+/* ---- the stage: a graded 3D viewport, not a black box -------------------
+   Canvases letterbox with object-fit, so this backdrop is what fills the
+   void around the image — turning dead space into viewport. */
+.vp .stage {
+  flex: 1; min-height: 0; min-width: 0;
+  display: flex; flex-direction: row; align-items: stretch;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgb(45 212 191 / 0.045), transparent 58%),
+    linear-gradient(180deg, #0a0d12 0%, var(--color-stage) 62%);
+}
+.vp .stage canvas {
+  width: 100%; height: 100%; object-fit: contain;
+  min-width: 0; min-height: 0;
+  border-radius: 0;
+  /* Inside the grid the pane decides the box and object-fit letterboxes the
+     raster. An intrinsic ratio here would out-vote the row height and push
+     the pane past its track (it did, on phones). The standalone Surface page
+     keeps its square below. */
+  aspect-ratio: auto;
+}
+.viewport-canvas {
+  position: relative; flex: 1; min-width: 0; min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+/* floor grid — perspective-free, low contrast, masked to the lower half so
+   it reads as a ground plane rather than graph paper */
+.viewport-canvas::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.04) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(180deg, transparent 12%, black 92%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 12%, black 92%);
+}
+.viewport-canvas > canvas { position: relative; z-index: 1; }
+
+/* ---- HUD: orientation letters + readouts floating over the stage ------- */
+.vp-hud {
+  position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  font-family: var(--font-mono); font-size: var(--fs-3xs);
+  color: var(--color-faint); letter-spacing: 0.08em;
+}
+.vp-hud span { position: absolute; text-transform: uppercase; }
+.vp-hud .n { top: var(--sp-3); left: 50%; transform: translateX(-50%); }
+.vp-hud .s { bottom: var(--sp-3); left: 50%; transform: translateX(-50%); }
+.vp-hud .w { left: var(--sp-3); top: 50%; transform: translateY(-50%); }
+.vp-hud .e { right: var(--sp-3); top: 50%; transform: translateY(-50%); }
+/* corner brackets: the framing marks every 3D viewport uses */
+.vp-hud::before, .vp-hud::after {
+  content: ""; position: absolute; width: 14px; height: 14px;
+  border: 1px solid rgb(255 255 255 / 0.13);
+}
+.vp-hud::before { top: var(--sp-3); left: var(--sp-3); border-right: 0; border-bottom: 0; border-top-left-radius: var(--radius-2xs); }
+.vp-hud::after { bottom: var(--sp-3); right: var(--sp-3); border-left: 0; border-top: 0; border-bottom-right-radius: var(--radius-2xs); }
+
+/* ---- axis gizmo: SVG, bottom-left of the 3D viewport ------------------- */
+.gizmo {
+  position: absolute; left: var(--sp-4); bottom: var(--sp-4); z-index: 3;
+  width: 58px; height: 58px; pointer-events: none;
+  opacity: 0.9;
+}
+.gizmo text { font-family: var(--font-mono); font-size: 7px; font-weight: 600; }
+
+/* ---- side rail: per-viewport sliders + zoom, uniform in every pane ----- */
+.vrail {
+  flex: none; width: 60px;
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-2);
+  margin: var(--sp-2) var(--sp-2) var(--sp-2) 0;
+  background: color-mix(in srgb, var(--color-surface-2) 72%, transparent);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+.vrail .grp { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); }
+.vrail .grp .lbl { font-size: var(--fs-3xs); }
+.vrail .vzoom { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.vrail .iconbtn { min-width: 32px; min-height: 32px; padding: var(--sp-1); }
+.vrail .chip.zoom { margin-left: 0; font-size: var(--fs-3xs); padding: 2px var(--sp-2); }
+#pane-3d .vrail { justify-content: flex-start; }
+#pane-3d .vrail .grp { flex: 1 1 0; min-height: 104px; max-height: 210px; }
+
+.vrail input[type="range"].styled.vert {
+  flex: 1 1 0; min-height: 48px; width: 100%;
+  writing-mode: vertical-lr; direction: rtl;
+  background: transparent; cursor: pointer;
+}
+.vrail input[type="range"].styled.vert::-webkit-slider-runnable-track {
+  width: 4px; height: auto; background: var(--color-surface-4); border-radius: var(--radius-pill);
+}
+.vrail input[type="range"].styled.vert::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px; margin-left: -5.5px;
+  border-radius: 50%; background: var(--color-text); border: none;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.6), var(--ring-accent);
+}
+.vrail input[type="range"].styled.vert::-moz-range-track { width: 4px; background: var(--color-surface-4); border-radius: var(--radius-pill); }
+.vrail input[type="range"].styled.vert::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: var(--color-text); border: none; }
+
+/* Standalone Surface route keeps a square stage; inside the viewport grid
+   (`.vp`) the pane owns the box and object-fit letterboxes the raster, so an
+   intrinsic ratio there would out-vote the row height. */
+#view3d { cursor: grab; aspect-ratio: 1; }
+.vp #view3d { aspect-ratio: auto; }
+#view3d:active { cursor: grabbing; }
+
+/* ---- fullscreen: chosen viewport spans the grid, the rest hides -------- */
+.viewgrid[data-full="v3d"], .viewgrid[data-full="axial"],
+.viewgrid[data-full="coronal"], .viewgrid[data-full="sagittal"] { grid-template-columns: minmax(0, 1fr); }
+.viewgrid[data-full="v3d"] .vp2d { display: none; }
+.viewgrid[data-full="axial"] .vp3d,
+.viewgrid[data-full="coronal"] .vp3d,
+.viewgrid[data-full="sagittal"] .vp3d { display: none; }
+.viewgrid[data-full="axial"] #pane-coronal, .viewgrid[data-full="axial"] #pane-sagittal,
+.viewgrid[data-full="coronal"] #pane-axial, .viewgrid[data-full="coronal"] #pane-sagittal,
+.viewgrid[data-full="sagittal"] #pane-axial, .viewgrid[data-full="sagittal"] #pane-coronal { display: none; }
+
+.tfpane { flex: 1 1 560px; max-width: 700px; }
+.tfwrap { padding: var(--sp-2) var(--sp-4) var(--sp-4); }
+#c-cells { width: 100%; height: auto; image-rendering: pixelated; aspect-ratio: 1; }
+#chaninfo .mrow dd, #cellinfo .mrow dd, #track-list .mrow dd { white-space: normal; text-align: right; line-height: 1.5; }
+/* Inline row links inside data lists. They read as text, but they are real
+   buttons, so they still clear the 24px floor (§22). */
+.cellrow, #track-list .reslink {
+  font: inherit; background: none; border: 0;
+  min-height: 24px; padding: var(--sp-1) var(--sp-1); text-align: right;
+}
+#cellinfo .cellrow { color: inherit; }
+#cellinfo .cellrow:hover { color: var(--color-text); }
+#cellinfo .cellrow.on { color: var(--color-accent); }
+#track-list .reslink { color: var(--color-accent); }
+#track-list .reslink:hover { color: var(--color-text); }
+#storeinfo { white-space: normal; line-height: 1.6; word-break: break-word; overflow-wrap: anywhere; }
+#pane-channels #chaninfo, #pane-channels #storeinfo { margin-inline: var(--sp-4); }

@@ -510,6 +510,52 @@ measurement panel, NiiVue colormaps/tractography/docs)
   §5 reuse ledger; sources tests 5/5 + leg 24 pins digestPins; verified
   2026-09-17 at 555/555 unit, build + typecheck:app clean)
 
+## Shipped in the UI/UX pass (design system + three-mode layout)
+- [x] Tailwind v4 + Radix design system (`packages/app/src/styles/*`): the
+  670-line hand-rolled sheet replaced by a token store (color / type /
+  rhythm / proportional rounding) plus five semantic layers. The 30
+  hand-written density overrides collapse into two multipliers (`--ts`,
+  `--sp`), so an appearance pref re-proportions the whole UI at once.
+  Radix backs the popovers and tooltips (outside-click, Escape, focus
+  restore — none of which the hand-rolled versions had); sliders stay
+  native `<input type="range">` because the wire suite drives them with
+  real key events and reads `.inputValue()`.
+- [x] Icon rail navigation: eight routes move out of the cramped topbar
+  into a labelled rail (`ui/Rail.tsx`, one `ROUTES` list shared with the
+  mobile nav sheet), freeing the topbar for study context. e2e navigates
+  by hash, so no leg changes.
+- [x] Three real layout modes: desktop (>1280) rail + grid + inspector;
+  tablet (981–1280) inspector folds under the stage in auto-fit columns;
+  mobile (≤980) imaging owns the top, a permanent control deck owns the
+  bottom half. The deck is a surface, not an overlay — tools never cover
+  the image. 980px stays the twin of `lib/isMobile.ts` (§21).
+- [x] 3D-tool viewport treatment, CPU-only: graded stage, masked floor
+  grid, corner brackets and an SVG orientation axis gizmo that reflects
+  orbit/tilt. Chrome only — no WebGL context, no `three` import; the
+  `ARCHITECTURE WebGL/Three ban` test still passes 4/4.
+- [x] The 3D dock now has one implementation with two homes: inline on
+  desktop, portalled into the control deck on mobile (`dockHost`), and it
+  only exists while the 3D viewport is the one on screen. Deleted the
+  `vpdisclose` disclosure it replaced (§3).
+- [x] Layout bugs found and fixed by measuring, not eyeballing: a tablet
+  `min-height: 58vh` that also matched phones and pushed the deck off the
+  bottom of the screen (tablet blocks now lower-bounded at 981px); a
+  `.panes` wrapper that could not shrink, overflowing the 3D pane past its
+  track; `#view3d`'s intrinsic square out-voting the row height inside the
+  grid; a `margin-top` sitting outside its grid track; and dock groups with
+  no `min-width: 0` that pushed the whole document sideways once the 3D
+  dock moved into a 390px deck.
+- [x] Touch floors hold at every state: 48 mobile states (4 viewports ×
+  3 deck panels × 4 device profiles) audited at 0 horizontal overflow,
+  0 sub-24px targets, deck flush to the fold. Switch and checkbox sizes
+  tokenised so coarse pointers scale in one place (§22).
+- [x] Contract preserved: all 134 e2e-referenced DOM ids survive
+  (`#CHROM`/`##fileformat` in the e2e id sweep are VCF header lines in
+  fixture bytes, not ids); `data-*`, `title` and `aria-label` selectors
+  untouched. Verified 650/650 non-sample unit tests, markers 2/2,
+  verify 4/4, build + typecheck:app clean. The 26 remaining unit failures
+  are the pre-existing `samples/`-dependent ones, unchanged from baseline.
+
 ## Closeout ledger (no pendings: everything below is shipped, blocked with an
 owner + unblock step, or accepted by design — verified 2026-09-14)
 - BLOCKED, owner: your machine — Docker image: `Dockerfile` ships but the
