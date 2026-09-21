@@ -91,7 +91,11 @@
 /* ------------------------------------------------------------- file tabs */
 /* The tab strip shares the toolbar band instead of owning a row of its
    own — it was costing ~3% of the screen to show one tab. */
-.ftop { display: flex; align-items: center; gap: var(--sp-2); padding: 0 0 var(--sp-2); }
+.ftop {
+  position: relative; z-index: 20;
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: 0 0 var(--sp-2);
+}
 .ftop .filetabs .tab { min-height: var(--ctl-h); padding: 0 var(--sp-3); }
 .ftop .iconbtn { min-height: var(--ctl-h); }
 .ftop .filetabs { flex: 1; min-width: 0; }
@@ -123,8 +127,9 @@
 
 /* ------------------------------------------------------------- main grid */
 .main {
+  position: relative;
   flex: 1; display: grid; gap: var(--sp-4);
-  grid-template-columns: minmax(0, 1fr) 268px;
+  grid-template-columns: minmax(0, 1fr);
   min-height: 0; min-width: 0;
   padding: var(--sp-2) var(--sp-3) var(--sp-2);
 }
@@ -142,15 +147,22 @@
 .panes { display: flex; gap: var(--sp-4); flex-wrap: wrap; align-items: flex-start; }
 .panes > .pane { flex: 1 1 300px; max-width: 520px; }
 
-/* ------------------------------------------------------------- inspector */
+/* ------------------------------------------------------------- inspector
+   A drawer over the image, not a column beside it. Closed by default; the
+   Details toggle slides it in. Chrome costs zero layout area. */
 .inspector {
-  display: flex; flex-direction: column; align-self: start;
-  max-height: 100%; overflow-y: auto;
-  padding: 0 var(--sp-5) var(--sp-5);
-  background: var(--color-surface-1);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-xl);
+  position: absolute; top: calc(var(--ctl-h) + var(--sp-3)); right: 0; bottom: 0; z-index: 14;
+  width: min(300px, 82vw);
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+  padding: 0 var(--sp-4) var(--sp-4);
+  background: color-mix(in srgb, var(--color-surface-1) 96%, transparent);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-2);
+  animation: drawer-in var(--dur) var(--ease);
+  border-left: 1px solid var(--color-line-strong);
 }
+@keyframes drawer-in { from { transform: translateX(14px); opacity: 0; } }
 .inspector section { padding: var(--sp-5) 0; border-bottom: 1px solid var(--color-line); }
 .inspector section:last-child { border-bottom: none; }
 .inspector h2 {

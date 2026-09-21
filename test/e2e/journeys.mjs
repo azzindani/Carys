@@ -5,6 +5,16 @@ import { spawn } from 'node:child_process';
 
 const PORT = Number(process.env.E2E_PORT || 8132);
 const BASE = `http://localhost:${PORT}/packages/app/dist/index.html`;
+
+/** The details drawer starts closed (it overlays the image); journeys that
+ *  read #maskinfo open it first. */
+const openDetails = async (pg) => {
+  try {
+    const t = await pg.waitForSelector('#instoggle', { timeout: 1500 });
+    if ((await t.getAttribute('aria-pressed')) !== 'true') await t.click();
+  } catch { /* no drawer on this route */ }
+};
+
 const server = spawn('python3', ['-m', 'http.server', String(PORT), '--directory', '.'], { stdio: 'ignore' });
 await new Promise((r) => setTimeout(r, 1500));
 
@@ -20,6 +30,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page);
   await page.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -69,6 +80,7 @@ try {
   await page.mouse.click(cbox.x + cbox.width / 2 - 30, cbox.y + cbox.height / 2);
   await page.mouse.click(cbox.x + cbox.width / 2 + 30, cbox.y + cbox.height / 2);
   await page.goto(`${BASE}#/report`, { waitUntil: 'networkidle' });
+  await openDetails(page);
   await page.waitForFunction(
     () => document.querySelector('#title-report p')?.textContent?.includes('1 measurement(s)'),
     null, { timeout: 30000 },
@@ -77,6 +89,7 @@ try {
 
   // ---- C. palette opens a series by name.
   await page.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page);
   await page.click('#openpal');
   await page.waitForSelector('#palinput', { timeout: 30000 });
   await page.fill('#palinput', 'cardiac-4d-cine');

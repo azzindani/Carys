@@ -161,18 +161,19 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
             <IconPanel />Details
           </button>
         </div>
-        {docksOpen && (
-          <div className="dockrow" id="dockrow-2d">
-            <MprTuneDock axialCanvasRef={axialCanvasRef} />
-            <SegDock />
-            {/* SurfaceView portals #dock-3d here, so the 3D controls ride the
-                same strip instead of stacking above the image. */}
-            <div id="dockslot-3d" className="dockslot" />
-          </div>
-        )}
-        {/* Tools sit in a column against the viewport edge, the way a 3D tool
-            shelves them — not in a toolbar wrapping across the top. */}
+        {/* Chrome lives inside the work area and floats over the image — the
+            way a site's nav floats over its hero — so the viewport keeps the
+            full area and tools reveal on demand. */}
         <div className="workarea">
+          {docksOpen && (
+            <div className="dockrow" id="dockrow-2d">
+              <MprTuneDock axialCanvasRef={axialCanvasRef} />
+              <SegDock />
+              {/* SurfaceView portals #dock-3d here, so the 3D controls ride
+                  the same strip instead of stacking above the image. */}
+              <div id="dockslot-3d" className="dockslot" />
+            </div>
+          )}
           <aside className="toolstrip" aria-label="Tools">
             <MprToolDock column />
           </aside>

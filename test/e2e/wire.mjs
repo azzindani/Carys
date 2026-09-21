@@ -20,6 +20,19 @@ const server = spawn('python3', ['-m', 'http.server', String(PORT), '--directory
 await new Promise((r) => setTimeout(r, 1500));
 
 let failed = 0;
+/**
+ * The details drawer now starts closed — it overlays the image rather than
+ * holding a column, so chrome costs the viewport nothing. Legs that read the
+ * readouts inside it (#maskinfo, #dcm-meta, #volinfo, #measureinfo, …) open
+ * it first. No-op on routes that have no drawer.
+ */
+const openDetails = async (pg) => {
+  try {
+    const t = await pg.waitForSelector('#instoggle', { timeout: 1500 });
+    if ((await t.getAttribute('aria-pressed')) !== 'true') await t.click();
+  } catch { /* route has no details drawer (report, cells, tracks, …) */ }
+};
+
 const fail = (msg) => {
   failed = 1;
   console.error(`WIRE FAIL: ${msg}`);
@@ -126,6 +139,7 @@ try {
   const status = () => page.locator('#status-text').textContent().catch(() => null);
   // ---- 1. NRRD upload renders as a volume (8x8x4 -> axial max index 3)
   await page.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page);
   await page.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -180,6 +194,7 @@ try {
   const page2 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page2.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page2.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page2);
   await page2.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -196,6 +211,7 @@ try {
   const page3 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page3.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page3.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page3);
   await page3.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -224,6 +240,7 @@ try {
 
   // ---- 4. MolQL search selects residues, bad queries report loudly
   await page.goto(`${BASE}#/protein`, { waitUntil: 'networkidle' });
+  await openDetails(page);
   await page.waitForSelector('#seqstrip button[data-res]', { timeout: 90000 });
   await page.fill('#molq', 'resi 1:10');
   await page.click('#dock-protein button[title="Select matching residues"]');
@@ -242,6 +259,7 @@ try {
 
   // ---- 5. genome tracks: upload BED, locus filter narrows rows
   await page.goto(`${BASE}#/tracks`, { waitUntil: 'networkidle' });
+  await openDetails(page);
   await page.waitForSelector('#title-tracks', { timeout: 90000 });
   const types = await page.locator('#ro-tracktypes').textContent();
   if (!types || !types.includes('bed')) fail(`track classes missing bed: ${types}`);
@@ -330,6 +348,7 @@ try {
 
   // ---- 8. plate wells: open the plate root, switch wells by picker.
   await page.goto(`${BASE}#/cells`, { waitUntil: 'networkidle' });
+  await openDetails(page);
   await page.waitForSelector('#chaninfo .mrow', { timeout: 90000 });
   await page.fill('#zurl', '/samples/plate_demo.zarr');
   await page.click('#dock-cells button[title^="Open a remote"]');
@@ -684,6 +703,7 @@ try {
   };
   const { dirPath: ddPath, sl1: ddSl1, sl2: ddSl2 } = dicomdirFiles();
   await page.goto(`${BASE}#/worklist`, { waitUntil: 'networkidle' });
+  await openDetails(page);
   await page.waitForSelector('#dock-worklist', { timeout: 90000 });
   await page.setInputFiles('#dicomdir-upload', [ddPath, ddSl1, ddSl2]);
   await page.waitForFunction(
@@ -698,6 +718,7 @@ try {
   );
   console.log('dicomdir series opens 2 files');
   await page.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page);
   await page.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1394,14 +1415,17 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.getElementById('viewgrid')?.dataset.full, null, { timeout: 30000 });
   console.log('Escape exits fullscreen');
-  // Toolbar toggle: hiding the dock row gives the stage back to viewports.
+  // Toolbar toggle. The toolbar now floats over the image like a site's nav
+  // instead of pushing it down, so the assertion is the stronger one: the
+  // stage already owns the full work area, and showing or hiding chrome must
+  // not cost the image a single pixel of height.
   const gridH = () => page.evaluate(() => document.getElementById('viewgrid')?.getBoundingClientRect().height);
   const hOpen = await gridH();
   await page.click('#docktoggle');
   await page.waitForFunction(() => !document.getElementById('dockrow-2d'), null, { timeout: 30000 });
   const hHidden = await gridH();
-  if (!(hHidden > hOpen)) fail(`toolbar hide did not grow the stage: ${hOpen} -> ${hHidden}`);
-  else console.log(`toolbar toggle grows stage: ${Math.round(hOpen)} -> ${Math.round(hHidden)}`);
+  if (Math.abs(hHidden - hOpen) > 1) fail(`toolbar is not an overlay — it changed stage height: ${hOpen} -> ${hHidden}`);
+  else console.log(`toolbar overlays the stage, costing it no height: ${Math.round(hOpen)} == ${Math.round(hHidden)}`);
   await page.click('#docktoggle');
   await page.waitForSelector('#dockrow-2d', { timeout: 30000 });
   await page.click(`#filetabs [data-closetab="${other}"]`);
@@ -1414,6 +1438,7 @@ try {
   const page4 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page4.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page4.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page4);
   await page4.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1437,6 +1462,7 @@ try {
   const page5 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page5.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page5.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page5);
   await page5.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1498,6 +1524,7 @@ try {
   const page6 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page6.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page6.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page6);
   await page6.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1525,6 +1552,7 @@ try {
   const page7 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page7.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page7.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page7);
   await page7.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1549,6 +1577,7 @@ try {
   const page8 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page8.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page8.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page8);
   await page8.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1595,6 +1624,7 @@ try {
   const page9 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page9.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page9.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page9);
   await page9.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1645,6 +1675,7 @@ try {
   const page10 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page10.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page10.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page10);
   await page10.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1695,6 +1726,7 @@ try {
   const page11 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page11.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page11.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page11);
   await page11.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1720,6 +1752,7 @@ try {
   const page12 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page12.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page12.goto(`${BASE}#/report`, { waitUntil: 'networkidle' });
+  await openDetails(page12);
   await page12.waitForFunction(
     () => /measurement\(s\)/.test(document.querySelector('#title-report p')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1783,6 +1816,7 @@ try {
   const page13 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page13.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page13.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page13);
   await page13.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1822,6 +1856,7 @@ try {
   const page14 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page14.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page14.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page14);
   await page14.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1844,6 +1879,7 @@ try {
   const page15 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page15.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page15.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page15);
   await page15.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1867,6 +1903,7 @@ try {
   const page16 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page16.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page16.goto(`${BASE}#/tracks`, { waitUntil: 'networkidle' });
+  await openDetails(page16);
   await page16.waitForSelector('#title-tracks', { timeout: 90000 });
   await page16.setInputFiles('#track-upload', vcfPath);
   await page16.waitForFunction(
@@ -1960,6 +1997,7 @@ try {
   const page17 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page17.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page17.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page17);
   await page17.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -1998,6 +2036,7 @@ try {
   const page18 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page18.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page18.goto(`${BASE}#/protein`, { waitUntil: 'networkidle' });
+  await openDetails(page18);
   await page18.waitForSelector('#seqstrip button[data-res]', { timeout: 90000 });
   await page18.click('#dock-protein button[title^="Find ligand pockets"]');
   await page18.waitForFunction(
@@ -2124,6 +2163,7 @@ try {
   const page19 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page19.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page19.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page19);
   await page19.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -2223,6 +2263,7 @@ try {
   const page20 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page20.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page20.goto(`${BASE}#/atlas`, { waitUntil: 'networkidle' });
+  await openDetails(page20);
   await page20.waitForFunction(
     () => /femur/i.test(document.getElementById('ro-atlas-term')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -2374,6 +2415,7 @@ try {
   const page21 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page21.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page21.goto(`${BASE}#/learn`, { waitUntil: 'networkidle' });
+  await openDetails(page21);
   await page21.waitForFunction(
     () => /spike/i.test(document.getElementById('learn-pathway')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -2425,6 +2467,7 @@ try {
   );
   console.log('bundle deep-links protein view:', await page21.locator('#ro-pathogen').textContent());
   await page21.goto(`${BASE}#/learn`, { waitUntil: 'networkidle' });
+  await openDetails(page21);
   // M2 organoid bundle: story pairs 6M0J with the idr0083 screen, quiz
   // scores the single-channel fact (options stay byte-pinned)
   await page21.locator('#dock-learn select[aria-label="Disease bundle"]').selectOption('organoid-context');
@@ -2442,6 +2485,7 @@ try {
   if (!oprov.includes('idr-screens') || !oprov.includes('CC-BY-4.0')) fail(`organoid provenance wrong: ${oprov}`);
   else console.log(`organoid provenance ${oprov}`);
   await page21.goto(`${BASE}#/learn`, { waitUntil: 'networkidle' });
+  await openDetails(page21);
   // M4 celiac bundle: story pins 4OZF chains, quiz scores the 13-contact fact
   await page21.locator('#dock-learn select[aria-label="Disease bundle"]').selectOption('celiac-tcr');
   await page21.waitForFunction(
@@ -2472,6 +2516,7 @@ try {
   const page22 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page22.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page22.goto(`${BASE}#/worklist`, { waitUntil: 'networkidle' });
+  await openDetails(page22);
   await page22.waitForSelector('#dock-cohort', { timeout: 90000 });
   const cohortChip = await page22.locator('#ro-cohort').textContent();
   if (!/0\/3 done/.test(cohortChip ?? '')) fail(`cohort progress wrong at start: ${cohortChip}`);
@@ -2484,6 +2529,7 @@ try {
   );
   console.log('cohort case opens the series in the viewer');
   await page22.goto(`${BASE}#/worklist`, { waitUntil: 'networkidle' });
+  await openDetails(page22);
   await page22.waitForSelector('#dock-cohort', { timeout: 90000 });
   await page22.waitForFunction(
     () => (document.getElementById('ro-case-lung-nodule')?.textContent ?? '').includes('reading'),
@@ -2541,6 +2587,7 @@ try {
   const page23 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page23.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page23.goto(`${BASE}#/learn`, { waitUntil: 'networkidle' });
+  await openDetails(page23);
   await page23.waitForSelector('#dock-selftest', { timeout: 90000 });
   await page23.click('#dock-selftest button[title^="Start the 95-question"]');
   await page23.waitForFunction(
@@ -2657,6 +2704,7 @@ try {
   const page24 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page24.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page24.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page24);
   await page24.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -2690,6 +2738,7 @@ try {
   const page25 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page25.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page25.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page25);
   await page25.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
@@ -2724,6 +2773,7 @@ try {
   const page26 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page26.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await page26.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await openDetails(page26);
   await page26.waitForFunction(
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },

@@ -186,7 +186,7 @@ export function App(): JSX.Element {
         {!isMobile && <Rail route={route} go={go} />}
         <div className="frame">
           <TopBar route={route} go={go} onOpenPalette={() => setPalOpen(true)} onSelectSeries={(s) => { go('viewer'); openSeries(s); }} />
-          <div className={isViewer && insOpen ? 'main' : 'main main-full'}>
+          <div className="main main-full">
             <section className="viewport">{content}</section>
             {isViewer && insOpen && <Inspector />}
           </div>
