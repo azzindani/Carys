@@ -11,7 +11,19 @@
    56px of glyphs against the viewport edge instead of 152px of labelled
    rows, so the image keeps the width. */
 .workarea { flex: 1; min-height: 0; min-width: 0; display: flex; gap: var(--sp-2); }
-.toolstrip { flex: none; width: 56px; min-height: 0; display: flex; flex-direction: column; }
+/* The tool palette floats against the left edge of the image rather than
+   holding a column of its own. */
+.toolstrip {
+  position: absolute; left: var(--sp-2); top: 50%; transform: translateY(-50%);
+  z-index: 12; width: 54px; max-height: 84%;
+  display: flex; flex-direction: column;
+  background: color-mix(in srgb, var(--color-surface-1) 88%, transparent);
+  border: 1px solid var(--color-line); border-radius: var(--radius-md);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-2);
+  opacity: 0.72; transition: opacity var(--dur) var(--ease);
+}
+.toolstrip:hover, .toolstrip:focus-within { opacity: 1; }
 
 /* A dock laid out as a column: groups stack, controls go full width. */
 .dock.column {
@@ -47,18 +59,29 @@
   display: grid; gap: var(--sp-2); align-items: stretch;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
 }
-/* One scrolling row, not three wrapped ones.
-   Wrapping let the toolbar claim 12–15% of the screen. A single row that
-   scrolls sideways keeps every control in the DOM, visible and clickable
-   (Playwright scrolls a target into view before acting on it) while costing
-   ~3%. The image gets the difference. */
+/* The toolbar floats over the image, the way a site's nav floats over the
+   hero — it does not push the content down. The viewport keeps the whole
+   work area and the bar rides on top, fading back until you reach for it.
+   The grid insets its *content* by the bar's height so the bar never covers
+   a pane header; the grid's own box is unchanged, so toggling the toolbar
+   still costs the image no height. */
+.workarea { position: relative; --dockbar-h: 42px; }
+.workarea:has(.dockrow) .viewgrid { padding-top: var(--dockbar-h); }
 .dockrow {
-  flex: none; display: flex; gap: var(--sp-2);
+  position: absolute; top: 0; left: 0; right: 0; z-index: 12;
+  height: var(--dockbar-h);
+  display: flex; gap: var(--sp-2);
   flex-wrap: nowrap; align-items: center;
   overflow-x: auto; overflow-y: hidden;
-  margin-bottom: var(--sp-2); padding-bottom: 2px;
+  padding: var(--sp-2) var(--sp-3);
+  background: color-mix(in srgb, var(--color-surface-1) 88%, transparent);
+  border-bottom: 1px solid var(--color-line);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   scrollbar-width: thin;
+  opacity: 0.55;
+  transition: opacity var(--dur) var(--ease);
 }
+.dockrow:hover, .dockrow:focus-within { opacity: 1; }
 .dockrow .dock {
   flex: none; flex-wrap: nowrap; align-items: center;
   background: transparent; border: 0; box-shadow: none;

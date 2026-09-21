@@ -32,25 +32,16 @@ export function saveAppearance(textSize: TextSize, density: Density): void {
   } catch { /* private mode: prefs just don't survive */ }
 }
 
-/**
- * The details panel earns its column only when there is width to spare.
- * Below 1100px it folds under the stage and costs ~20% of the screen, so it
- * starts collapsed there and the toggle brings it back.
- */
-function wideEnoughForInspector(): boolean {
-  return typeof window === 'undefined' || window.innerWidth > 1100;
-}
-
 const initial: UiState = {
   view: 'mpr', render3d: 'surface', tool: 'view', src: 'mask', method: 'blocky',
   preset: 'auto', overlay: true, brush: 3, threshold: 0, series: '',
   proj: 'slice', slab: 9, oblA: 0, oblB: 0, oblPlane: 'axial' as const, growLo: 100, growHi: 3000, measureKind: 'length',
   layout: 'tri', sync: true, hang: 'default',
   compareSeries: '', compareMode: 'off' as CompareMode, compareAlpha: 0.5,
-  // The control deck starts collapsed to its switcher strip so the image
-  // owns ~75% of a phone; tapping Tools/Display/Files expands it over the
-  // bottom half, which is where those controls belong once you want them.
-  tabs: [], fullVp: null, mView: 'v3d', mSheet: null, docksOpen: true, insOpen: wideEnoughForInspector(), cineFps: 4, invert: false, lut: 'Grayscale',
+  // Chrome starts out of the way: the details drawer closed, the mobile
+  // control deck collapsed to its switcher strip. Tools reveal on demand,
+  // the way a site's nav does — the image is the product.
+  tabs: [], fullVp: null, mView: 'v3d', mSheet: null, docksOpen: true, insOpen: false, cineFps: 4, invert: false, lut: 'Grayscale',
   ...loadAppearance(),
 };
 

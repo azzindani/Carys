@@ -460,13 +460,42 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
 
   /** Drag-to-orbit: the demo's slow orbit drag now really rotates the volume. */
   const orbDrag = useRef<{ x: number; y: number } | null>(null);
+  // Touch: one finger orbits, two fingers pinch to zoom — the same contract
+  // a 3D viewport gives a trackpad, so zoom is a gesture and not a button.
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ d: number; z: number } | null>(null);
+
   const onOrbitDown = (e: React.PointerEvent): void => {
+    if (e.pointerType === 'touch') {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.current.size === 2) {
+        const [a, b] = [...touches.current.values()];
+        orbDrag.current = null;                       // a pinch is not an orbit
+        pinch.current = { d: Math.hypot(a!.x - b!.x, a!.y - b!.y), z: session.zoom3d };
+        return;
+      }
+      if (touches.current.size > 2) return;
+    }
     orbDrag.current = { x: e.clientX, y: e.clientY };
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
   const onOrbitMove = (e: React.PointerEvent): void => {
+    if (e.pointerType === 'touch' && touches.current.has(e.pointerId)) {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const p = pinch.current;
+      if (p && touches.current.size >= 2) {
+        const [a, b] = [...touches.current.values()];
+        const d = Math.hypot(a!.x - b!.x, a!.y - b!.y);
+        if (p.d > 0) {
+          session.zoom3d = Math.min(8, Math.max(0.4, p.z * (d / p.d)));
+          queueOrbit();
+        }
+        return;
+      }
+    }
     const d = orbDrag.current;
-    if (!d || !(e.buttons & 1)) return;
+    // Touch reports buttons === 0 while dragging, so only gate a mouse on it.
+    if (!d || (e.pointerType !== 'touch' && !(e.buttons & 1))) return;
     const TAU = Math.PI * 2;
     const o = (((angles.current.orbit + (e.clientX - d.x) * 0.006) % TAU) + TAU) % TAU;
     const t = Math.min(1.2, Math.max(-1.2, angles.current.tilt + (e.clientY - d.y) * 0.004));
@@ -475,7 +504,13 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     setTilt(t);
     queueOrbit();
   };
-  const onOrbitUp = (): void => { orbDrag.current = null; };
+  const onOrbitUp = (e?: React.PointerEvent): void => {
+    if (e?.pointerType === 'touch') {
+      touches.current.delete(e.pointerId);
+      if (touches.current.size < 2) pinch.current = null;
+    }
+    orbDrag.current = null;
+  };
 
   /** One dock, two homes: above the viewport on desktop, inside the control
    *  deck on mobile — so tools never cover the image they act on. */
@@ -626,6 +661,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
                 onPointerDown={onOrbitDown}
                 onPointerMove={onOrbitMove}
                 onPointerUp={onOrbitUp}
+                onPointerCancel={onOrbitUp}
               />
               {/* Viewport chrome, drawn as SVG/CSS over the CPU raster — the
                   orientation read every 3D tool gives you, with no GL context. */}

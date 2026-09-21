@@ -582,7 +582,46 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     if (getUi().tool === 'view' && getUi().sync) syncToVoxel(plane, e);
   };
 
+  /**
+   * Touch gestures, so zoom and pan are fingers rather than buttons:
+   * two fingers pinch to zoom and drag to pan, exactly as a map or a 3D
+   * viewport behaves. Tracked per pane; a second finger cancels whatever
+   * one-finger action was in progress so a pinch never paints a stroke.
+   */
+  const pinchRef = useRef<Record<Plane, { d: number; z: number; cx: number; cy: number; px: number; py: number } | null>>({
+    axial: null, coronal: null, sagittal: null,
+  });
+  const touchesRef = useRef<Record<Plane, Map<number, { x: number; y: number }>>>({
+    axial: new Map(), coronal: new Map(), sagittal: new Map(),
+  });
+
+  const spread = (pts: { x: number; y: number }[]): { d: number; cx: number; cy: number } => {
+    const [a, b] = pts;
+    return {
+      d: Math.hypot(a!.x - b!.x, a!.y - b!.y),
+      cx: (a!.x + b!.x) / 2,
+      cy: (a!.y + b!.y) / 2,
+    };
+  };
+
   const onCanvasDown = (plane: Plane) => (e: React.PointerEvent): void => {
+    if (e.pointerType === 'touch') {
+      const m = touchesRef.current[plane];
+      m.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (m.size === 2) {
+        // Second finger: abandon any one-finger stroke and start a pinch.
+        strokeState.current.stroke = null;
+        strokeState.current.oblStroke = null;
+        dragRef.current = null;
+        const s = spread([...m.values()]);
+        pinchRef.current[plane] = {
+          d: s.d, z: zoomRef.current[plane], cx: s.cx, cy: s.cy,
+          px: panRef.current[plane].x, py: panRef.current[plane].y,
+        };
+        return;
+      }
+      if (m.size > 2) return;
+    }
     if (getUi().tool === 'measure') {
       measureClick(hostRef.current, plane, e);
       return;
@@ -592,6 +631,30 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
       return;
     }
     paintDown(hostRef.current, strokeState.current, plane, e, planeVoxelRef.current);
+  };
+
+  const onCanvasTouchMove = (plane: Plane) => (e: React.PointerEvent): boolean => {
+    if (e.pointerType !== 'touch') return false;
+    const m = touchesRef.current[plane];
+    if (!m.has(e.pointerId)) return false;
+    m.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const p = pinchRef.current[plane];
+    if (!p || m.size < 2) return false;
+    const s = spread([...m.values()]);
+    if (p.d > 0) {
+      zoomRef.current[plane] = Math.min(8, Math.max(0.5, p.z * (s.d / p.d)));
+      panRef.current[plane] = { x: p.px + (s.cx - p.cx), y: p.py + (s.cy - p.cy) };
+      applyPanZoom(plane);
+      setZoomTick((t) => t + 1);
+    }
+    return true;
+  };
+
+  const onCanvasTouchEnd = (plane: Plane) => (e: React.PointerEvent): void => {
+    if (e.pointerType !== 'touch') return;
+    const m = touchesRef.current[plane];
+    m.delete(e.pointerId);
+    if (m.size < 2) pinchRef.current[plane] = null;
   };
 
   const onAxialUp = (): void => {
@@ -679,8 +742,14 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
                 onWheel={wheelZoom(p)}
                 onDoubleClick={() => resetZoom(p)}
                 onPointerDown={onCanvasDown(p)}
-                onPointerMove={(e) => { paintMove(hostRef.current, strokeState.current, p, e, planeVoxelRef.current); onViewMove(e); }}
-                onPointerUp={(e) => { onAxialUp(); onViewUp(p, e); }}
+                onPointerMove={(e) => {
+                  // A pinch owns the gesture: no painting, no crosshair drag.
+                  if (onCanvasTouchMove(p)(e)) return;
+                  paintMove(hostRef.current, strokeState.current, p, e, planeVoxelRef.current);
+                  onViewMove(e);
+                }}
+                onPointerUp={(e) => { onCanvasTouchEnd(p)(e); onAxialUp(); onViewUp(p, e); }}
+                onPointerCancel={onCanvasTouchEnd(p)}
               />
               {/* Study identity in the corners, the way a reading workstation
                   shows it. Edge letters + scale bar stay on the canvas. */}
