@@ -144,8 +144,19 @@
 .view-title p { margin: 0; color: var(--color-faint); font-size: var(--fs-sm); }
 .view-title .right { margin-left: auto; display: flex; align-items: center; gap: var(--sp-3); }
 
-.panes { display: flex; gap: var(--sp-4); flex-wrap: wrap; align-items: flex-start; }
+/* A pane group carrying a canvas is a viewport, not a card deck, so it gets
+   a far larger cap than the old 520px — which left two-thirds of Atlas,
+   Protein and Cells empty.
+   The canvas keeps its own render size: these views rasterise at a fixed
+   resolution with a fixed camera, so stretching it to fill crops the
+   subject instead of letterboxing it. Truly filling these viewports needs
+   each view to resize its canvas and reframe — a code change per view, not
+   a stylesheet one. */
+.panes { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: flex-start; min-width: 0; }
 .panes > .pane { flex: 1 1 300px; max-width: 520px; }
+.panes:has(canvas) > .pane { max-width: min(980px, 100%); }
+.panes:has(canvas) > .pane .stage { display: flex; align-items: center; justify-content: center; }
+.panes:has(canvas) > .pane canvas { max-width: 100%; height: auto; }
 
 /* ------------------------------------------------------------- inspector
    A drawer over the image, not a column beside it. Closed by default; the
