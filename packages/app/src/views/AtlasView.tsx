@@ -189,7 +189,7 @@ export function AtlasView(): JSX.Element {
       setStatus(`${label.term} · ${st.bpId} · ${(fitted.indices.length / 3).toLocaleString()} tris · ${EDUCATION_BADGE}`);
     } catch (e) {
       setErr((e as Error).message);
-      setStatus(`atlas failed: ${(e as Error).message}`);
+      setStatus(`atlas failed: ${(e as Error).message}`, 'error');
     }
   };
 
@@ -276,7 +276,7 @@ export function AtlasView(): JSX.Element {
     try {
       await ensureTerms();
     } catch (e) {
-      setStatus(`brain labels failed: ${(e as Error).message}`);
+      setStatus(`brain labels failed: ${(e as Error).message}`, 'error');
       return;
     }
     const found = searchBrainLabels(bquery, 25);

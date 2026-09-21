@@ -84,7 +84,7 @@ export function setCompare(series: string, mode: 'checker' | 'alpha' | 'subtract
       toast(`Compare: ${u.series} vs ${series} (${mode})`);
     })
     .catch((e) => {
-      setStatus(`compare failed: ${(e as Error).message}`);
+      setStatus(`compare failed: ${(e as Error).message}`, 'error');
       setUi({ compareSeries: '', compareMode: 'off' });
       paintBus.mpr();
     });
@@ -222,20 +222,20 @@ export async function loadSeries(name: string, uploadedVol?: { dims: [number, nu
     return init;
   } catch (e) {
     if (signal.aborted || (e as Error)?.name === 'AbortError') return null;
-    setStatus(`failed: ${(e as Error).message}`);
+    setStatus(`failed: ${(e as Error).message}`, 'error');
     return null;
   }
 }
 
 export function doUndo(): void {
-  if (!session.editMask || !session.img) { toast('Nothing to undo'); return; }
+  if (!session.editMask || !session.img) { toast('Nothing to undo', 'error'); return; }
   const prev = undo.undo(session.editMask.length);
   if (prev) {
     session.editMask.set(prev);
     session.maskVer++;
     session.seg = { dims: session.img.dims, data: session.editMask };
     bump();
-  } else toast('Nothing to undo');
+  } else toast('Nothing to undo', 'error');
 }
 
 export function doClear(): void {
@@ -244,7 +244,7 @@ export function doClear(): void {
   session.editMask.fill(0);
   session.maskVer++;
   bump();
-  toast('Mask cleared');
+  toast('Mask cleared', 'ok');
 }
 
 export function stampAt(x: number, y: number, z: number, value: number): void {
@@ -297,7 +297,7 @@ export function saveAxialPng(canvas: HTMLCanvasElement): void {
   a.download = `axial-${getUi().series}.png`;
   a.href = canvas.toDataURL('image/png');
   a.click();
-  toast('Axial PNG saved');
+  toast('Axial PNG saved', 'ok');
 }
 
 export function saveMaskNii(): void {
@@ -312,7 +312,7 @@ export function saveMaskNii(): void {
   a.href = URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  toast('Mask .nii saved — open it in the 3D view upload');
+  toast('Mask .nii saved — open it in the 3D view upload', 'ok');
 }
 
 /** Shared file-open router (desktop toolbar + mobile Files panel): routes
@@ -353,7 +353,7 @@ export async function uploadNiiFile(f: File): Promise<void> {
     }
     toast(`Loaded ${f.name}`);
   } catch (err) {
-    setStatus(`upload failed: ${(err as Error).message}`);
+    setStatus(`upload failed: ${(err as Error).message}`, 'error');
   }
 }
 
@@ -394,7 +394,7 @@ export async function uploadNrrdPair(files: File[]): Promise<void> {
     }
     toast(`Loaded pair ${h.name} + ${dataFile.name}`);
   } catch (err) {
-    setStatus(`upload failed: ${(err as Error).message}`);
+    setStatus(`upload failed: ${(err as Error).message}`, 'error');
   }
 }
 
@@ -425,9 +425,9 @@ export async function importMeshFile(f: File): Promise<void> {
     session.mesh = mesh;
     bump();
     setStatus(`${tris.toLocaleString()} tris imported from ${f.name} — src/threshold edits re-extract`);
-    toast(`Mesh imported: ${tris.toLocaleString()} triangles`);
+    toast(`Mesh imported: ${tris.toLocaleString()} triangles`, 'ok');
   } catch (err) {
-    setStatus(`mesh import failed: ${(err as Error).message}`);
+    setStatus(`mesh import failed: ${(err as Error).message}`, 'error');
   }
 }
 
@@ -492,9 +492,9 @@ export async function importTractFile(f: File): Promise<void> {
     const noun = count === 1 ? 'streamline' : 'streamlines';
     const extra = scalarName ? ` · scalars: ${scalarName}` : '';
     setStatus(`${count.toLocaleString()} ${noun} imported from ${f.name}${extra}`);
-    toast(`Tracts imported: ${count.toLocaleString()} ${noun}${extra}`);
+    toast(`Tracts imported: ${count.toLocaleString()} ${noun}${extra}`, 'ok');
   } catch (err) {
-    setStatus(`tract import failed: ${(err as Error).message}`);
+    setStatus(`tract import failed: ${(err as Error).message}`, 'error');
   }
 }
 
@@ -606,7 +606,7 @@ export function setSpacing(axis: 0 | 1 | 2, raw: string): void {
   }
   const v = Number(raw);
   if (!Number.isFinite(v) || v <= 0 || v > 1000) {
-    setStatus(`spacing rejected: "${raw}" is not a positive mm value`);
+    setStatus(`spacing rejected: "${raw}" is not a positive mm value`, 'error');
     return;
   }
   const sp: [number, number, number] = [...(img.spacing ?? [1, 1, 1])] as [number, number, number];

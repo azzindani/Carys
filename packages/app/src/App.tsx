@@ -65,7 +65,7 @@ export function App(): JSX.Element {
       void resolveVolume(s)
         .then((vol) => loadSeries(s, vol))
         .then((init) => { if (init) setSliceInit(init); })
-        .catch((e) => setStatus(`pull failed: ${(e as Error).message}`));
+        .catch((e) => setStatus(`pull failed: ${(e as Error).message}`, 'error'));
       return;
     }
     void loadSeries(s).then((init) => { if (init) setSliceInit(init); });

@@ -189,6 +189,16 @@
   white-space: nowrap; overflow: hidden;
 }
 .status .dot { color: var(--color-accent); font-size: var(--fs-3xs); animation: pulse 2.2s infinite; }
+/* Severity is the whole point of a status line: a failure must not read
+   like idle chatter (§12/§14). */
+.status[data-sev="ok"] .dot { color: var(--color-ok); }
+.status[data-sev="warn"] .dot { color: var(--color-warn); animation: none; }
+.status[data-sev="error"] .dot { color: var(--color-danger); animation: none; }
+.status[data-sev="warn"] #status-text { color: var(--color-warn); }
+.status[data-sev="error"] #status-text { color: var(--color-danger); font-weight: 600; }
+.status[data-sev="error"] { background: rgb(240 86 74 / 0.08); border-top-color: rgb(240 86 74 / 0.35); }
+.status-inline[data-sev="warn"] { color: var(--color-warn); }
+.status-inline[data-sev="error"] { color: var(--color-danger); font-weight: 600; }
 @keyframes pulse { 50% { opacity: 0.3; } }
 #status-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .status .sp { flex: 1; }

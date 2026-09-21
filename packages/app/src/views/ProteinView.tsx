@@ -123,7 +123,7 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
 
   const doUndoSel = (): void => {
     if (!selHist.current.canUndo) {
-      toast('Nothing to undo');
+      toast('Nothing to undo', 'error');
       return;
     }
     setSelState(selHist.current.undo() ?? null);
@@ -174,7 +174,7 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
       // A queued tracks link belongs to the model just opened.
       requestAnimationFrame(() => consumeLink(m));
     } catch (err) {
-      setStatus(`model load failed: ${(err as Error).message}`);
+      setStatus(`model load failed: ${(err as Error).message}`, 'error');
     }
   };
 
@@ -194,11 +194,11 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
     session.digestPins = { [PATHOGEN_DIGEST_ID]: PATHOGEN_DIGEST_PIN };
     void fetch(`/digests/rcsb-pathogens/${entry.file}`).then(async (r) => {
       if (!r.ok) {
-        setStatus(`pathogen fetch failed: ${entry.file} (${r.status})`);
+        setStatus(`pathogen fetch failed: ${entry.file} (${r.status})`, 'error');
         return;
       }
       openModel(await r.text(), `${entry.pdbId} (${entry.entry.term})`);
-    }).catch((e) => setStatus(`pathogen load failed: ${(e as Error).message}`));
+    }).catch((e) => setStatus(`pathogen load failed: ${(e as Error).message}`, 'error'));
   };
 
   /** M1 interface contacts: select the precomputed contact residues on the
@@ -311,7 +311,7 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
         setStatus(`${found.length} pocket(s): largest ${top.residues.length} residues selected`);
       }
     } catch (err) {
-      setStatus(`pocket query failed: ${(err as Error).message}`);
+      setStatus(`pocket query failed: ${(err as Error).message}`, 'error');
     }
   };
 
@@ -356,7 +356,7 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
       setStatus(`${file.name}: ${report.nIncluded}/${report.nScored} CAs in density (${pct}) · translation-only dock, no rotation search`);
       toast(`Map fit: ${report.nIncluded}/${report.nScored} in density (${pct})`);
     } catch (err) {
-      setStatus(`map fit failed: ${(err as Error).message}`);
+      setStatus(`map fit failed: ${(err as Error).message}`, 'error');
     }
   };
 

@@ -44,7 +44,7 @@ export async function uploadDicomFile(f: File): Promise<void> {
       try {
         grid = parseVlGrid(readDataset(buf.slice(0)));
       } catch (e) {
-        setStatus(`VL rejected: ${(e as Error).message}`);
+        setStatus(`VL rejected: ${(e as Error).message}`, 'error');
         return;
       }
       const name = `vl: ${f.name}`;
@@ -61,7 +61,7 @@ export async function uploadDicomFile(f: File): Promise<void> {
       try {
         doc = parseEncapsulatedDoc(readDataset(buf.slice(0)));
       } catch (e) {
-        setStatus(`Document rejected: ${(e as Error).message}`);
+        setStatus(`Document rejected: ${(e as Error).message}`, 'error');
         return;
       }
       const name = `doc: ${f.name}`;
@@ -79,7 +79,7 @@ export async function uploadDicomFile(f: File): Promise<void> {
       try {
         plan = parseRtPlan(readDataset(buf.slice(0)));
       } catch (e) {
-        setStatus(`RTPLAN rejected: ${(e as Error).message}`);
+        setStatus(`RTPLAN rejected: ${(e as Error).message}`, 'error');
         return;
       }
       // No pixels: keep the current image on screen, register the plan as
@@ -101,7 +101,7 @@ export async function uploadDicomFile(f: File): Promise<void> {
       try {
         grid = parseRtDose(readDataset(buf.slice(0)));
       } catch (e) {
-        setStatus(`RTDOSE rejected: ${(e as Error).message}`);
+        setStatus(`RTDOSE rejected: ${(e as Error).message}`, 'error');
         return;
       }
       const st = doseStats(grid);
@@ -132,7 +132,7 @@ export async function uploadDicomFile(f: File): Promise<void> {
     try {
       parts = parseDicomFrames(buf.slice(0));
     } catch (e) {
-      setStatus(`DICOM rejected: ${(e as Error).message}`);
+      setStatus(`DICOM rejected: ${(e as Error).message}`, 'error');
       return;
     }
     const first = parts[0]!.meta;
@@ -180,6 +180,6 @@ export async function uploadDicomFile(f: File): Promise<void> {
       bump(); // MprView consumes the pending init on this version
     }
   } catch (err) {
-    setStatus(`upload failed: ${(err as Error).message}`);
+    setStatus(`upload failed: ${(err as Error).message}`, 'error');
   }
 }
