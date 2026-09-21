@@ -7,10 +7,10 @@
 /* ---------------------------------------------------------------- buttons */
 .iconbtn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
-  min-height: var(--tap);
-  padding: var(--sp-2) var(--sp-4);
+  min-height: var(--ctl-h);
+  padding: 0 var(--sp-3);
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--color-muted);
   font-size: var(--fs-sm); font-weight: 500;
@@ -37,8 +37,8 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
 /* solid call-to-action (worklist open, primary confirms) */
 .btn-primary {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
-  min-height: var(--tap); padding: var(--sp-3) var(--sp-6);
-  border: none; border-radius: var(--radius-sm);
+  min-height: var(--ctl-h); padding: 0 var(--sp-5);
+  border: none; border-radius: var(--radius-xs);
   background: linear-gradient(180deg, var(--color-accent-hi), var(--color-accent-lo));
   color: var(--color-on-accent);
   font-size: var(--fs-sm); font-weight: 650; letter-spacing: -0.005em;
@@ -50,8 +50,8 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
 
 .btn-ghost {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
-  min-height: var(--tap); padding: var(--sp-3) var(--sp-5);
-  border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
+  min-height: var(--ctl-h); padding: 0 var(--sp-4);
+  border: 1px solid var(--color-line-strong); border-radius: var(--radius-xs);
   background: var(--color-surface-2); color: var(--color-muted);
   font-size: var(--fs-sm); font-weight: 500;
   transition: all var(--dur-fast) var(--ease);
@@ -61,17 +61,17 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
 /* --------------------------------------------------------- segmented set */
 /* Inset track, raised thumb — the control 3D tools use for mode switching. */
 .seg {
-  display: inline-flex; align-items: stretch; gap: 2px;
-  padding: 3px;
+  display: inline-flex; align-items: stretch; gap: 1px;
+  padding: 2px;
   background: var(--color-sunken);
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
 }
 .seg button {
   border: none; background: transparent; color: var(--color-faint);
-  min-height: calc(var(--tap) - 8px);
-  padding: var(--sp-2) var(--sp-4);
-  border-radius: var(--radius-xs);
+  min-height: calc(var(--ctl-h) - 6px);
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-2xs);
   font-size: var(--fs-sm); font-weight: 550; white-space: nowrap;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
@@ -83,13 +83,14 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
 }
 .seg button.on[data-accent], .seg button[aria-pressed="true"][data-accent] { color: var(--color-accent); }
 
-/* ------------------------------------------------------------------ chips */
+/* ------------------------------------------------------------------ chips
+   Numeric readouts. Rectangular and monospace — a pill-shaped number reads
+   as a web badge; a tool shows you a field. */
 .chip {
   display: inline-flex; align-items: center; gap: var(--sp-1);
-  /* clears the 24px floor the mobile audit enforces (§22) */
-  min-height: 24px; padding: var(--sp-1) var(--sp-3);
+  min-height: var(--field-h); padding: 0 var(--sp-3);
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-2xs);
   background: var(--color-sunken);
   color: var(--color-muted);
   font-family: var(--font-mono); font-size: var(--fs-2xs); font-weight: 500;
@@ -103,9 +104,9 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
 /* filter chip (worklist) */
 .fchip {
   display: inline-flex; align-items: center; gap: var(--sp-2);
-  min-height: var(--tap); padding: var(--sp-2) var(--sp-4);
+  min-height: var(--ctl-h); padding: 0 var(--sp-3);
   background: var(--color-surface-1); border: 1px solid var(--color-line);
-  border-radius: var(--radius-pill); color: var(--color-muted);
+  border-radius: var(--radius-2xs); color: var(--color-muted);
   font-size: var(--fs-sm); font-weight: 500;
   transition: all var(--dur-fast) var(--ease);
 }
@@ -125,11 +126,11 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
 .dock {
   display: flex; align-items: center; flex-wrap: wrap;
   gap: var(--sp-1);
-  padding: var(--sp-2) var(--sp-3);
+  padding: var(--sp-2);
   width: fit-content; max-width: 100%;
-  background: var(--glass);
+  background: var(--color-surface-1);
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-1);
   backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   color: var(--color-muted); font-size: var(--fs-sm);
@@ -142,21 +143,25 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
   display: flex; flex-direction: column; min-width: 0;
   background: var(--color-surface-1);
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-1);
   transition: border-color var(--dur) var(--ease);
 }
 .pane:hover { border-color: var(--color-line-strong); }
+/* Viewport header: a thin strip carrying the view's name and its own
+   controls, the way a 3D tool heads each viewport — not a padded card title. */
 .pane-head {
-  display: flex; align-items: center; gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-4);
+  display: flex; align-items: center; gap: var(--sp-2); flex: none;
+  min-height: calc(var(--ctl-h) + var(--sp-2));
+  padding: 0 var(--sp-2) 0 var(--sp-3);
   font-size: var(--fs-sm);
+  background: var(--color-surface-2);
   border-bottom: 1px solid var(--color-line);
 }
 .pane-head .name {
-  font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 600;
-  letter-spacing: 0.01em;
+  font-size: var(--fs-2xs); font-weight: 700; color: var(--color-muted);
+  text-transform: uppercase; letter-spacing: 0.1em;
 }
 .pane-head .sub { color: var(--color-faint); font-family: var(--font-mono); font-size: var(--fs-2xs); }
 .pane-head .vptools { margin-left: auto; display: flex; align-items: center; gap: 2px; }
@@ -183,10 +188,10 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
 /* --------------------------------------------------------------- inputs */
 select.dark {
   appearance: none; -webkit-appearance: none;
-  min-height: var(--tap);
+  min-height: var(--ctl-h);
   padding: var(--sp-2) calc(var(--sp-7) + var(--sp-1)) var(--sp-2) var(--sp-4);
   background: var(--color-surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' stroke='%2398a2b1' fill='none' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right var(--sp-4) center;
-  border: 1px solid var(--color-line); border-radius: var(--radius-sm);
+  border: 1px solid var(--color-line); border-radius: var(--radius-2xs);
   color: var(--color-text); font-size: var(--fs-sm); font-weight: 500;
   max-width: 220px;
   transition: border-color var(--dur-fast) var(--ease);
@@ -195,11 +200,11 @@ select.dark:hover { border-color: var(--color-line-strong); }
 select.dark:focus-visible { border-color: var(--color-accent); }
 
 .urlinput, .wl-search, .textinput {
-  min-height: var(--tap);
-  padding: var(--sp-2) var(--sp-4);
+  min-height: var(--ctl-h);
+  padding: 0 var(--sp-3);
   background: var(--color-sunken);
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-2xs);
   color: var(--color-text);
   font-size: var(--fs-sm);
   outline: none;
@@ -214,34 +219,85 @@ select.dark:focus-visible { border-color: var(--color-accent); }
 
 .chk {
   display: inline-flex; align-items: center; gap: var(--sp-2);
-  min-height: var(--tap);
+  min-height: var(--ctl-h);
   font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--color-muted);
   cursor: pointer;
 }
 .chk input { accent-color: var(--color-accent); width: 18px; height: 18px; }
 
-/* range: one styling for both engines, thumb reads as a control knob */
+/* ---- scrub field: the 3D-tool numeric control -------------------------
+   A rectangle carrying its own label and value, filled to the current
+   proportion, dragged horizontally. The native range input sits on top at
+   full size and stays keyboard-operable — the wire suite focuses these and
+   sends real arrow keys. */
+.field {
+  position: relative; display: inline-flex; align-items: center;
+  height: var(--field-h); min-width: 104px; flex: 0 1 auto;
+  padding: 0 var(--sp-3);
+  background: var(--color-sunken);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-2xs);
+  overflow: hidden; cursor: ew-resize;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.field:hover { border-color: var(--color-line-strong); }
+/* Solid fill behind the text, no edge rule — a 1px accent line landed
+   mid-label and read as a rendering glitch rather than a value. */
+.field-fill {
+  position: absolute; left: 0; top: 0; bottom: 0; width: var(--pct, 0%);
+  background: var(--color-accent-dim);
+  pointer-events: none;
+  transition: width var(--dur-fast) linear;
+}
+.field-lbl {
+  position: relative; z-index: 1; flex: 1; min-width: 0;
+  font-size: var(--fs-3xs); font-weight: 650; color: var(--color-muted);
+  text-transform: uppercase; letter-spacing: 0.07em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  pointer-events: none;
+}
+.field-val {
+  position: relative; z-index: 1; flex: none; padding-left: var(--sp-3);
+  font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--color-text);
+  font-variant-numeric: tabular-nums; pointer-events: none;
+}
+/* the input itself is the whole field, invisible but present and focusable */
+.field input[type="range"].styled {
+  position: absolute; inset: 0; z-index: 2;
+  width: 100%; height: 100%; margin: 0;
+  -webkit-appearance: none; appearance: none;
+  background: transparent; cursor: ew-resize;
+}
+.field input[type="range"].styled::-webkit-slider-runnable-track { height: 100%; background: transparent; }
+.field input[type="range"].styled::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 2px; height: 100%; margin-top: 0;
+  background: transparent; border: none; box-shadow: none; border-radius: 0;
+}
+.field input[type="range"].styled::-moz-range-track { height: 100%; background: transparent; }
+.field input[type="range"].styled::-moz-range-thumb { width: 2px; height: 100%; background: transparent; border: none; border-radius: 0; }
+.field:focus-within { border-color: var(--color-accent); box-shadow: var(--ring-accent); }
+
+/* plain range (viewport side rails) — knob reads as a control */
 input[type="range"] { accent-color: var(--color-accent); }
 input[type="range"].styled {
   -webkit-appearance: none; appearance: none;
-  height: var(--tap); background: transparent; cursor: pointer;
+  height: var(--ctl-h); background: transparent; cursor: pointer;
 }
 input[type="range"].styled::-webkit-slider-runnable-track {
-  height: 4px; background: var(--color-surface-4); border-radius: var(--radius-pill);
+  height: 3px; background: var(--color-surface-4); border-radius: var(--radius-pill);
 }
 input[type="range"].styled::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 15px; height: 15px; margin-top: -5.5px;
+  -webkit-appearance: none; width: 13px; height: 13px; margin-top: -5px;
   border-radius: 50%; background: var(--color-text); border: none;
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.6), var(--ring-accent);
   transition: transform var(--dur-fast) var(--ease);
 }
 input[type="range"].styled:hover::-webkit-slider-thumb { transform: scale(1.12); }
-input[type="range"].styled::-moz-range-track { height: 4px; background: var(--color-surface-4); border-radius: var(--radius-pill); }
+input[type="range"].styled::-moz-range-track { height: 3px; background: var(--color-surface-4); border-radius: var(--radius-pill); }
 input[type="range"].styled::-moz-range-thumb {
-  width: 15px; height: 15px; border-radius: 50%; background: var(--color-text); border: none;
+  width: 13px; height: 13px; border-radius: 50%; background: var(--color-text); border: none;
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.6), var(--ring-accent);
 }
-.dock input[type="range"].styled { width: 104px; }
 
 /* switch — sized by three variables so touch can scale it in one place */
 .switch {

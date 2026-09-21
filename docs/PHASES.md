@@ -556,6 +556,35 @@ measurement panel, NiiVue colormaps/tractography/docs)
   verify 4/4, build + typecheck:app clean. The 26 remaining unit failures
   are the pre-existing `samples/`-dependent ones, unchanged from baseline.
 
+## Shipped in the instrument pass (it looked like a dashboard, not a tool)
+Review of the pass above: it was modern, but it read as a web dashboard —
+pill-shaped controls, a toolbar wrapping ~280px across the top, label+slider
+rows, and a gizmo that was pure decoration. A 3D tool looks different.
+- [x] De-pilled: rounding retuned to instrument density (3→19px, still
+  proportional). Pills now only for status dots and toasts.
+- [x] Scrub fields replace slider rows (`SliderRow`): a compact rectangle
+  with the label inside, a proportional fill and a right-aligned value.
+  Still a native range input layered at full size, so the wire legs that
+  focus these and send real arrow keys keep working.
+- [x] Tool column replaces the wrapping toolbar: `#dock-mpr` gains a
+  `column` mode with icon+label tools against the viewport edge, cutting
+  the toolbar band from ~280px to ~180px. Kept as one dock because
+  `#undogrp` must stay inside `#dock-mpr` (journeys.mjs) and `#modeseg`
+  inside `#mpanel-tools` (mobile-audit.mjs).
+- [x] Density scales by pointer type, not breakpoint: `--ctl-h` 26px under
+  a mouse, 44px under a finger. Instrument tightness and the §22 touch
+  floor now come from one variable instead of fighting each other.
+- [x] Viewport headers became thin strips carrying the view name and its
+  own controls, the way a 3D tool heads each viewport.
+- [x] The axis gizmo is operable: clicking X/Y/Z snaps the camera, with
+  painter-ordered axes and hover feedback. It still renders no imagery —
+  the WebGL/Three ban test passes 4/4, unchanged.
+- [x] Re-verified after the density change: all 48 mobile states clean
+  (0 overflow, 0 sub-24px touch targets, deck flush to the fold);
+  650/650 non-sample unit tests, markers 2/2, verify 4/4, build and
+  typecheck:app clean. Desktop controls sit at 20px by design — §22's
+  audit is the touch profile, where the floor still holds.
+
 ## Closeout ledger (no pendings: everything below is shipped, blocked with an
 owner + unblock step, or accepted by design — verified 2026-09-14)
 - BLOCKED, owner: your machine — Docker image: `Dockerfile` ships but the

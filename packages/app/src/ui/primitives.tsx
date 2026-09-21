@@ -58,20 +58,57 @@ export function Seg<T extends string>({ id, dataKey, options, value, onChange, a
   );
 }
 
+/** Round for display without pretending to more precision than the step. */
+function fmtVal(v: number, step: number): string {
+  if (step >= 1) return String(Math.round(v));
+  const dp = Math.min(3, Math.max(0, -Math.floor(Math.log10(step))));
+  return v.toFixed(dp);
+}
+
+/**
+ * Scrub field — the control 3D tools actually use: a compact rectangle with
+ * the label inside it, a fill bar for the value and the number right-aligned,
+ * dragged horizontally to scrub.
+ *
+ * It is still a native `<input type="range">`, full-size and visible, layered
+ * over the painted fill. That matters: the wire suite focuses these and sends
+ * real arrow keys, and reads `.inputValue()`. A div-based slider would break
+ * every one of those legs.
+ *
+ * `vertical` keeps the plain slider used by the viewport side rails.
+ */
 export function SliderRow({ id, label, min, max, step, value, onInput, onCommit, width, vertical }: {
   id?: string; label: string; min: number; max: number; step: number; value: number;
   onInput: (v: number) => void; onCommit?: () => void; width?: number; vertical?: boolean;
 }): JSX.Element {
+  const input = (
+    <input
+      id={id} type="range" className={vertical ? 'styled vert' : 'styled'} aria-label={label}
+      min={min} max={max} step={step} value={value}
+      style={!vertical || !width ? undefined : { width }}
+      onInput={(e) => onInput(Number((e.target as HTMLInputElement).value))}
+      onChange={onCommit ? () => onCommit() : undefined}
+    />
+  );
+  if (vertical) {
+    return (
+      <div className="grp">
+        <span className="lbl">{label}</span>
+        {input}
+      </div>
+    );
+  }
+  const span = max - min;
+  const pct = span > 0 ? ((value - min) / span) * 100 : 0;
   return (
-    <div className="grp">
-      <span className="lbl">{label}</span>
-      <input
-        id={id} type="range" className={vertical ? 'styled vert' : 'styled'} aria-label={label}
-        min={min} max={max} step={step} value={value}
-        style={width ? { width } : undefined}
-        onInput={(e) => onInput(Number((e.target as HTMLInputElement).value))}
-        onChange={onCommit ? () => onCommit() : undefined}
-      />
+    <div
+      className="field" title={`${label}: ${fmtVal(value, step)}`}
+      style={{ ...(width ? { width } : undefined), ['--pct' as string]: `${pct}%` }}
+    >
+      <span className="field-fill" aria-hidden="true" />
+      <span className="field-lbl">{label}</span>
+      <span className="field-val">{fmtVal(value, step)}</span>
+      {input}
     </div>
   );
 }

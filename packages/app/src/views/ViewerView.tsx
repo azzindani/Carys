@@ -154,15 +154,21 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
         </div>
         {docksOpen && (
           <div className="dockrow" id="dockrow-2d">
-            <MprToolDock />
             <MprTuneDock axialCanvasRef={axialCanvasRef} />
             <SegDock />
           </div>
         )}
-        <ViewGrid
-          sliceInit={sliceInit} axialCanvasRef={axialCanvasRef}
-          extractor={extractor} full={full ?? ''} mView={mView}
-        />
+        {/* Tools sit in a column against the viewport edge, the way a 3D tool
+            shelves them — not in a toolbar wrapping across the top. */}
+        <div className="workarea">
+          <aside className="toolstrip" aria-label="Tools">
+            <MprToolDock column />
+          </aside>
+          <ViewGrid
+            sliceInit={sliceInit} axialCanvasRef={axialCanvasRef}
+            extractor={extractor} full={full ?? ''} mView={mView}
+          />
+        </div>
       </>
     );
   }
