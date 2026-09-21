@@ -47,14 +47,17 @@
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
   /* -- rounding: a proportional scale. Nested corners step down one rung so
-        an inner edge stays concentric with the outer one (inner = outer − pad). */
-  --radius-2xs: 4px;
-  --radius-xs: 7px;
-  --radius-sm: 10px;
-  --radius-md: 13px;
-  --radius-lg: 17px;
-  --radius-xl: 22px;
-  --radius-2xl: 28px;
+        an inner edge stays concentric with the outer one (inner = outer − pad).
+        Tuned to instrument density: a 3D tool's corners are tight (Blender
+        ~5px, Spline ~10px). Pills are reserved for status dots and badges —
+        a pill-shaped control reads as a web page, not a tool. */
+  --radius-2xs: 3px;
+  --radius-xs: 5px;
+  --radius-sm: 7px;
+  --radius-md: 9px;
+  --radius-lg: 12px;
+  --radius-xl: 15px;
+  --radius-2xl: 19px;
   --radius-pill: 999px;
 }
 
@@ -84,8 +87,15 @@
   --sp-7: calc(20px * var(--sp));
   --sp-8: calc(26px * var(--sp));
 
-  /* minimum comfortable hit target; coarse pointers raise it (§22) */
-  --tap: 32px;
+  /* Control height. A 3D tool's rows are tight — Blender's fields are ~20px,
+     Unity's ~18px — which is unusable under a finger. So density is scaled by
+     pointer type, not by breakpoint: instrument-tight for a mouse, the full
+     touch floor for a finger, from one variable (§22).
+     --tap stays the audited minimum hit target. */
+  --ctl-h: 26px;
+  --tap: 26px;
+  /* the 3D-tool numeric field: label inside, fill bar, value right-aligned */
+  --field-h: 22px;
 
   /* elevation: restrained. The old sheet stacked 50px blurs on every
      surface, which reads as mud. Two levels, both tight. */
@@ -119,5 +129,5 @@ html[data-density="xl"] { --sp: 1.4; }
 
 /* Coarse pointers get bigger targets everywhere at once (§22). */
 @media (pointer: coarse) {
-  :root { --tap: 44px; }
+  :root { --ctl-h: 44px; --tap: 44px; --field-h: 40px; }
 }

@@ -622,7 +622,10 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
               {/* Viewport chrome, drawn as SVG/CSS over the CPU raster — the
                   orientation read every 3D tool gives you, with no GL context. */}
               <div className="vp-hud" aria-hidden="true" />
-              <AxisGizmo orbit={(orbit * 180) / Math.PI} tilt={(tilt * 180) / Math.PI} />
+              <AxisGizmo
+                orbit={orbit} tilt={tilt}
+                onSnap={(o, t) => { setOrbit(o); setTilt(t); queueOrbit(); }}
+              />
             </div>
             <div className="vrail" aria-label="3D orbit controls">
               <SliderRow vertical label="Orbit" min={0} max={6.283} step={0.01} value={orbit} onInput={(v) => { setOrbit(v); queueOrbit(); }} />

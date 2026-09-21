@@ -111,13 +111,77 @@ export function IconPanel(p: P): JSX.Element {
   );
 }
 
-/** Orientation axis gizmo — the corner widget every 3D viewport carries.
- *  Purely decorative chrome: it reflects orbit/tilt, it does not render. */
-export function AxisGizmo({ orbit, tilt }: { orbit: number; tilt: number }): JSX.Element {
+/* ---- 2D tool glyphs: the left tool column ------------------------------ */
+
+export function IconSelect(p: P): JSX.Element {
+  return <svg {...box} {...p}><path d="M4.5 3l5.2 13 1.9-5.4 5.4-1.9z" /></svg>;
+}
+
+export function IconPaint(p: P): JSX.Element {
+  return (
+    <svg {...box} {...p}>
+      <path d="M13.4 3.3l3.3 3.3-8.2 8.2-4.2.9.9-4.2z" />
+      <path d="M11.6 5.1l3.3 3.3" />
+    </svg>
+  );
+}
+
+export function IconErase(p: P): JSX.Element {
+  return (
+    <svg {...box} {...p}>
+      <path d="M8.4 16.5H16M3.8 12.6l4.6 4.6 8-8-4.6-4.6z" />
+      <path d="M6.6 9.8l4.6 4.6" />
+    </svg>
+  );
+}
+
+export function IconGrow(p: P): JSX.Element {
+  return (
+    <svg {...box} {...p}>
+      <circle cx="10" cy="10" r="3" />
+      <path d="M10 2.6v2.2M10 15.2v2.2M2.6 10h2.2M15.2 10h2.2M4.8 4.8l1.6 1.6M13.6 13.6l1.6 1.6M15.2 4.8l-1.6 1.6M6.4 13.6l-1.6 1.6" />
+    </svg>
+  );
+}
+
+export function IconMeasure(p: P): JSX.Element {
+  return (
+    <svg {...box} {...p}>
+      <path d="M3 12.2L12.2 3l4.8 4.8L7.8 17z" />
+      <path d="M6.3 8.9l1.6 1.6M9 6.2l1.6 1.6M11.7 3.5l1.6 1.6" />
+    </svg>
+  );
+}
+
+/**
+ * Orientation axis gizmo — the corner widget every 3D viewport carries.
+ *
+ * It reflects orbit/tilt and, like the real thing, it is operable: clicking
+ * an axis snaps the camera to that view. It draws no imagery; the volume
+ * itself is still CPU-rasterised into the canvas underneath.
+ *
+ * Angles are radians, matching the rasteriser's own convention.
+ */
+export function AxisGizmo({ orbit, tilt, onSnap }: {
+  orbit: number; tilt: number; onSnap?: (orbit: number, tilt: number) => void;
+}): JSX.Element {
+  const HALF = Math.PI / 2;
+  // Each axis maps to the orbit/tilt that puts the camera on it.
+  const snaps: Record<string, [number, number]> = {
+    X: [HALF, 0], Y: [0, HALF], Z: [0, 0],
+  };
+  return (
+    <GizmoBody orbit={orbit} tilt={tilt} onSnap={onSnap ? (l) => onSnap(...snaps[l]!) : undefined} />
+  );
+}
+
+function GizmoBody({ orbit, tilt, onSnap }: {
+  orbit: number; tilt: number; onSnap?: (label: string) => void;
+}): JSX.Element {
   // Project unit axes with the same orbit/tilt convention the CPU rasteriser
   // uses, so the widget agrees with what the canvas shows.
-  const a = (orbit * Math.PI) / 180;
-  const b = (tilt * Math.PI) / 180;
+  const a = orbit;
+  const b = tilt;
   const C = 29;
   const L = 17;
   const proj = (x: number, y: number, z: number): [number, number] => {
@@ -131,14 +195,25 @@ export function AxisGizmo({ orbit, tilt }: { orbit: number; tilt: number }): JSX
     { p: proj(0, 1, 0), c: 'var(--color-ok)', l: 'Y' },
     { p: proj(0, 0, 1), c: 'var(--color-violet)', l: 'Z' },
   ];
+  // Painter's order: axes pointing away draw first so near ones overlap them.
+  const ordered = [...axes].sort((p, q) => q.p[1] - p.p[1]);
   return (
-    <svg className="gizmo" viewBox="0 0 58 58" aria-hidden="true">
-      <circle cx={C} cy={C} r="26" fill="rgb(0 0 0 / 0.28)" stroke="rgb(255 255 255 / 0.09)" />
-      {axes.map((ax) => (
-        <g key={ax.l}>
+    <svg
+      className={`gizmo${onSnap ? ' live' : ''}`} viewBox="0 0 58 58"
+      role={onSnap ? 'group' : undefined}
+      aria-label={onSnap ? 'Orientation axes — click an axis to snap the view' : undefined}
+      aria-hidden={onSnap ? undefined : true}
+    >
+      <circle cx={C} cy={C} r="26" fill="rgb(0 0 0 / 0.32)" stroke="rgb(255 255 255 / 0.1)" />
+      {ordered.map((ax) => (
+        <g
+          key={ax.l} className="gz-ax"
+          onPointerDown={onSnap ? (e) => { e.preventDefault(); e.stopPropagation(); onSnap(ax.l); } : undefined}
+        >
           <line x1={C} y1={C} x2={ax.p[0]} y2={ax.p[1]} stroke={ax.c} strokeWidth="1.6" strokeLinecap="round" />
-          <circle cx={ax.p[0]} cy={ax.p[1]} r="5.2" fill={ax.c} />
+          <circle cx={ax.p[0]} cy={ax.p[1]} r="6" fill={ax.c} />
           <text x={ax.p[0]} y={ax.p[1] + 2.6} textAnchor="middle" fill="var(--color-on-accent)">{ax.l}</text>
+          {onSnap && <title>{`Snap to ${ax.l}`}</title>}
         </g>
       ))}
     </svg>

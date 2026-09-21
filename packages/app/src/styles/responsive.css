@@ -77,6 +77,9 @@
   }
   .main:has(.viewgrid) .inspector { display: none; }
   .dockrow { display: none; }
+  /* the tool column is a desktop affordance; mobile tools live in the deck */
+  .workarea { display: contents; }
+  .toolstrip { display: none; }
 
   .ftop { padding: 0 0 var(--sp-2); }
   .ftop .filetabs { flex-wrap: nowrap; overflow: hidden; }

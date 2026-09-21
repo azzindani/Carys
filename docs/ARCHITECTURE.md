@@ -87,13 +87,31 @@ inspector under the stage; mobile gives the top half to imaging and the
 bottom half to a permanent control deck, so tools never cover the image they
 act on. 980px is the mobile edge and is the twin of `lib/isMobile.ts` (§21).
 
+The chrome is built to read as an instrument rather than a web page:
+
+- **Scrub fields, not slider rows.** `SliderRow` renders a compact rectangle
+  carrying its own label, a proportional fill and a right-aligned value,
+  dragged horizontally. It is still a native `<input type="range">` layered
+  at full size over the fill — the wire suite focuses these, sends real arrow
+  keys and reads `.inputValue()`, so a div-based slider would break it.
+- **A tool column, not a wrapping toolbar.** `#dock-mpr` renders in `column`
+  mode against the viewport edge on desktop, and flat inside the mobile
+  control deck. One dock, two layouts — `#undogrp` has to stay inside
+  `#dock-mpr` and `#modeseg` inside `#mpanel-tools`, which e2e addresses.
+- **Density scales by pointer, not breakpoint.** `--ctl-h` is 26px under a
+  mouse and 44px under a finger, so instrument tightness and the §22 touch
+  floor come from one variable instead of fighting.
+- **Rounding stays proportional but tight** (3→19px). Pills are reserved for
+  status dots and notifications; a pill-shaped control reads as a web page.
+
 The viewport borrows the look of a three.js/Blender-class viewport — graded
 stage, floor grid, corner brackets, orientation axis gizmo — but every pixel
 of imagery is still CPU-rasterised into a 2D canvas. The gizmo is SVG chrome
-that reflects orbit/tilt; it renders nothing. No WebGL context is created and
-no `three` import exists, and `verify.test.ts` enforces both. Anatomical edge
-letters stay on the canvas via `iopEdgeLabels` — the DOM HUD draws framing
-only, so there is one implementation, not two (§4).
+that reflects orbit/tilt and is operable (clicking an axis snaps the camera),
+but it renders no imagery. No WebGL context is created and no `three` import
+exists, and `verify.test.ts` enforces both. Anatomical edge letters stay on
+the canvas via `iopEdgeLabels` — the DOM HUD draws framing only, so there is
+one implementation, not two (§4).
 
 ## UI (`packages/ui`, static, serve repo root)
 

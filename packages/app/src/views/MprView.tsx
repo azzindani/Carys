@@ -13,16 +13,23 @@ import { SERIES } from '../lib/catalog';
 import { setUi, useUi } from '../lib/store';
 import { setStatus } from '../lib/status';
 import { Chip, DarkSelect, IconBtn, Seg, SliderRow, Switch, UndoGroup } from '../ui/primitives';
+import { IconErase, IconGrow, IconMeasure, IconPaint, IconSelect } from '../ui/Icons';
 import type { CompareMode, MeasureKind, MprLayout, Plane, ProjMode, Tool } from '../lib/types';
 
-/** Core 2D tools: tool switch, brush, undo, mask. Own pill on desktop
- *  (`#dock-mpr`), Tools-panel section on mobile. */
-export function MprToolDock(): JSX.Element {
+/** Core 2D tools: tool switch, brush, undo, mask.
+ *
+ *  `column` renders it as the left tool strip a 3D tool puts against the
+ *  viewport edge; flat mode is the Tools-panel section on mobile. It stays
+ *  one dock either way — `#undogrp` has to live inside `#dock-mpr`, and
+ *  `#modeseg` inside `#mpanel-tools` on mobile, which the e2e legs address. */
+export function MprToolDock({ column = false }: { column?: boolean } = {}): JSX.Element {
   const ui = useUi();
+  const toolIcon = (Icon: (p: { className?: string }) => JSX.Element, text: string): JSX.Element =>
+    (column ? <><Icon /><span className="tl">{text}</span></> : <>{text}</>);
 
   return (
     <>
-      <div className="dock" id="dock-mpr">
+      <div className={column ? 'dock column' : 'dock'} id="dock-mpr">
         <div className="grp">
           <Seg<Tool>
             id="modeseg"
@@ -31,9 +38,11 @@ export function MprToolDock(): JSX.Element {
             value={ui.tool}
             onChange={(m) => setUi({ tool: m })}
             options={[
-              { value: 'view', label: 'Select' }, { value: 'paint', label: 'Paint' },
-              { value: 'erase', label: 'Erase' }, { value: 'grow', label: 'Grow' },
-              { value: 'measure', label: 'Measure' },
+              { value: 'view', label: toolIcon(IconSelect, 'Select'), title: 'Select / navigate' },
+              { value: 'paint', label: toolIcon(IconPaint, 'Paint'), title: 'Paint mask' },
+              { value: 'erase', label: toolIcon(IconErase, 'Erase'), title: 'Erase mask' },
+              { value: 'grow', label: toolIcon(IconGrow, 'Grow'), title: 'Region grow' },
+              { value: 'measure', label: toolIcon(IconMeasure, 'Measure'), title: 'Measure' },
             ]}
           />
         </div>

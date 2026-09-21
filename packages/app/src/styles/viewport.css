@@ -7,9 +7,34 @@
    `three` import exists; verify.test.ts enforces both.
    ========================================================================= */
 
+/* Tool column + viewports. The strip is fixed; the grid takes the rest. */
+.workarea { flex: 1; min-height: 0; min-width: 0; display: flex; gap: var(--sp-3); }
+.toolstrip { flex: none; width: 152px; min-height: 0; display: flex; flex-direction: column; }
+
+/* A dock laid out as a column: groups stack, controls go full width. */
+.dock.column {
+  width: 100%; flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+  gap: var(--sp-2); overflow-y: auto;
+}
+.dock.column .grp { flex-direction: column; align-items: stretch; gap: var(--sp-1); padding: 0; }
+.dock.column .seg { flex-direction: column; gap: 1px; }
+.dock.column .seg button {
+  justify-content: flex-start; gap: var(--sp-2);
+  display: flex; align-items: center; padding: 0 var(--sp-2);
+  min-height: var(--ctl-h);
+}
+.dock.column .seg button svg { width: 15px; height: 15px; flex: none; }
+.dock.column .seg button .tl { font-size: var(--fs-sm); }
+.dock.column .sep { width: auto; height: 1px; align-self: stretch; margin: var(--sp-1) 0; }
+.dock.column .field { width: 100%; min-width: 0; }
+/* A switch and its label belong on one line; only stacked groups go column. */
+.dock.column .grp:has(.switch) { flex-direction: row; align-items: center; gap: var(--sp-2); }
+.dock.column #undogrp { flex-direction: row; }
+.dock.column #undogrp .iconbtn { flex: 1; }
+
 .viewgrid {
-  flex: 1; min-height: 0;
-  display: grid; gap: var(--sp-4); align-items: stretch;
+  flex: 1; min-height: 0; min-width: 0;
+  display: grid; gap: var(--sp-3); align-items: stretch;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
 }
 .dockrow {
@@ -94,11 +119,17 @@
 
 /* ---- axis gizmo: SVG, bottom-left of the 3D viewport ------------------- */
 .gizmo {
-  position: absolute; left: var(--sp-4); bottom: var(--sp-4); z-index: 3;
+  position: absolute; left: var(--sp-3); bottom: var(--sp-3); z-index: 4;
   width: 58px; height: 58px; pointer-events: none;
-  opacity: 0.9;
+  opacity: 0.88; transition: opacity var(--dur) var(--ease);
 }
-.gizmo text { font-family: var(--font-mono); font-size: 7px; font-weight: 600; }
+.gizmo text { font-family: var(--font-mono); font-size: 7px; font-weight: 700; }
+/* operable gizmo: each axis is a click target that snaps the camera */
+.gizmo.live { pointer-events: auto; }
+.gizmo.live:hover { opacity: 1; }
+.gizmo.live .gz-ax { cursor: pointer; }
+.gizmo.live .gz-ax circle { transition: r var(--dur-fast) var(--ease); }
+.gizmo.live .gz-ax:hover circle { r: 7.4; }
 
 /* ---- side rail: per-viewport sliders + zoom, uniform in every pane ----- */
 .vrail {
