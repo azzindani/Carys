@@ -82,7 +82,7 @@ export function TracksView(): JSX.Element {
       }
       toast(`Tracks: ${parsed.length} features from ${label}`);
     } catch (err) {
-      setStatus(`tracks load failed: ${(err as Error).message}`);
+      setStatus(`tracks load failed: ${(err as Error).message}`, 'error');
     }
   };
 
@@ -101,7 +101,7 @@ export function TracksView(): JSX.Element {
       toast(`Codon map: ${map.length} interval(s) from ${label}`);
       setStatus(`codon map ${label}: ${map.length} interval(s) — variant rows now link to residues`);
     } catch (err) {
-      setStatus(`codon map rejected: ${(err as Error).message}`);
+      setStatus(`codon map rejected: ${(err as Error).message}`, 'error');
     }
   };
 
@@ -129,7 +129,7 @@ export function TracksView(): JSX.Element {
       toast(`GTF: ${tx.length} transcript(s) from ${label} — picked ${first.transcriptId}`);
       setStatus(`gtf ${label}: ${tx.length} transcript(s) — ${first.transcriptId} active (${first.entries.length} codons, transcript-ordinal residues)`);
     } catch (err) {
-      setStatus(`gtf rejected: ${(err as Error).message}`);
+      setStatus(`gtf rejected: ${(err as Error).message}`, 'error');
     }
   };
 
@@ -164,7 +164,7 @@ export function TracksView(): JSX.Element {
     try {
       target = variantToResidue(codonMap, row.chr, row.pos);
     } catch (err) {
-      setStatus(`residue link failed: ${(err as Error).message}`);
+      setStatus(`residue link failed: ${(err as Error).message}`, 'error');
       return;
     }
     if (!target) {
@@ -270,8 +270,9 @@ export function TracksView(): JSX.Element {
         <div className="pane" id="pane-tracks">
           <div className="pane-head"><span className="name">Features</span></div>
           <div className="stage">
+            {inLocus.length === 0 && <p className="hint">No features loaded.</p>}
             <dl className="kv" id="track-list">
-              {inLocus.length === 0 ? <div className="hint">No features loaded.</div> : inLocus.slice(0, MAX_ROWS).map((r, i) => {
+              {inLocus.length === 0 ? null : inLocus.slice(0, MAX_ROWS).map((r, i) => {
                 const target = residueOf(r);
                 return (
                   <div className="mrow" key={i} data-chr={r.chr}>

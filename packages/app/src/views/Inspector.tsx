@@ -150,7 +150,7 @@ function WsiAnnotationTable(): JSX.Element | null {
       bump();
       setStatus(`demo annotations loaded: ${WSI_DEMO_SET} (${WSI_DEMO_ANNOTATIONS.length} regions)`);
     } catch (e) {
-      setStatus(`demo annotations rejected: ${(e as Error).message}`);
+      setStatus(`demo annotations rejected: ${(e as Error).message}`, 'error');
     }
   };
   return (
@@ -361,7 +361,7 @@ export function Inspector(): JSX.Element {  const ui = useUi();
                     setStatus(`Radiomics import: ${rows.length} row(s), tagged radiomics import`);
                     bump();
                   } catch (err) {
-                    setStatus(`Radiomics import failed: ${(err as Error).message}`);
+                    setStatus(`Radiomics import failed: ${(err as Error).message}`, 'error');
                   }
                 })();
               }}
@@ -382,7 +382,7 @@ export function Inspector(): JSX.Element {  const ui = useUi();
                     setStatus(`TID1500 import: ${rows.length} row(s), tagged SR import`);
                     bump();
                   } catch (err) {
-                    setStatus(`TID1500 import failed: ${(err as Error).message}`);
+                    setStatus(`TID1500 import failed: ${(err as Error).message}`, 'error');
                   }
                 })();
               }}

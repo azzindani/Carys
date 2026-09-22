@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { needs, sample } from '@carys/testkit';
 import { auditAxisOrder, physicalSizes, planeExtents, selectPlane } from '../ome-dims.js';
 import { parseOmeTiff, type OmeTiffPlane } from '../ome-tiff.js';
 
@@ -26,9 +26,9 @@ describe('ome 5d selection', () => {
 });
 
 describe('vendored 5d fixture', () => {
-  it('tczyx.ome.tif decodes 2x2x3 with pinned (t,c,z) + pixel signatures', () => {
+  it('tczyx.ome.tif decodes 2x2x3 with pinned (t,c,z) + pixel signatures', needs('tczyx.ome.tif'), () => {
     const buf = Uint8Array.from(
-      readFileSync(join(process.cwd(), 'samples', 'tczyx.ome.tif')),
+      readFileSync(sample('tczyx.ome.tif')!),
     ).buffer as ArrayBuffer;
     const { meta, planes } = parseOmeTiff(buf);
     assert.equal(planes.length, 12);
@@ -48,9 +48,9 @@ describe('vendored 5d fixture', () => {
 });
 
 describe('napari-studied axis-order audit', () => {
-  it('vendored tczyx: order clean, explicit planes, counts fit', () => {
+  it('vendored tczyx: order clean, explicit planes, counts fit', needs('tczyx.ome.tif'), () => {
     const buf = Uint8Array.from(
-      readFileSync(join(process.cwd(), 'samples', 'tczyx.ome.tif')),
+      readFileSync(sample('tczyx.ome.tif')!),
     ).buffer as ArrayBuffer;
     const { meta, planes } = parseOmeTiff(buf);
     const findings = auditAxisOrder(meta, planes, { explicitPlanes: true });
@@ -64,9 +64,9 @@ describe('napari-studied axis-order audit', () => {
     assert.equal(findings[1]!.ok, false);
     assert.ok(findings[0]!.detail.includes('unreadable'));
   });
-  it('over-count planes fail size-consistency', () => {
+  it('over-count planes fail size-consistency', needs('tczyx.ome.tif'), () => {
     const buf = Uint8Array.from(
-      readFileSync(join(process.cwd(), 'samples', 'tczyx.ome.tif')),
+      readFileSync(sample('tczyx.ome.tif')!),
     ).buffer as ArrayBuffer;
     const { meta, planes } = parseOmeTiff(buf);
     const doubled = [...planes, ...planes];

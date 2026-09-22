@@ -23,7 +23,9 @@ import { TracksView } from './views/TracksView';
 import { ViewerView } from './views/ViewerView';
 import { WorklistView } from './views/WorklistView';
 import { Palette, buildCommands } from './ui/Palette';
+import { Rail } from './ui/Rail';
 import { StatusBar } from './ui/StatusBar';
+import { TipProvider } from './ui/primitives';
 import { Toasts } from './ui/Toasts';
 import { TopBar } from './ui/TopBar';
 
@@ -35,8 +37,8 @@ export function App(): JSX.Element {
   const [extractor, setExtractorState] = useState<Extractor | null>(null);
   const axialCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const booted = useRef(false);
-  // Mobile moves status inline into the slim topbar (the fixed footer would
-  // cover the bottom action bar), so the footer renders on desktop only.
+  // Mobile moves status inline into the slim topbar (the control deck owns
+  // the bottom edge), so the footer renders on desktop only.
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export function App(): JSX.Element {
       void resolveVolume(s)
         .then((vol) => loadSeries(s, vol))
         .then((init) => { if (init) setSliceInit(init); })
-        .catch((e) => setStatus(`pull failed: ${(e as Error).message}`));
+        .catch((e) => setStatus(`pull failed: ${(e as Error).message}`, 'error'));
       return;
     }
     void loadSeries(s).then((init) => { if (init) setSliceInit(init); });
@@ -145,6 +147,10 @@ export function App(): JSX.Element {
 
   const textSize = useUiPick('textSize');
   const density = useUiPick('density');
+  // The details panel is a panel, not furniture: collapsing it hands its
+  // column back to the image. Open by default — the wire suite reads the
+  // readouts inside it without opening anything first.
+  const insOpen = useUiPick('insOpen');
   // Appearance owns <html>: text scale + density datasets drive the CSS,
   // and every change persists the chrome pref.
   useEffect(() => {
@@ -153,55 +159,42 @@ export function App(): JSX.Element {
     root.dataset.density = density;
     saveAppearance(textSize, density);
   }, [textSize, density]);
-  const top = (
-    <TopBar
-      onOpenPalette={() => setPalOpen(true)} onSelectSeries={(s) => { go('viewer'); openSeries(s); }}
-      onGoWorklist={() => go('worklist')} onGoViewer={() => go('viewer')} onGoReport={() => go('report')} onGoProtein={() => go('protein')} onGoCells={() => go('cells')} onGoTracks={() => go('tracks')} onGoAtlas={() => go('atlas')} onGoLearn={() => go('learn')}
-    />
-  );
-  if (route === 'worklist') {
-    return (
-      <>
-        {top}
-        <div className="main main-full">
-          <section className="viewport">
-            <WorklistView onOpen={openFromWorklist} />
-          </section>
-        </div>
-        {!isMobile && <StatusBar />}
-        <Toasts />
-        <Palette open={palOpen} onClose={() => setPalOpen(false)} commands={commands} />
-      </>
-    );
-  }
-  if (route === 'report' || route === 'protein' || route === 'cells' || route === 'tracks' || route === 'atlas' || route === 'learn') {
-    return (
-      <>
-        {top}
-        <div className="main main-full">
-          <section className="viewport">
-            {route === 'report' ? <ReportView /> : route === 'protein' ? <ProteinView initialPathogen={learnPathogen} /> : route === 'cells' ? <CellsView /> : route === 'atlas' ? <AtlasView /> : route === 'learn' ? <LearnView onOpenPathogen={(id) => { setLearnPathogen(id); go('protein'); }} /> : <TracksView />}
-          </section>
-        </div>
-        {!isMobile && <StatusBar />}
-        <Toasts />
-        <Palette open={palOpen} onClose={() => setPalOpen(false)} commands={commands} />
-      </>
+
+  // One shell, one content switch. The viewer is the only route that pairs
+  // with the inspector column; everything else runs full-bleed.
+  const isViewer = route === 'viewer';
+  let content: JSX.Element;
+  if (route === 'worklist') content = <WorklistView onOpen={openFromWorklist} />;
+  else if (route === 'report') content = <ReportView />;
+  else if (route === 'protein') content = <ProteinView initialPathogen={learnPathogen} />;
+  else if (route === 'cells') content = <CellsView />;
+  else if (route === 'tracks') content = <TracksView />;
+  else if (route === 'atlas') content = <AtlasView />;
+  else if (route === 'learn') content = <LearnView onOpenPathogen={(id) => { setLearnPathogen(id); go('protein'); }} />;
+  else {
+    content = (
+      <ViewerView
+        sliceInit={sliceInit} axialCanvasRef={axialCanvasRef}
+        extractor={extractor} onOpenSeries={openSeries}
+      />
     );
   }
 
   return (
-    <>
-      {top}
-      <div className="main">
-        <section className="viewport">
-          <ViewerView sliceInit={sliceInit} axialCanvasRef={axialCanvasRef} extractor={extractor} onOpenSeries={openSeries} />
-        </section>
-        <Inspector />
+    <TipProvider>
+      <div className="shell">
+        {!isMobile && <Rail route={route} go={go} />}
+        <div className="frame">
+          <TopBar route={route} go={go} onOpenPalette={() => setPalOpen(true)} onSelectSeries={(s) => { go('viewer'); openSeries(s); }} />
+          <div className="main main-full">
+            <section className="viewport">{content}</section>
+            {isViewer && insOpen && <Inspector />}
+          </div>
+          {!isMobile && <StatusBar />}
+        </div>
       </div>
-      {!isMobile && <StatusBar />}
       <Toasts />
       <Palette open={palOpen} onClose={() => setPalOpen(false)} commands={commands} />
-    </>
+    </TipProvider>
   );
 }

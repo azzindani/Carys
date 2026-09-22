@@ -50,7 +50,7 @@ describe('verification', () => {
         l.replace(/'(?:[^'\\]|\\.)*'/g, "''").replace(/"(?:[^"\\]|\\.)*"/g, '""').replace(/`(?:[^`\\]|\\.)*`/g, '``'),
       );
       lines.forEach((l, i) => {
-        if (/(?<![.\w])(document|window|localStorage)\s*[\.(]/.test(l)) hits.push(`${f}:${i + 1}: ${l.trim()}`);
+        if (/(?<![.\w])(document|window|localStorage)\s*[.(]/.test(l)) hits.push(`${f}:${i + 1}: ${l.trim()}`);
         if (/(?<![.\w])fetch\s*\(/.test(l)) hits.push(`${f}:${i + 1}: ${l.trim()}`);
         if (/(?<![.\w])navigator\s*\./.test(l) && !l.includes('typeof navigator')) {
           hits.push(`${f}:${i + 1}: ${l.trim()}`);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   isOmeTiffLike, isTiffLike, makeOmeTiff, parseOmeTiff,
 } from '../ome-tiff.js';
-import { lzwDecodeTiff, lzwEncodeTiff, OmeTiffError } from '../tiff-lzw.js';
+import { lzwDecodeTiff, OmeTiffError } from '../tiff-lzw.js';
 import { JPEG_GRAY_EXPECTED_B64, JPEG_GRAY_JPG, b64ToBytes } from './fixtures-jpeg.js';
 
 // PIL-written LZW strip (12x7 gray, 95 bytes) + its exact pixels: the
@@ -38,7 +38,10 @@ function miniTiff(opts: {
 }): ArrayBuffer {
   const little = opts.little ?? true;
   const out: number[] = [];
-  const u16 = (v: number): void => { little ? out.push(v & 0xff, (v >> 8) & 0xff) : out.push((v >> 8) & 0xff, v & 0xff); };
+  const u16 = (v: number): void => {
+    if (little) out.push(v & 0xff, (v >> 8) & 0xff);
+    else out.push((v >> 8) & 0xff, v & 0xff);
+  };
   const u32 = (v: number): void => {
     const b = [v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >> 24) & 0xff];
     pushAll(little ? b : b.reverse());

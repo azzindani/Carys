@@ -14,6 +14,27 @@ Use for: single-tag boundaries (odd lengths, truncated sequences, empty
 BOT, bad offsets, corrupt PackBits, truncated JLS streams, deflated edge
 cases). Small enough to read; every byte intentional.
 
+## Rung 1b — synthetic preview volumes (`scripts/gen-phantom.mjs`)
+
+Script: `node scripts/gen-phantom.mjs`. Output: `samples/*.nii` (gitignored).
+
+`samples/` holds real study data and is gitignored, so a fresh clone has
+nothing to render and no way to drive or demo the UI. This writes head
+phantoms through the repo's own `writeNifti1` — skull, grey/white brain,
+paired ventricles and one enhancing lesion, at real Hounsfield values so the
+stock window/level presets land on actual contrast. The lesion sits at the
+depth `axialFrac` opens on, so the mask overlay is on screen at load.
+
+Deterministic (fixed LCG seed, fixed geometry, no timestamps): rerunning
+yields byte-identical files. Synthetic only — no patient data enters the
+repo (README privacy note).
+
+Use for: previewing and demoing the viewer, and driving UI work that needs a
+volume. NOT a substitute for rung 3/4 data: golden-hash and real-archive
+geometry tests still need the actual samples. With phantoms alone the unit
+suite goes from 650/26 to 654/22 — the four tests that only needed a valid
+NIfTI to exist.
+
 ## Rung 2 — pydicom-generated (T2 foundry, TOOLING)
 
 Script: `test/e2e/foundry.py` (`npm run gen:foundry`). Output:

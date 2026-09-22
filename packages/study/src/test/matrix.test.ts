@@ -93,7 +93,7 @@ describe('study formatting + privacy matrix', () => {
     assert.deepEqual([
       [null, '—'], [0, '0 B'], [512, '512 B'], [1023, '1023 B'],
       [1024, '1.0 KB'], [2048, '2.0 KB'], [1048576, '1.0 MB'], [3145728, '3.0 MB'],
-    ].map(([n, want]) => fmtBytes(n as number | null)), ['—', '0 B', '512 B', '1023 B', '1.0 KB', '2.0 KB', '1.0 MB', '3.0 MB']);
+    ].map(([n]) => fmtBytes(n as number | null)), ['—', '0 B', '512 B', '1023 B', '1.0 KB', '2.0 KB', '1.0 MB', '3.0 MB']);
     const rng = mulberry32(11);
     for (let t = 0; t < 12; t++) {
       const n = Math.floor(rng() * 1e9);

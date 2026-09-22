@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { measureClick, paintDown, paintMove, planePoint } from './PanePaint';
-import type { PaintHost, StrokeState, TapEvent } from './PanePaint';
+import type { PaintHost, StrokeState } from './PanePaint';
 import { ColorTable, iopEdgeLabels } from '@carys/volume-core';
-import type { Volume } from '@carys/volume-core';
 import { fuseSlices, mipRotate, obliqueBasis, reslice, resliceOblique, slabMask, slabProject, voxelSlices } from '@carys/render-cpu';
 import { paintBus } from '../lib/paintBus';
 import { ACCENT, ACCENT_DIM, ACCENT_DIM_FILL, ACCENT_HI, CHROME_TEXT, MASK_TINT, MONO_STACK, ON_ACCENT } from '../lib/palette';
@@ -12,9 +11,9 @@ import { fmtDims, session } from '../lib/session';
 import { doUndo } from '../lib/sessionOps';
 import { setStatus } from '../lib/status';
 import { getUi, setUi, useUiPick } from '../lib/store';
-import { toast } from '../lib/toasts';
 import { bump, useVersion } from '../lib/version';
 import { Chip, IconBtn } from '../ui/primitives';
+import { ViewportOverlay } from '../ui/ViewportOverlay';
 import { undoBus } from '../lib/undoBus';
 import type { FullVp, MeasureKind, Plane } from '../lib/types';
 import type { SliceInit } from '../lib/sessionOps';
@@ -384,10 +383,6 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     const [i, j] = contentXY(cv, W, H, e.clientX, e.clientY);
     return [Math.floor(i), Math.floor(j)];
   };
-  const eventVoxel = (e: React.PointerEvent): [number, number] => planeVoxel('axial', e);
-  const axialIdx = (): number => Number(sliderRefs.current.axial?.value ?? 0);
-  /** Slice index of any plane's slider. */
-  const planeIdx = (plane: Plane): number => Number(sliderRefs.current[plane]?.value ?? 0);
 
   /** The exact tilted sampling frame the tilt-plane paint used (null =
    *  orthogonal). Rebuilt here from the same basis + center so taps
@@ -581,7 +576,46 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     if (getUi().tool === 'view' && getUi().sync) syncToVoxel(plane, e);
   };
 
+  /**
+   * Touch gestures, so zoom and pan are fingers rather than buttons:
+   * two fingers pinch to zoom and drag to pan, exactly as a map or a 3D
+   * viewport behaves. Tracked per pane; a second finger cancels whatever
+   * one-finger action was in progress so a pinch never paints a stroke.
+   */
+  const pinchRef = useRef<Record<Plane, { d: number; z: number; cx: number; cy: number; px: number; py: number } | null>>({
+    axial: null, coronal: null, sagittal: null,
+  });
+  const touchesRef = useRef<Record<Plane, Map<number, { x: number; y: number }>>>({
+    axial: new Map(), coronal: new Map(), sagittal: new Map(),
+  });
+
+  const spread = (pts: { x: number; y: number }[]): { d: number; cx: number; cy: number } => {
+    const [a, b] = pts;
+    return {
+      d: Math.hypot(a!.x - b!.x, a!.y - b!.y),
+      cx: (a!.x + b!.x) / 2,
+      cy: (a!.y + b!.y) / 2,
+    };
+  };
+
   const onCanvasDown = (plane: Plane) => (e: React.PointerEvent): void => {
+    if (e.pointerType === 'touch') {
+      const m = touchesRef.current[plane];
+      m.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (m.size === 2) {
+        // Second finger: abandon any one-finger stroke and start a pinch.
+        strokeState.current.stroke = null;
+        strokeState.current.oblStroke = null;
+        dragRef.current = null;
+        const s = spread([...m.values()]);
+        pinchRef.current[plane] = {
+          d: s.d, z: zoomRef.current[plane], cx: s.cx, cy: s.cy,
+          px: panRef.current[plane].x, py: panRef.current[plane].y,
+        };
+        return;
+      }
+      if (m.size > 2) return;
+    }
     if (getUi().tool === 'measure') {
       measureClick(hostRef.current, plane, e);
       return;
@@ -591,6 +625,30 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
       return;
     }
     paintDown(hostRef.current, strokeState.current, plane, e, planeVoxelRef.current);
+  };
+
+  const onCanvasTouchMove = (plane: Plane) => (e: React.PointerEvent): boolean => {
+    if (e.pointerType !== 'touch') return false;
+    const m = touchesRef.current[plane];
+    if (!m.has(e.pointerId)) return false;
+    m.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const p = pinchRef.current[plane];
+    if (!p || m.size < 2) return false;
+    const s = spread([...m.values()]);
+    if (p.d > 0) {
+      zoomRef.current[plane] = Math.min(8, Math.max(0.5, p.z * (s.d / p.d)));
+      panRef.current[plane] = { x: p.px + (s.cx - p.cx), y: p.py + (s.cy - p.cy) };
+      applyPanZoom(plane);
+      setZoomTick((t) => t + 1);
+    }
+    return true;
+  };
+
+  const onCanvasTouchEnd = (plane: Plane) => (e: React.PointerEvent): void => {
+    if (e.pointerType !== 'touch') return;
+    const m = touchesRef.current[plane];
+    m.delete(e.pointerId);
+    if (m.size < 2) pinchRef.current[plane] = null;
   };
 
   const onAxialUp = (): void => {
@@ -603,10 +661,30 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     }
   };
 
+  /**
+   * Wheel stack-scrolls the series; Ctrl/Cmd+wheel zooms.
+   *
+   * This is the binding every reading workstation uses (Sectra, Visage,
+   * syngo, OHIF, Horos) and it is the most-used gesture in the job: a
+   * radiologist scrolls a stack far more often than they zoom. Zoom keeps
+   * the modifier, the ± buttons and the zoom chip.
+   */
   const wheelZoom = (plane: Plane) => (e: React.WheelEvent): void => {
     e.preventDefault();
-    zoomRef.current[plane] = Math.min(8, Math.max(0.5, zoomRef.current[plane] * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
-    setZoomTick((t) => t + 1);
+    if (e.ctrlKey || e.metaKey) {
+      zoomRef.current[plane] = Math.min(8, Math.max(0.5, zoomRef.current[plane] * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+      setZoomTick((t) => t + 1);
+      paint(plane);
+      return;
+    }
+    const s = sliderRefs.current[plane];
+    if (!s) return;
+    // Trackpads emit many small deltas; one notch per event keeps the stack
+    // controllable instead of flying past the anatomy.
+    const step = e.deltaY > 0 ? 1 : -1;
+    const next = Math.min(Number(s.max), Math.max(Number(s.min), Number(s.value) + step));
+    if (next === Number(s.value)) return;
+    s.value = String(next);
     paint(plane);
   };
   const zoomStep = (plane: Plane, f: number): void => {
@@ -658,9 +736,18 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
                 onWheel={wheelZoom(p)}
                 onDoubleClick={() => resetZoom(p)}
                 onPointerDown={onCanvasDown(p)}
-                onPointerMove={(e) => { paintMove(hostRef.current, strokeState.current, p, e, planeVoxelRef.current); onViewMove(e); }}
-                onPointerUp={(e) => { onAxialUp(); onViewUp(p, e); }}
+                onPointerMove={(e) => {
+                  // A pinch owns the gesture: no painting, no crosshair drag.
+                  if (onCanvasTouchMove(p)(e)) return;
+                  paintMove(hostRef.current, strokeState.current, p, e, planeVoxelRef.current);
+                  onViewMove(e);
+                }}
+                onPointerUp={(e) => { onCanvasTouchEnd(p)(e); onAxialUp(); onViewUp(p, e); }}
+                onPointerCancel={onCanvasTouchEnd(p)}
               />
+              {/* Study identity in the corners, the way a reading workstation
+                  shows it. Edge letters + scale bar stay on the canvas. */}
+              <ViewportOverlay />
             </div>
             <div className="vrail" aria-label={`${TITLES[p]} slice slider`}>
               <input

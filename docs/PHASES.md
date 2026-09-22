@@ -510,7 +510,112 @@ measurement panel, NiiVue colormaps/tractography/docs)
   §5 reuse ledger; sources tests 5/5 + leg 24 pins digestPins; verified
   2026-09-17 at 555/555 unit, build + typecheck:app clean)
 
-## Closeout ledger (no pendings: everything below is shipped, blocked with an
+## Shipped in the UI/UX pass (design system + three-mode layout)
+- [x] Tailwind v4 + Radix design system (`packages/app/src/styles/*`): the
+  670-line hand-rolled sheet replaced by a token store (color / type /
+  rhythm / proportional rounding) plus five semantic layers. The 30
+  hand-written density overrides collapse into two multipliers (`--ts`,
+  `--sp`), so an appearance pref re-proportions the whole UI at once.
+  Radix backs the popovers and tooltips (outside-click, Escape, focus
+  restore — none of which the hand-rolled versions had); sliders stay
+  native `<input type="range">` because the wire suite drives them with
+  real key events and reads `.inputValue()`.
+- [x] Icon rail navigation: eight routes move out of the cramped topbar
+  into a labelled rail (`ui/Rail.tsx`, one `ROUTES` list shared with the
+  mobile nav sheet), freeing the topbar for study context. e2e navigates
+  by hash, so no leg changes.
+- [x] Three real layout modes: desktop (>1280) rail + grid + inspector;
+  tablet (981–1280) inspector folds under the stage in auto-fit columns;
+  mobile (≤980) imaging owns the top, a permanent control deck owns the
+  bottom half. The deck is a surface, not an overlay — tools never cover
+  the image. 980px stays the twin of `lib/isMobile.ts` (§21).
+- [x] 3D-tool viewport treatment, CPU-only: graded stage, masked floor
+  grid, corner brackets and an SVG orientation axis gizmo that reflects
+  orbit/tilt. Chrome only — no WebGL context, no `three` import; the
+  `ARCHITECTURE WebGL/Three ban` test still passes 4/4.
+- [x] The 3D dock now has one implementation with two homes: inline on
+  desktop, portalled into the control deck on mobile (`dockHost`), and it
+  only exists while the 3D viewport is the one on screen. Deleted the
+  `vpdisclose` disclosure it replaced (§3).
+- [x] Layout bugs found and fixed by measuring, not eyeballing: a tablet
+  `min-height: 58vh` that also matched phones and pushed the deck off the
+  bottom of the screen (tablet blocks now lower-bounded at 981px); a
+  `.panes` wrapper that could not shrink, overflowing the 3D pane past its
+  track; `#view3d`'s intrinsic square out-voting the row height inside the
+  grid; a `margin-top` sitting outside its grid track; and dock groups with
+  no `min-width: 0` that pushed the whole document sideways once the 3D
+  dock moved into a 390px deck.
+- [x] Touch floors hold at every state: 48 mobile states (4 viewports ×
+  3 deck panels × 4 device profiles) audited at 0 horizontal overflow,
+  0 sub-24px targets, deck flush to the fold. Switch and checkbox sizes
+  tokenised so coarse pointers scale in one place (§22).
+- [x] Contract preserved: all 134 e2e-referenced DOM ids survive
+  (`#CHROM`/`##fileformat` in the e2e id sweep are VCF header lines in
+  fixture bytes, not ids); `data-*`, `title` and `aria-label` selectors
+  untouched. Verified 650/650 non-sample unit tests, markers 2/2,
+  verify 4/4, build + typecheck:app clean. The 26 remaining unit failures
+  are the pre-existing `samples/`-dependent ones, unchanged from baseline.
+
+## Shipped in the instrument pass (it looked like a dashboard, not a tool)
+Review of the pass above: it was modern, but it read as a web dashboard —
+pill-shaped controls, a toolbar wrapping ~280px across the top, label+slider
+rows, and a gizmo that was pure decoration. A 3D tool looks different.
+- [x] De-pilled: rounding retuned to instrument density (3→19px, still
+  proportional). Pills now only for status dots and toasts.
+- [x] Scrub fields replace slider rows (`SliderRow`): a compact rectangle
+  with the label inside, a proportional fill and a right-aligned value.
+  Still a native range input layered at full size, so the wire legs that
+  focus these and send real arrow keys keep working.
+- [x] Tool column replaces the wrapping toolbar: `#dock-mpr` gains a
+  `column` mode with icon+label tools against the viewport edge, cutting
+  the toolbar band from ~280px to ~180px. Kept as one dock because
+  `#undogrp` must stay inside `#dock-mpr` (journeys.mjs) and `#modeseg`
+  inside `#mpanel-tools` (mobile-audit.mjs).
+- [x] Density scales by pointer type, not breakpoint: `--ctl-h` 26px under
+  a mouse, 44px under a finger. Instrument tightness and the §22 touch
+  floor now come from one variable instead of fighting each other.
+- [x] Viewport headers became thin strips carrying the view name and its
+  own controls, the way a 3D tool heads each viewport.
+- [x] The axis gizmo is operable: clicking X/Y/Z snaps the camera, with
+  painter-ordered axes and hover feedback. It still renders no imagery —
+  the WebGL/Three ban test passes 4/4, unchanged.
+- [x] Re-verified after the density change: all 48 mobile states clean
+  (0 overflow, 0 sub-24px touch targets, deck flush to the fold);
+  650/650 non-sample unit tests, markers 2/2, verify 4/4, build and
+  typecheck:app clean. Desktop controls sit at 20px by design — §22's
+  audit is the touch profile, where the floor still holds.
+
+## Shipped in the workflow pass (designed from the job, not the aesthetic)
+Second review: the instrument pass fixed how it *looks*, but the tool was
+still styled after 3D-modelling software rather than how a reader actually
+works. Visual software is viewport-heavy; tools hide, and gestures replace
+buttons. Changes driven by the job:
+- [x] Wheel stack-scrolls the series; Ctrl/Cmd+wheel zooms. This is the
+  binding every reading workstation uses (Sectra, Visage, syngo, OHIF,
+  Horos) and the most-used gesture in the job — it was bound to zoom, which
+  is backwards. A tool replaced by a gesture is a tool removed.
+- [x] Viewport corner overlay (`ui/ViewportOverlay.tsx`): patient/ID,
+  modality + study date, series + dims, window/level + slice thickness, and
+  the non-diagnostic badge on the image itself. `session.dcmMeta` already
+  carried all of it. This replaced the decorative corner brackets that sat
+  exactly where a reader expects that information.
+- [x] The floor grid is now scoped to the 3D viewport. Behind a
+  reconstructed slice a grid is not scenery, it is contamination over the
+  thing being read.
+- [x] Tool palette shrank from a 152px labelled column to a 56px icon strip
+  against the viewport edge; the details panel gained a collapse toggle
+  (`#instoggle`, `insOpen`) that hands its 304px column back to the image.
+
+BLOCKED, owner: this sandbox — full "every tool hidden behind pop-outs".
+`wire.mjs:1397` asserts `#dockrow-2d` is present on load and that hiding it
+*grows* `#viewgrid`, so the toolbar cannot default closed or float out of
+layout flow. Moving the tune/seg controls into popovers would also remove
+`#layoutseg`, `#projseg`, `#planeseg`, `#cmpseg`, `#cine-play`,
+`#oblplaneseg` and friends from the DOM until opened, breaking ~20 legs.
+That refactor needs the e2e suite re-run to re-validate, and e2e needs
+`samples/`, which is gitignored and absent here. Unblock: run
+`npm run test:e2e` on a machine with `samples/`, then rewrite those legs to
+open the owning popover first.
 owner + unblock step, or accepted by design — verified 2026-09-14)
 - BLOCKED, owner: your machine — Docker image: `Dockerfile` ships but the
   sandbox daemon fails every build with `unshare: operation not permitted`
@@ -548,3 +653,125 @@ owner + unblock step, or accepted by design — verified 2026-09-14)
   itk-wasm bench (T3), MONAI sidecars (T4), OpenSlide pyramid (V5),
   TotalSeg/nnU-Net masks (§1c): all license-cleared, none started as digests.
   Reopen any one by running its lane change (PHASES + DIGEST entry + wire leg).
+
+## Engineering gates (2026-09-22)
+
+Not a feature lane — the spine that the other lanes are checked against.
+
+- DONE — **CI exists.** `.github/workflows/ci.yml` runs `npm run ci` (build,
+  typecheck, lint, unit, markers, app build) plus a Docker image build on
+  every push. Before this, every rule in CODING-STANDARDS was enforced only
+  by whoever remembered to run it.
+- DONE — **The Docker build works from a clean tree.** Its gate layer called
+  `test:unit` "the hermetic subset"; it was not. `.dockerignore` drops
+  `samples/`, and 20 tests read fixtures from it unguarded, so the image
+  could not build from a fresh checkout. Proven fixed by running the whole
+  RUN line against a sample-free copy of the build context: 0 fail, 20 skip.
+- DONE — **A skip is a skip.** New `@carys/testkit` resolves fixture paths and
+  returns node:test skip options; `CARYS_REQUIRE_SAMPLES=1` (set by
+  `npm run verify`) turns absence back into failure. This also retired three
+  `precomputed` checks that returned early with a `console.log` and scored
+  as passes.
+- DONE — **Lint.** eslint + typescript-eslint, type-aware, `--max-warnings 0`.
+  946 initial findings reduced to 0: 873 were node:test's `describe`/`it`
+  (fixed by naming them in `allowForKnownSafeCalls`, so the rule stays live
+  inside test bodies), 28 were `require-await` against Promise-returning
+  contracts (rule removed, reason recorded in the config), and the rest were
+  real — including `viv.ts`'s Float64 range, where `1.8e308` is past
+  `Number.MAX_VALUE` and had been rounding to `Infinity`.
+- DONE — `eslint-plugin-react-hooks` installed. The app already carried
+  `eslint-disable-next-line react-hooks/exhaustive-deps` comments with no
+  plugin behind them; they were decoration. One real finding behind them.
+- BLOCKED — **e2e in CI.** `test:e2e` needs real imaging, and `samples/` is
+  not committed. Owner: whoever owns fixture hosting. Unblock: publish a
+  small licensed fixture pack (or a generator covering the wire/journey
+  paths) that CI can fetch, then add an e2e job.
+- OPEN — **`samples/` has no manifest.** `CARYS_REQUIRE_SAMPLES=1` fails on
+  the first missing file rather than listing the expected set. Unblock: a
+  checked-in fixture manifest (name + size + hash) that testkit reads.
+
+## Accessibility (2026-09-22)
+
+- DONE — **226 WCAG 2.1 A/AA violations to 0.** `--color-faint` had been
+  below AA (2.56-3.66:1) on all seven surfaces since it was written — 221
+  of the 226 nodes, and the token that carries every hint, micro-label and
+  readout. Raised to #8a97a9 with --color-muted to #a7b1c0 to keep the
+  hierarchy; ratios recorded in the token comment.
+- DONE — **Composite contrast.** `.dockrow` at opacity 0.55 and `.toolstrip`
+  at 0.72 composited their own labels down to 1.83:1 and 2.33:1. Both rest
+  at 0.85. A token can pass while the pixels fail.
+- DONE — **Two tablists that were not tablists.** `.filetabs` owned the "+"
+  action; the mobile deck's Tools/Display/Files are disclosures (re-tapping
+  closes, so none may be selected). Roles now match behaviour.
+- DONE — **`audit:a11y` is a gate**, in `npm run ci` and on every push.
+  Proven to fail: reverting --color-faint reproduced 218 failures and exit 1.
+  It runs without samples/, so a fixture-free runner still covers the chrome.
+- DONE — **`test/e2e/browser.mjs`.** `chromium.launch()` resolves a build
+  pinned to the Playwright version, which is why `audit:mobile` had become
+  un-runnable in sandboxes carrying a different revision. `CARYS_CHROMIUM`
+  overrides the executable; unset, nothing changes.
+- OPEN — **Keyboard navigation is unaudited.** axe checks roles and contrast,
+  not whether a keyboard can reach and drive the viewport, the docks and the
+  deck. Unblock: a wire leg that tabs through each route asserting focus
+  order and a visible focus ring, then a `:focus-visible` pass.
+- OPEN — **No reduced-motion or forced-colors handling.** Unblock: honour
+  `prefers-reduced-motion` for the pulse/shimmer animations and test the
+  Windows high-contrast path.
+
+## 3D from DICOM (2026-09-22)
+
+The 3D surface appeared to be NIfTI-only. It never was — the extractor takes
+a Float64Array plus dims and cannot tell the formats apart — but three
+defaults conspired to make DICOM look unsupported.
+
+- DONE — **The 3D source falls back to the image.** `src` defaulted to
+  `'mask'`, so any series arriving without a segmentation — every plain DICOM
+  series, since a segmentation is a separate object — opened the 3D pane on
+  "empty mask". The NIfTI phantoms ship `*_seg.nii` sidecars and so always had
+  one, which is exactly why the limitation looked like a format limitation.
+- DONE — **The isosurface threshold is data-driven** (`autoThreshold` in
+  volume-core). It was fixed at 0 with a slider capped at 1000: on Hounsfield
+  data a cut at 0 HU keeps everything denser than water, fusing brain and
+  skull into one featureless shell, and cortical bone at ~1100 HU sat past the
+  end of the control. Now: a label map cuts at 0, Hounsfield data at bone
+  (300), anything else at Otsu; the slider spans the volume's own range.
+  Measured on the CT phantom: threshold 0 gives 136,892 tris (one blob),
+  300 gives 242,616 (the skull).
+- DONE — **`scripts/gen-ct-series.mjs`**, a synthetic 120-slice CT study as
+  real Part-10 files, written with the repo's own writer and sharing its
+  anatomy with the NIfTI phantom (`scripts/phantom.mjs`, §4). Stored unsigned
+  with RescaleIntercept -1024; the round trip back through `parseDicomSlice`
+  returns -1000…1200 HU exactly. A fresh clone can now demonstrate the DICOM
+  lane end to end without any patient data.
+- OPEN — **No wire leg for the DICOM→3D journey.** The unit test pins the
+  threshold maths and the path was verified by hand in a real browser, but
+  §19 wants a leg. Unblock: add one to `test/e2e/wire.mjs` that opens
+  `ct-head-dicom` and asserts the tri count chip is non-zero.
+- OPEN — **CT surface presets.** Bone is the right default, but skin (~-300
+  HU) and soft tissue (~50 HU) are the other two cuts a reader wants, and
+  reaching them means dragging a slider across 2200 units. Unblock: a preset
+  trio in the 3D dock driven by the same Hounsfield constants.
+
+## First run on a clean clone (2026-09-22)
+
+- DONE — **A missing sample said the wrong thing.** All three fetches in
+  `loaders.ts` used the response without checking `res.ok`, so a 404 handed
+  the server's HTML error page to the NIfTI parser and the app reported
+  "This does not appear to be a NIFTI file!". That blames the data for being
+  malformed when it is simply absent — the normal state of a fresh clone,
+  where samples/ holds nothing but .gitkeep. `MissingSampleError` now names
+  the file and the command that fixes it (§12, §14).
+- DONE — **`npm run gen:samples`**, one command that fills samples/ with
+  synthetic phantoms from the repo's own writers (~42MB: head CT as NIfTI and
+  as a 120-slice DICOM series, OME-Zarr cells, a plate). Measured on a
+  simulated fresh clone: before, 0 canvases painted and a parser error;
+  after, 4 canvases and a 7,016-tri surface.
+- DONE — **`samples/.gitkeep` says what is expected**, not just where to put
+  it: the two ways to fill the directory, the size, and that `npm run verify`
+  needs the real set rather than the phantoms.
+- OPEN — **Catalog entries with no generator still 404** (lung_ct, cardiac,
+  prostate_mri and the other vendored series). They now fail with an
+  actionable message instead of a parser error, but the worklist still lists
+  13 studies when only some can open. Unblock: mark catalog entries that need
+  real data and show it in the worklist, or generate phantoms for them too.
+

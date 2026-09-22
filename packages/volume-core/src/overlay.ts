@@ -28,7 +28,7 @@ export function compositeRow(
   for (let i = 0; i < baseVals.length; i++) {
     const g = applyWindowLevel(baseVals[i], baseWL);
     let r = g, gr = g, b = g;
-    let a = 255;
+    const a = 255;
     for (const { vals, overlay } of overlays) {
       const wl = overlayToWindowLevel(overlay);
       const v = applyWindowLevel(vals[i], wl);

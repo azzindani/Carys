@@ -2,6 +2,7 @@ import type { Nifti1Header } from '@carys/io';
 import type {
   DicomTagSummary, EncapsulatedDoc, RtDoseGrid, RtPlan, UsRegion, VlGrid,
 } from '@carys/io';
+import type { ThresholdSuggestion } from '@carys/volume-core';
 import type { Measurement } from '@carys/measure';
 import type { FiberSet, Mesh, Volume } from './types';
 
@@ -23,6 +24,9 @@ class Session {
   fibersPinned: FiberSet | null = null;
   wl: { width: number; center: number } | null = null;
   autoWl: { width: number; center: number } | null = null;
+  /** Isosurface range + suggested cut for the loaded volume (see autoThreshold).
+   *  Null until a series loads; the 3D slider falls back to [0, 1000]. */
+  autoThreshold: ThresholdSuggestion | null = null;
   /** compare overlay window (resolved when the overlay volume loads) */
   compareWl: { width: number; center: number } | null = null;
   axialFrac = 0.5;

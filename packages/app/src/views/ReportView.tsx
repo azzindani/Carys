@@ -93,7 +93,7 @@ export function ReportView(): JSX.Element {
       generatedAt,
     });
     downloadFile(`repro-${ui.series || 'series'}.json`, reproSidecarToJSON(sidecar), 'application/json');
-    toast(`Sidecar saved: ${sidecar.series} · mask v${sidecar.maskVer} · ${sidecar.measurements.length} measurement(s)`);
+    toast(`Sidecar saved: ${sidecar.series} · mask v${sidecar.maskVer} · ${sidecar.measurements.length} measurement(s)`, 'ok');
   };
   return (
     <>
@@ -118,7 +118,7 @@ export function ReportView(): JSX.Element {
                 })),
                 provenance: ['Carys teaching sheet (education only — not for diagnosis)'],
               }), 'text/html');
-              toast('Teaching sheet saved (no answers on the sheet)');
+              toast('Teaching sheet saved (no answers on the sheet)', 'ok');
             }}>Sheet</button>
         </span>
       </div>

@@ -1,0 +1,286 @@
+/* ============================================================================
+   App shell — rail, topbar, main grid, inspector, status.
+   Desktop puts navigation in a left icon rail (the pattern every 3D/creative
+   tool uses) so the topbar can carry context instead of eight cramped links.
+   ========================================================================= */
+
+.shell { display: flex; flex: 1; min-height: 0; min-width: 0; }
+
+/* -------------------------------------------------------------- icon rail */
+.rail {
+  flex: none; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-1);
+  width: 60px; padding: var(--sp-3) var(--sp-2);
+  background: var(--color-surface-1);
+  border-right: 1px solid var(--color-line);
+}
+.rail-mark {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; margin-bottom: var(--sp-3);
+  border: none; border-radius: var(--radius-md);
+  background: linear-gradient(140deg, var(--color-accent-hi), var(--color-accent-lo));
+  box-shadow: 0 2px 10px rgb(45 212 191 / 0.3);
+}
+.rail-btn {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  width: 100%; min-height: 46px; padding: var(--sp-2) 0;
+  background: transparent; border: none;
+  /* concentric inside the rail's --sp-2 padding */
+  border-radius: calc(var(--radius-lg) - var(--sp-2));
+  color: var(--color-faint);
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.rail-btn svg { width: 19px; height: 19px; }
+.rail-btn .rl { font-size: var(--fs-3xs); font-weight: 600; letter-spacing: 0.02em; }
+.rail-btn:hover { color: var(--color-text); background: var(--color-surface-2); }
+.rail-btn[aria-current="page"] { color: var(--color-accent); background: var(--color-accent-dim); }
+/* active marker rides the left edge, like a tool rail */
+.rail-btn[aria-current="page"]::before {
+  content: ""; position: absolute; left: calc(var(--sp-2) * -1); top: 50%;
+  width: 3px; height: 22px; transform: translateY(-50%);
+  background: var(--color-accent); border-radius: var(--radius-pill);
+}
+.rail-spacer { flex: 1; }
+
+/* ------------------------------------------------------------------ frame */
+.frame { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+/* ----------------------------------------------------------------- topbar */
+.top {
+  flex: none; position: relative; z-index: 30;
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--color-surface-1);
+  border-bottom: 1px solid var(--color-line);
+}
+.logo { display: flex; align-items: center; gap: var(--sp-3); }
+.logo .mark {
+  display: none; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex: none; border-radius: var(--radius-sm);
+  background: linear-gradient(140deg, var(--color-accent-hi), var(--color-accent-lo));
+}
+.logo .word { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; letter-spacing: -0.02em; }
+.logo .word span { color: var(--color-muted); font-weight: 500; }
+.logo .tag {
+  padding: 2px var(--sp-2);
+  font-family: var(--font-mono); font-size: var(--fs-3xs); font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--color-accent); background: var(--color-accent-dim);
+  border: 1px solid var(--color-line-accent); border-radius: var(--radius-pill);
+}
+.logo-btn { display: flex; align-items: center; background: none; border: none; padding: 0; font: inherit; color: inherit; }
+.top-spacer { flex: 1; min-width: var(--sp-2); }
+
+.navlink {
+  min-height: var(--tap); padding: var(--sp-2) var(--sp-4);
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-md);
+  color: var(--color-muted); font-size: var(--fs-sm); font-weight: 500;
+  transition: all var(--dur-fast) var(--ease);
+}
+.navlink:hover { color: var(--color-text); background: var(--color-surface-3); }
+.navlink[aria-current="page"] { color: var(--color-accent); background: var(--color-accent-dim); }
+
+.kbd-btn {
+  display: flex; align-items: center; gap: var(--sp-3);
+  min-height: var(--tap); padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-4);
+  background: var(--color-sunken); border: 1px solid var(--color-line);
+  border-radius: var(--radius-md); color: var(--color-faint); font-size: var(--fs-sm);
+  transition: all var(--dur-fast) var(--ease);
+}
+.kbd-btn:hover { color: var(--color-text); border-color: var(--color-line-strong); }
+
+/* ------------------------------------------------------------- file tabs */
+/* The tab strip shares the toolbar band instead of owning a row of its
+   own — it was costing ~3% of the screen to show one tab. */
+.ftop {
+  position: relative; z-index: 20;
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: 0 0 var(--sp-2);
+}
+.ftop .filetabs .tab { min-height: var(--ctl-h); padding: 0 var(--sp-3); }
+.ftop .iconbtn { min-height: var(--ctl-h); }
+.ftop .filetabs { flex: 1; min-width: 0; }
+.filetabs { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+/* role-only wrapper: contributes no box, so the tabs stay direct flex children */
+.filetabs-list { display: contents; }
+.filetabs .tab {
+  display: flex; align-items: center; gap: var(--sp-2);
+  min-height: var(--tap); padding: var(--sp-2) var(--sp-4);
+  background: var(--color-surface-1); border: 1px solid var(--color-line);
+  border-radius: var(--radius-md); color: var(--color-muted);
+  font-size: var(--fs-sm); font-weight: 500;
+  transition: all var(--dur-fast) var(--ease);
+}
+.filetabs .tab:hover { color: var(--color-text); border-color: var(--color-line-strong); }
+.filetabs .tab.on {
+  color: var(--color-text); background: var(--color-surface-3);
+  border-color: var(--color-line-strong); box-shadow: var(--shadow-1);
+}
+.filetabs .tab .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-faint); flex: none; }
+.filetabs .tab.on .dot { background: var(--color-accent); box-shadow: 0 0 7px var(--color-accent); }
+.filetabs .tab .tname { font-family: var(--font-mono); font-size: var(--fs-xs); }
+.filetabs .tab .x {
+  display: flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; margin-right: -4px;
+  color: var(--color-faint); border-radius: var(--radius-xs); font-size: var(--fs-md); line-height: 1;
+}
+.filetabs .tab .x:hover { color: var(--color-danger); background: rgb(240 86 74 / 0.12); }
+.filetabs .tab.plus { border-style: dashed; color: var(--color-faint); padding-inline: var(--sp-4); }
+.filetabs .tab.plus:hover { color: var(--color-accent); border-color: var(--color-accent); }
+
+/* ------------------------------------------------------------- main grid */
+.main {
+  position: relative;
+  flex: 1; display: grid; gap: var(--sp-4);
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0; min-width: 0;
+  padding: var(--sp-2) var(--sp-3) var(--sp-2);
+}
+.main-full { grid-template-columns: minmax(0, 1fr); }
+.viewport {
+  position: relative; display: flex; flex-direction: column;
+  min-width: 0; min-height: 0; overflow: auto;
+  scrollbar-gutter: stable;
+}
+.view-title { display: flex; align-items: baseline; gap: var(--sp-4); margin-bottom: var(--sp-5); flex-wrap: wrap; }
+.view-title h1 { font-family: var(--font-display); font-size: var(--fs-xl); letter-spacing: -0.025em; line-height: 1.2; }
+.view-title p { margin: 0; color: var(--color-faint); font-size: var(--fs-sm); }
+.view-title .right { margin-left: auto; display: flex; align-items: center; gap: var(--sp-3); }
+
+/* A pane group carrying a canvas is a viewport, not a card deck, so it gets
+   a far larger cap than the old 520px — which left two-thirds of Atlas,
+   Protein and Cells empty.
+   The canvas keeps its own render size: these views rasterise at a fixed
+   resolution with a fixed camera, so stretching it to fill crops the
+   subject instead of letterboxing it. Truly filling these viewports needs
+   each view to resize its canvas and reframe — a code change per view, not
+   a stylesheet one. */
+.panes { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: flex-start; min-width: 0; }
+.panes > .pane { flex: 1 1 300px; max-width: 520px; }
+.panes:has(canvas) > .pane { max-width: min(980px, 100%); }
+.panes:has(canvas) > .pane .stage { display: flex; align-items: center; justify-content: center; }
+.panes:has(canvas) > .pane canvas { max-width: 100%; height: auto; }
+/* …but NOT inside a viewport. The viewer's 3D pane is also a `.panes` group
+   with a canvas, and the rules above overrode its `height: 100%` with
+   `height: auto`, so the render letterboxed to its natural ratio and left a
+   third of the pane black on portrait tablets. A viewport pane is sized by
+   its pane, always. */
+.vp .panes:has(canvas) > .pane { max-width: none; }
+.vp .panes:has(canvas) > .pane .stage { display: flex; align-items: stretch; justify-content: stretch; }
+.vp .panes:has(canvas) > .pane canvas { max-width: none; height: 100%; }
+
+/* ------------------------------------------------------------- inspector
+   A drawer over the image, not a column beside it. Closed by default; the
+   Details toggle slides it in. Chrome costs zero layout area. */
+.inspector {
+  position: absolute; top: calc(var(--ctl-h) + var(--sp-3)); right: 0; bottom: 0; z-index: 14;
+  width: min(300px, 82vw);
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+  padding: 0 var(--sp-4) var(--sp-4);
+  background: color-mix(in srgb, var(--color-surface-1) 96%, transparent);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-2);
+  animation: drawer-in var(--dur) var(--ease);
+  border-left: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+}
+@keyframes drawer-in { from { transform: translateX(14px); opacity: 0; } }
+.inspector section { padding: var(--sp-5) 0; border-bottom: 1px solid var(--color-line); }
+.inspector section:last-child { border-bottom: none; }
+.inspector h2 {
+  display: flex; align-items: center;
+  margin-bottom: var(--sp-3);
+  font-size: var(--fs-3xs); font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--color-faint);
+}
+.inspector h2 .act { margin-left: auto; display: flex; gap: var(--sp-1); }
+.inspector h2 .act button {
+  min-height: 26px; padding: 2px var(--sp-3);
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-xs);
+  color: var(--color-faint); font-size: var(--fs-2xs);
+  transition: all var(--dur-fast) var(--ease);
+}
+.inspector h2 .act button:hover { color: var(--color-text); background: var(--color-surface-3); }
+
+/* ---------------------------------------------------------------- status */
+.status {
+  flex: none; display: flex; align-items: center; gap: var(--sp-3);
+  min-height: 22px; padding: 0 var(--sp-4);
+  background: var(--color-surface-1); border-top: 1px solid var(--color-line);
+  color: var(--color-muted); font-size: var(--fs-2xs);
+  white-space: nowrap; overflow: hidden;
+}
+.status .dot { color: var(--color-accent); font-size: var(--fs-3xs); animation: pulse 2.2s infinite; }
+/* Severity is the whole point of a status line: a failure must not read
+   like idle chatter (§12/§14). */
+.status[data-sev="ok"] .dot { color: var(--color-ok); }
+.status[data-sev="warn"] .dot { color: var(--color-warn); animation: none; }
+.status[data-sev="error"] .dot { color: var(--color-danger); animation: none; }
+.status[data-sev="warn"] #status-text { color: var(--color-warn); }
+.status[data-sev="error"] #status-text { color: var(--color-danger); font-weight: 600; }
+.status[data-sev="error"] { background: rgb(240 86 74 / 0.08); border-top-color: rgb(240 86 74 / 0.35); }
+.status-inline[data-sev="warn"] { color: var(--color-warn); }
+.status-inline[data-sev="error"] { color: var(--color-danger); font-weight: 600; }
+@keyframes pulse { 50% { opacity: 0.3; } }
+#status-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.status .sp { flex: 1; }
+.status .pill {
+  padding: 1px var(--sp-3); flex: none;
+  border: 1px solid var(--color-line); border-radius: var(--radius-pill);
+  color: var(--color-faint); font-family: var(--font-mono); font-size: var(--fs-3xs);
+}
+.status-inline {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-align: center; color: var(--color-faint);
+  font-family: var(--font-mono); font-size: var(--fs-2xs);
+}
+
+/* --------------------------------------------------------------- worklist */
+.worklist { padding-bottom: var(--sp-7); }
+.wl-rows { display: flex; flex-direction: column; gap: var(--sp-3); }
+.wl-row {
+  display: flex; gap: var(--sp-4); align-items: center;
+  padding: var(--sp-3) var(--sp-5) var(--sp-3) var(--sp-3);
+  background: var(--color-surface-1); border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.wl-row:hover { border-color: var(--color-line-strong); background: var(--color-surface-2); }
+.wl-thumb {
+  width: 76px; height: 76px; flex: none; object-fit: contain;
+  /* concentric with .wl-row: inset by --sp-3 */
+  background: var(--color-stage); border-radius: calc(var(--radius-lg) - var(--sp-3));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05);
+}
+.wl-main { min-width: 0; flex: 1; }
+.wl-title { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.wl-key { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 600; }
+.wl-meta {
+  display: flex; gap: var(--sp-6); flex-wrap: wrap; margin-top: var(--sp-2);
+  color: var(--color-faint); font-family: var(--font-mono); font-size: var(--fs-2xs);
+}
+.wl-actions { display: flex; gap: var(--sp-2); flex: none; }
+.wl-open {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: var(--tap); padding: var(--sp-2) var(--sp-7);
+  border: none; border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, var(--color-accent-hi), var(--color-accent-lo));
+  color: var(--color-on-accent); font-size: var(--fs-sm); font-weight: 650;
+  box-shadow: var(--shadow-1);
+  transition: filter var(--dur-fast) var(--ease);
+}
+.wl-open:hover { filter: brightness(1.07); }
+.wl-anon {
+  min-height: var(--tap); padding: var(--sp-2) var(--sp-5);
+  background: var(--color-surface-2); border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm); color: var(--color-muted);
+  font-size: var(--fs-sm); font-weight: 500;
+  transition: all var(--dur-fast) var(--ease);
+}
+.wl-anon:hover { color: var(--color-text); border-color: var(--color-line-strong); }
+.wl-empty { color: var(--color-faint); text-align: center; padding: var(--sp-8); }
+.wl-tabs { margin-left: auto; }
+.wl-search-sm { width: 220px; }
+.pacs { padding-bottom: var(--sp-7); }

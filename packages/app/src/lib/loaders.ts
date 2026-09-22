@@ -11,6 +11,35 @@ const ARRAYS = {
   uint32: Uint32Array, int32: Int32Array, float32: Float32Array, float64: Float64Array,
 } as const;
 
+/**
+ * Fetch sample bytes, failing with a name the user can act on.
+ *
+ * Every fetch here used the response without checking `res.ok`, so a missing
+ * sample — the normal state of a fresh clone, where samples/ holds nothing but
+ * .gitkeep — handed the server's HTML 404 page to the NIfTI parser, which
+ * reported "This does not appear to be a NIFTI file!". That blames the data
+ * for being malformed when it is simply absent, and sends the reader looking
+ * for a corrupt volume instead of running a generator (§12, §14).
+ */
+export class MissingSampleError extends Error {
+  constructor(public readonly url: string, public readonly status: number) {
+    const file = url.split('/').pop() ?? url;
+    super(
+      status === 404
+        ? `sample not installed: ${file} — run \`npm run gen:samples\` for synthetic volumes, or mount your own in samples/`
+        : `could not read ${file} (HTTP ${status})`,
+    );
+    this.name = 'MissingSampleError';
+  }
+}
+
+/** One fetch for every sample path, so the missing-file story is told once. */
+async function fetchSample(url: string, signal?: AbortSignal): Promise<ArrayBuffer> {
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new MissingSampleError(url, res.status);
+  return res.arrayBuffer();
+}
+
 /** Decode one frame of an already-read header into a display Volume. */
 export function volumeFromNifti(h: Nifti1Header, frame: ArrayBuffer): Volume {
   const raw = new (ARRAYS[h.dtype as keyof typeof ARRAYS] ?? Uint8Array)(frame);
@@ -29,8 +58,7 @@ export function loadNiiBuffer(buf: ArrayBuffer): Volume {
 
 /** Fetch raw (possibly gzipped) NIfTI bytes + header; retained for 4D cine. */
 export async function loadNiiRaw(url: string, opts: { signal?: AbortSignal } = {}): Promise<{ hdr: Nifti1Header; buf: ArrayBuffer }> {
-  const res = await fetch(url, { signal: opts.signal });
-  const buf = decodeNiftiBuffer(new Uint8Array(await res.arrayBuffer()));
+  const buf = decodeNiftiBuffer(new Uint8Array(await fetchSample(url, opts.signal)));
   return { hdr: readHeader(buf), buf };
 }
 
@@ -40,8 +68,7 @@ export function decodeNiiFrame(hdr: Nifti1Header, buf: ArrayBuffer, t: number): 
 }
 
 export async function loadNii(url: string, opts: { signal?: AbortSignal } = {}): Promise<Volume> {
-  const res = await fetch(url, { signal: opts.signal });
-  return loadNiiBuffer(await res.arrayBuffer());
+  return loadNiiBuffer(await fetchSample(url, opts.signal));
 }
 
 /** Decode NRRD bytes (raw/ascii/gzip, any dtype) into a display Volume. */
@@ -144,9 +171,8 @@ export async function loadDicomSeries(urls: string[], opts: { signal?: AbortSign
 }> {
   const parsed = [];
   for (const u of urls) {
-    const res = await fetch(u, { signal: opts.signal });
     // multi-frame files expand in file order (stable sort keeps it downstream)
-    for (const p of parseDicomFrames(await res.arrayBuffer())) parsed.push(p);
+    for (const p of parseDicomFrames(await fetchSample(u, opts.signal))) parsed.push(p);
   }
   const order = new Map(parsed.map((s) => [s.slice, s.meta.sliceLocation ?? s.meta.instanceNumber ?? 0]));
   const slices = sortSlices(parsed.map((s) => s.slice)).sort((a, b) => order.get(a)! - order.get(b)!);

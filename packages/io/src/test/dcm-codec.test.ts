@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { needs, sample } from '@carys/testkit';
 import { readDataset } from '../dcm-read.js';
 import { makeUID, writePart10 } from '../dcm-write.js';
 import { DicomParseError, Walker, parseDicomSlice } from '../dicom-parse.js';
@@ -74,14 +74,14 @@ describe('part-10 codec', () => {
     assert.equal(buf.byteLength % 2, 0);
     assert.equal(readDataset(buf).text('00100010'), 'ABC');
   });
-  it('undecodable transfer syntax rejected with named error (boundary)', () => {
+  it('undecodable transfer syntax rejected with named error (boundary)', needs('lung_ct_01.dcm'), () => {
     // No sample in the repo uses an undecodable syntax (sweep proves 18x
     // Explicit LE + 9x Implicit LE), so derive one synthetically: patch a
     // valid file's TransferSyntaxUID to JPEG 2000 (...4.91, no CPU decoder)
     // and require the named gate instead of a pixel-decode crash.
     // Baseline (...4.50), Lossless (...4.70), RLE and JPEG-LS lossless
     // (...4.80) now decode — see dicom-compressed.test.ts + dicom-jpegls.
-    const raw = Buffer.from(readFileSync(join(process.cwd(), 'samples/lung_ct_01.dcm')));
+    const raw = Buffer.from(readFileSync(sample('lung_ct_01.dcm')!));
     const at = 272; // value start of (0002,0010) in this file
     assert.equal(raw.slice(at, at + 17).toString(), '1.2.840.10008.1.2');
     const uid = Buffer.from('1.2.840.10008.1.2.4.91');
@@ -107,7 +107,6 @@ describe('part-10 codec', () => {
     push(0x02, 0x00, 0x00, 0x00, 0x55, 0x4c); u16(4); u32(28); // group length
     push(0x02, 0x00, 0x10, 0x00, 0x55, 0x49); u16(20); // TS UID, Explicit LE
     push(...enc.encode('1.2.840.10008.1.2.1'), 0x00);
-    const seqStart = bytes.length;
     push(0x29, 0x00, 0x01, 0x10, 0x55, 0x4e, 0x00, 0x00); u32(0xffffffff); // UN undefined
     const itemStart = bytes.length;
     push(0xfe, 0xff, 0x00, 0xe0); u32(10); // defined item, 10 bytes

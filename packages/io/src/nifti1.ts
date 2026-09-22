@@ -148,7 +148,7 @@ function buildAffine(
   }
   if (qform > 0 && sform < qform) {
     // METHOD 2: quaternion
-    let a = Math.sqrt(Math.max(0, 1 - qb * qb - qc * qc - qd * qd));
+    const a = Math.sqrt(Math.max(0, 1 - qb * qb - qc * qc - qd * qd));
     const qfac = pixDims[0] === 0 ? 1 : pixDims[0];
     const R = [
       [a * a + qb * qb - qc * qc - qd * qd, 2 * (qb * qc - a * qd), 2 * (qb * qd + a * qc)],
