@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { measureClick, paintDown, paintMove, planePoint } from './PanePaint';
-import type { PaintHost, StrokeState, TapEvent } from './PanePaint';
+import type { PaintHost, StrokeState } from './PanePaint';
 import { ColorTable, iopEdgeLabels } from '@carys/volume-core';
-import type { Volume } from '@carys/volume-core';
 import { fuseSlices, mipRotate, obliqueBasis, reslice, resliceOblique, slabMask, slabProject, voxelSlices } from '@carys/render-cpu';
 import { paintBus } from '../lib/paintBus';
 import { ACCENT, ACCENT_DIM, ACCENT_DIM_FILL, ACCENT_HI, CHROME_TEXT, MASK_TINT, MONO_STACK, ON_ACCENT } from '../lib/palette';
@@ -12,7 +11,6 @@ import { fmtDims, session } from '../lib/session';
 import { doUndo } from '../lib/sessionOps';
 import { setStatus } from '../lib/status';
 import { getUi, setUi, useUiPick } from '../lib/store';
-import { toast } from '../lib/toasts';
 import { bump, useVersion } from '../lib/version';
 import { Chip, IconBtn } from '../ui/primitives';
 import { ViewportOverlay } from '../ui/ViewportOverlay';
@@ -385,10 +383,6 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     const [i, j] = contentXY(cv, W, H, e.clientX, e.clientY);
     return [Math.floor(i), Math.floor(j)];
   };
-  const eventVoxel = (e: React.PointerEvent): [number, number] => planeVoxel('axial', e);
-  const axialIdx = (): number => Number(sliderRefs.current.axial?.value ?? 0);
-  /** Slice index of any plane's slider. */
-  const planeIdx = (plane: Plane): number => Number(sliderRefs.current[plane]?.value ?? 0);
 
   /** The exact tilted sampling frame the tilt-plane paint used (null =
    *  orthogonal). Rebuilt here from the same basis + center so taps

@@ -58,7 +58,7 @@ export function isStlLike(bytes: Uint8Array): boolean {
 function faceNormal(ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number): [number, number, number] {
   const e1x = bx - ax, e1y = by - ay, e1z = bz - az;
   const e2x = cx - ax, e2y = cy - ay, e2z = cz - az;
-  let nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+  const nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
   const l = Math.hypot(nx, ny, nz) || 1;
   return [nx / l, ny / l, nz / l];
 }

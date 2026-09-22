@@ -571,7 +571,7 @@ export function makeOmeTiff(
   for (const d of descs) {
     ifdAt.push(out.length);
     out.push(0, 0); // count patched below
-    for (const e of d) out.push(...new Array(12).fill(0));
+    for (let k = 0; k < d.length; k++) out.push(...new Array(12).fill(0));
     out.push(0, 0, 0, 0); // next-IFD patched below
   }
   const patchU16 = (at: number, v: number): void => { out[at] = v & 0xff; out[at + 1] = (v >> 8) & 0xff; };

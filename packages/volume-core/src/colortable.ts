@@ -84,8 +84,9 @@ export const LUT_MAX = 255;
 
 export function findLUT(name: string): LutDef {
   for (const t of TABLE_ALL) {
-    // Papaya uses == on purpose; keep loose match semantics via String compare
-    if (t.name == name) return t;
+    // Papaya compares loosely here; both operands are typed `string`, so
+    // `===` is the same comparison without the lint exception.
+    if (t.name === name) return t;
   }
   return TABLE_GRAYSCALE;
 }

@@ -9,6 +9,10 @@ export class JpegError extends Error {
   }
 }
 
+// A Huffman tree is an array of sub-trees or leaf values. The empty
+// `extends Array<...>` interface is the only way to spell that recursion —
+// the equivalent type alias refers to itself and will not compile.
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface HuffTree extends Array<HuffTree | number> {}
 
 /** Canonical-code Huffman tree builder (reference algorithm, typed). */

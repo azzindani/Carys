@@ -1,7 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { join, basename } from 'node:path';
+import { listSamples, needsAny } from '@carys/testkit';
 import { isNIFTI1, readHeader, readImage } from '../nifti1.js';
 import { parseDicomSlice, DicomParseError } from '../dicom-parse.js';
 import { sortSlices, stackToVolume } from '../dicom.js';
@@ -10,15 +11,14 @@ import { readHeader as readNiftiHeader, readImage as readNiftiImage } from '../n
 import type { Volume } from '@carys/volume-core';
 
 const SAMPLES = join(process.cwd(), 'samples');
-const files = readdirSync(SAMPLES);
-const niiFiles = files.filter((f) => f.endsWith('.nii')).sort();
-const dcmFiles = files.filter((f) => f.endsWith('.dcm')).sort();
+const niiFiles = listSamples((f) => f.endsWith('.nii'));
+const dcmFiles = listSamples((f) => f.endsWith('.dcm'));
 
 function dim0(buf: ArrayBuffer, le: boolean): number {
   return new DataView(buf).getInt16(40, le);
 }
 
-describe('samples: NIfTI sweep', () => {
+describe('samples: NIfTI sweep', needsAny('NIfTI samples', niiFiles), () => {
   it(`found NIfTI samples (n=${niiFiles.length})`, () => {
     assert.ok(niiFiles.length > 0, 'no .nii samples');
   });
@@ -97,7 +97,7 @@ describe('samples: NIfTI sweep', () => {
   });
 });
 
-describe('samples: DICOM sweep (dicom-parse decoder)', () => {
+describe('samples: DICOM sweep (dicom-parse decoder)', needsAny('DICOM samples', dcmFiles), () => {
   it(`found DICOM samples (n=${dcmFiles.length})`, () => {
     assert.ok(dcmFiles.length > 0, 'no .dcm samples');
   });

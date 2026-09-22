@@ -1,14 +1,15 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, statSync, readFileSync } from 'node:fs';
+import { existsSync, statSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { listSamples, needsAny } from '@carys/testkit';
 import { readHeader } from '../nifti1.js';
 import { parseDicomSlice } from '../dicom-parse.js';
 
 // Fixture inventory: every sample present, non-trivial, and parsing with
 // sane geometry. One `it` per file KIND (not per file — see counting rule).
 const DIR = join(process.cwd(), 'samples');
-const FILES = readdirSync(DIR).filter((f) => f.endsWith('.nii') || f.endsWith('.dcm')).sort();
+const FILES = listSamples((f) => f.endsWith('.nii') || f.endsWith('.dcm'));
 // Pool-safe copy: Buffer.buffer alone may alias the node slab.
 const bufOf = (f: string): ArrayBuffer => Uint8Array.from(readFileSync(join(DIR, f))).buffer as ArrayBuffer;
 
@@ -20,7 +21,7 @@ const bufOf = (f: string): ArrayBuffer => Uint8Array.from(readFileSync(join(DIR,
 const OPENNEURO_T1 = 'openneuro_ds000001_t1-crop.nii';
 const OPENNEURO_BOLD = 'openneuro_ds000001_bold-f0.nii';
 
-describe('samples matrix', () => {
+describe('samples matrix', needsAny('imaging samples', FILES), () => {
   it('D1 crops: provenance sidecar + CC0 registry row present', () => {
     // io stays dependency-free (study owns the validators): assert the
     // sidecar + registry shapes literally; study-side sources.test walks

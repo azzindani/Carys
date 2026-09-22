@@ -49,7 +49,10 @@ export const DTYPE_VALUES: Record<SupportedDtype, { min: number; max: number }> 
   Int16: { min: -32768, max: 32767 },
   Int32: { min: -2147483648, max: 2147483647 },
   Float32: { min: -3.4e38, max: 3.4e38 },
-  Float64: { min: -1.8e308, max: 1.8e308 },
+  // 1.8e308 is past Number.MAX_VALUE (1.7976931348623157e308), so the literal
+  // rounded to Infinity and this row described an unbounded range rather than
+  // a float64's. The named constant is the value that was meant.
+  Float64: { min: -Number.MAX_VALUE, max: Number.MAX_VALUE },
 };
 
 export interface ChannelStats {

@@ -194,7 +194,7 @@ export function AtlasView(): JSX.Element {
   };
 
   useEffect(() => { void paint(sel, orbit, tilt, zoom); });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   useEffect(() => { bump(); }, []);
   useEffect(() => {
     if (!gloss) return;
