@@ -70,7 +70,13 @@
    The grid insets its *content* by the bar's height so the bar never covers
    a pane header; the grid's own box is unchanged, so toggling the toolbar
    still costs the image no height. */
-.workarea { position: relative; --dockbar-h: 42px; }
+/* The bar's height is derived, not guessed: a magic 42px clipped a 69px
+   dock on desktop and was ~20px short of a single row on touch, where
+   --ctl-h is 44px. One row of controls plus the bar's own padding. */
+.workarea {
+  position: relative;
+  --dockbar-h: calc(var(--ctl-h) + var(--sp-3) * 2 + 2px);
+}
 .workarea:has(.dockrow) .viewgrid { padding-top: var(--dockbar-h); }
 .dockrow {
   position: absolute; top: 0; left: 0; right: 0; z-index: 12;
@@ -88,8 +94,13 @@
   transition: opacity var(--dur) var(--ease);
 }
 .dockrow:hover, .dockrow:focus-within { opacity: 1; }
+/* `max-width: 100%` from the floating-dock recipe capped each dock's *box* at
+   the bar's width while its controls kept their intrinsic size, so the
+   controls spilled out of a box that stopped short and landed on top of the
+   next dock. In the bar a dock is measured by what it holds; the bar scrolls. */
 .dockrow .dock {
   flex: none; flex-wrap: nowrap; align-items: center;
+  width: max-content; max-width: none;
   background: transparent; border: 0; box-shadow: none;
   backdrop-filter: none; -webkit-backdrop-filter: none;
   padding: 0; border-radius: 0;
@@ -97,6 +108,11 @@
 /* a hairline between groups instead of three floating boxes */
 .dockrow .dock + .dock { border-left: 1px solid var(--color-line); padding-left: var(--sp-2); }
 .dockrow .dock .grp { flex: none; }
+/* Nothing in the bar wraps internally — a caption that breaks onto a second
+   line makes the dock taller than the bar, and the overflow gets clipped
+   mid-glyph. The row scrolls sideways instead. */
+.dockrow .dock, .dockrow .dock * { white-space: nowrap; }
+.dockrow .dock .chip, .dockrow .dock .lbl { flex: none; }
 .dockrow::-webkit-scrollbar { height: 6px; }
 /* The bar scrolls sideways when the controls outrun the width; without an
    edge fade there is nothing to say so, and controls just look cut off. */

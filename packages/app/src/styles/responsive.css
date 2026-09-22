@@ -233,12 +233,19 @@
 
   /* Page-flow docks scroll sideways instead of wrapping into a wall: the
      worklist filters, cohort and QC panels pushed the study list below the
-     fold, so the list — the point of the screen — was never visible. */
-  .main:not(:has(.viewgrid)) .dock {
+     fold, so the list — the point of the screen — was never visible.
+     A dock holding a definition list is a panel, not a strip, so it is
+     excluded: forcing `nowrap` on the cohort panel collapsed its single-column
+     table to zero width and spilled the rows past the right edge of the
+     screen, one glyph per line, on top of the panel's own caption. */
+  .main:not(:has(.viewgrid)) .dock:not(:has(dl)) {
     width: 100%; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
     scrollbar-width: thin;
   }
-  .main:not(:has(.viewgrid)) .dock .grp { flex: none; }
+  .main:not(:has(.viewgrid)) .dock:not(:has(dl)) .grp { flex: none; }
+  /* the panel form: one column, full width, nothing sideways */
+  .main:not(:has(.viewgrid)) .dock:has(dl) { width: 100%; }
+  .main:not(:has(.viewgrid)) .dock:has(dl) > * { flex: 1 1 100%; min-width: 0; }
 
   /* Viewport header: the name and the live readout, nothing else. The tris
      count is already in the status line, and the zoom chip duplicates the
