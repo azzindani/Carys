@@ -8,6 +8,10 @@
 # run it against on a clean runner, so e2e stays a local/pre-release gate via
 # `npm run verify`, which sets CARYS_REQUIRE_SAMPLES=1 and fails on a fixture
 # that is missing rather than skipping it.
+#
+# The accessibility audit IS here: it inspects chrome — rails, toolbars, docks,
+# panels, forms — which renders with or without imaging, so a fixture-free
+# runner still gets real coverage.
 name: CI
 
 on:
@@ -41,7 +45,13 @@ jobs:
 
       - run: npm ci --no-audit --no-fund
 
-      # build → typecheck:app → lint → test:unit → test:markers → build:app.
+      # audit:a11y drives a real browser over the built app. Chromium only —
+      # the audit inspects the DOM and computed styles, which do not differ
+      # per engine, so three browsers would cost minutes to learn nothing.
+      - run: npx playwright install --with-deps chromium
+
+      # build → typecheck:app → lint → test:unit → test:markers → build:app
+      # → audit:a11y (WCAG 2.1 A/AA over 8 routes x 2 breakpoints).
       # No samples/ on the runner: suites that need a fixture skip and say so,
       # and the run reports the skip count rather than passing silently.
       - run: npm run ci

@@ -55,6 +55,7 @@ See `docs/` for architecture, CPU rendering recipe, phases, and tunnel preview.
 npm run ci       # what CI runs: build + typecheck + lint + unit + markers + app build
 npm run verify   # the full gate: adds e2e and REQUIRES samples/ (see below)
 npm run lint     # eslint, type-aware; --max-warnings 0
+npm run audit:a11y # axe-core WCAG 2.1 A/AA over every route, both breakpoints
 npm run test:unit  # unit suites; fixture-backed ones skip without samples/
 npm run serve    # static root on :8000
 # open http://localhost:8000/packages/ui/  (shell)

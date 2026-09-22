@@ -36,7 +36,8 @@
     "parity": "python3 test/e2e/foundry.py parity",
     "test:dimse": "python3 test/e2e/dimse-echo.py",
     "lint": "eslint packages --max-warnings 0",
-    "ci": "npm run build && npm run typecheck:app && npm run lint && npm run test:unit && npm run test:markers && npm run build:app"
+    "ci": "npm run build && npm run typecheck:app && npm run lint && npm run test:unit && npm run test:markers && npm run build:app && npm run audit:a11y",
+    "audit:a11y": "node test/e2e/a11y.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

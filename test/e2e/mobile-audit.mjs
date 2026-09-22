@@ -2,7 +2,8 @@
 // Manual run: npm run audit:mobile → console report + /tmp/opencode/mob-*.png.
 // Not a gate (asserts nothing); a human/model reads the report + shots.
 import { spawn } from 'node:child_process';
-import { chromium, devices } from 'playwright';
+import { devices } from 'playwright';
+import { launchChromium } from './browser.mjs';
 
 const PORT = Number(process.env.E2E_PORT || 8126);
 const server = spawn('python3', ['-m', 'http.server', String(PORT), '--directory', '.'], { stdio: 'ignore' });
@@ -92,7 +93,7 @@ const auditRoute = async (browser, hash, shot) => {
 let failed = 0;
 const failures = [];
 try {
-  const browser = await chromium.launch();
+  const browser = await launchChromium();
   for (const [hash, shot] of [['', 'viewer'], ['worklist', 'worklist'], ['report', 'report'], ['protein', 'protein'], ['cells', 'cells'], ['tracks', 'tracks']]) {
     for (const e of await auditRoute(browser, hash, shot)) failures.push(`#/${hash}: ${e.slice(0, 140)}`);
   }
