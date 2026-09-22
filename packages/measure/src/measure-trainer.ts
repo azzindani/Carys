@@ -13,7 +13,7 @@
 // Dependency-free by design (mirrors plane-trainer.ts): plain objects;
 // the app feeds the student's measured numbers, the grader answers.
 
-import { assessRecist, targetSum, type RecistCategory } from './recist.js';
+import { targetSum, type RecistCategory } from './recist.js';
 
 /** One known-answer measurement case. */
 export interface TrainerCase {

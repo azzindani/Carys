@@ -264,13 +264,6 @@ function nativeFile(s: NativeSpec): ArrayBuffer {
   const enc = new TextEncoder();
   const b: number[] = new Array(128).fill(0);
   b.push(68, 73, 67, 77);
-  const u16 = (v: number): void => { b.push(v & 0xff, (v >> 8) & 0xff); };
-  const elem = (g: number, e: number, vr: string, val: number[]): void => {
-    b.push(g & 0xff, (g >> 8) & 0xff, e & 0xff, (e >> 8) & 0xff,
-      vr.charCodeAt(0), vr.charCodeAt(1));
-    u16(val.length);
-    b.push(...val);
-  };
   const us = (v: number): number[] => [v & 0xff, (v >> 8) & 0xff];
   const meta: number[] = [];
   const tsBytes = [...enc.encode(s.tsUID), 0x00];
@@ -588,7 +581,6 @@ describe('compressed DICOM', () => {
     const enc = new TextEncoder();
     const b: number[] = new Array(128).fill(0);
     b.push(68, 73, 67, 77);
-    const u16 = (v: number): void => { b.push(v & 0xff, (v >> 8) & 0xff); };
     const u32 = (v: number): void => {
       b.push(v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >> 24) & 0xff);
     };

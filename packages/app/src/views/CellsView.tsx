@@ -339,6 +339,10 @@ export function CellsView(): JSX.Element {
     void paint(store, v, label || 'store', level, { auto: autoLevel });
   };
 
+  // Mount-once: openDemo is redefined every render, so listing it as a
+  // dependency would re-open the demo store on every repaint. The empty array
+  // is the intent, not an oversight.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void openDemo(); }, []);
   // Re-register every render: the closure carries the latest store/label.
   useEffect(() => {

@@ -653,3 +653,40 @@ owner + unblock step, or accepted by design — verified 2026-09-14)
   itk-wasm bench (T3), MONAI sidecars (T4), OpenSlide pyramid (V5),
   TotalSeg/nnU-Net masks (§1c): all license-cleared, none started as digests.
   Reopen any one by running its lane change (PHASES + DIGEST entry + wire leg).
+
+## Engineering gates (2026-09-22)
+
+Not a feature lane — the spine that the other lanes are checked against.
+
+- DONE — **CI exists.** `.github/workflows/ci.yml` runs `npm run ci` (build,
+  typecheck, lint, unit, markers, app build) plus a Docker image build on
+  every push. Before this, every rule in CODING-STANDARDS was enforced only
+  by whoever remembered to run it.
+- DONE — **The Docker build works from a clean tree.** Its gate layer called
+  `test:unit` "the hermetic subset"; it was not. `.dockerignore` drops
+  `samples/`, and 20 tests read fixtures from it unguarded, so the image
+  could not build from a fresh checkout. Proven fixed by running the whole
+  RUN line against a sample-free copy of the build context: 0 fail, 20 skip.
+- DONE — **A skip is a skip.** New `@carys/testkit` resolves fixture paths and
+  returns node:test skip options; `CARYS_REQUIRE_SAMPLES=1` (set by
+  `npm run verify`) turns absence back into failure. This also retired three
+  `precomputed` checks that returned early with a `console.log` and scored
+  as passes.
+- DONE — **Lint.** eslint + typescript-eslint, type-aware, `--max-warnings 0`.
+  946 initial findings reduced to 0: 873 were node:test's `describe`/`it`
+  (fixed by naming them in `allowForKnownSafeCalls`, so the rule stays live
+  inside test bodies), 28 were `require-await` against Promise-returning
+  contracts (rule removed, reason recorded in the config), and the rest were
+  real — including `viv.ts`'s Float64 range, where `1.8e308` is past
+  `Number.MAX_VALUE` and had been rounding to `Infinity`.
+- DONE — `eslint-plugin-react-hooks` installed. The app already carried
+  `eslint-disable-next-line react-hooks/exhaustive-deps` comments with no
+  plugin behind them; they were decoration. One real finding behind them.
+- BLOCKED — **e2e in CI.** `test:e2e` needs real imaging, and `samples/` is
+  not committed. Owner: whoever owns fixture hosting. Unblock: publish a
+  small licensed fixture pack (or a generator covering the wire/journey
+  paths) that CI can fetch, then add an e2e job.
+- OPEN — **`samples/` has no manifest.** `CARYS_REQUIRE_SAMPLES=1` fails on
+  the first missing file rather than listing the expected set. Unblock: a
+  checked-in fixture manifest (name + size + hash) that testkit reads.
+

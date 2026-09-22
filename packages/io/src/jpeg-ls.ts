@@ -15,7 +15,7 @@
 // ILV 0/1 accepted at parse (single-component => moot). Multi-component,
 // NEAR>0, mapping tables, and restart intervals stay named errors.
 
-import { JpegError, buildHuffmanTable, type HuffTree } from './jpeg-scan.js';
+import { JpegError, type HuffTree } from './jpeg-scan.js';
 
 export interface DecodedJpegLs {
   width: number;

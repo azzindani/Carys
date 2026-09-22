@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Volume } from '@carys/volume-core';
-import { centerlineLength, curvedReformat, type V3 } from '../cpr.js';
+import { centerlineLength, curvedReformat } from '../cpr.js';
 
 function tube(): Volume {
   // bright rod along x at y=z=16 in a 32³ volume

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { isCifLike, parseCif, parsePdb, selectResidueAtoms, type ProteinModel } from '@carys/io';
 import {
-  PATHOGEN_ATTRIBUTION, PATHOGEN_DIGEST_ID, PATHOGEN_DIGEST_PIN,
+  PATHOGEN_DIGEST_ID, PATHOGEN_DIGEST_PIN,
   PATHOGEN_STRUCTURES, pathogenById,
 } from '@carys/volume-core';
 import { EDUCATION_BADGE } from '@carys/study';

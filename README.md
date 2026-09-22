@@ -31,6 +31,7 @@ packages/
   render-cpu/  MPR reslice, MIP/minIP, software raycast, marching-cubes (WASM), tile slicer
   editor-seg/  threshold, region-grow, watershed, connected-components, brush + undo
   measure/     length, angle, volume, histogram, profile line
+  testkit/     test-only: locates samples/ fixtures, decides skip vs fail
   ui/          4-pane layout, tracks, toolbar, report export (static only)
 ```
 
@@ -51,11 +52,27 @@ See `docs/` for architecture, CPU rendering recipe, phases, and tunnel preview.
 ## Run (dev)
 
 ```bash
-npm run verify   # build + full tests (needs samples/) + e2e, one command
-npm run test:unit  # hermetic subset: no samples/docs needed (Docker gate)
+npm run ci       # what CI runs: build + typecheck + lint + unit + markers + app build
+npm run verify   # the full gate: adds e2e and REQUIRES samples/ (see below)
+npm run lint     # eslint, type-aware; --max-warnings 0
+npm run test:unit  # unit suites; fixture-backed ones skip without samples/
 npm run serve    # static root on :8000
 # open http://localhost:8000/packages/ui/  (shell)
 ```
+
+### Fixtures and what runs without them
+
+`samples/` is ~343MB of vendored imaging, mounted rather than committed
+(`samples/.gitkeep`). A clean clone has none, so:
+
+- **`npm run ci` / `npm run test:unit`** — suites that need a fixture **skip**,
+  and the run prints the skip count. Green here means green, not "nothing ran":
+  a skip is reported as a skip, never as a pass.
+- **`npm run verify`** — sets `CARYS_REQUIRE_SAMPLES=1`, which turns a missing
+  fixture into a **failure**. Use it before a release, with samples mounted; a
+  half-populated `samples/` fails loudly instead of quietly thinning coverage.
+
+`@carys/testkit` is the one place that decides which of the two you get.
 
 ## Run (production Docker)
 
@@ -70,6 +87,10 @@ docker run --rm -p 8080:80 \
 Multi-stage image (pinned `node:20` build, `nginx:1.27` serve, non-root
 `nginx` user, healthcheck). Samples are never baked in — mount read-only.
 No GPU, no backend, no secrets in the image.
+
+The build layer runs `tsc -b`, lint, the unit suites, `typecheck:app` and the
+app build, all without `samples/` (`.dockerignore` drops it). CI builds the
+image on every push so that layer cannot rot.
 
 ## Privacy note
 

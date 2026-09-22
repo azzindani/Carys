@@ -89,7 +89,26 @@ prefer the one with a test behind it.
 25. **Deferred work gets an owner + unblock step** — "blocked" is a
     terminal state with a name on it (see the PHASES closeout ledger),
     never a vague TODO.
-26. **No TODO/FIXME in source** — the ledger owns the future.
+26. **No TODO/FIXME in source** — the ledger owns the future. Checked by
+    `no-warning-comments` in `eslint.config.js`, at the start of a comment
+    (so a sentence that mentions the word, or a mask diagram drawn in Xs,
+    is not a violation).
 27. **Verify before claiming** — `build` + `typecheck` + full gates before
     "done," every time. Screenshots are reviewed with eyes; green checks
     alone don't mean it looks good.
+28. **A gate runs on every push, or it is not a gate** — `npm run ci`
+    (`.github/workflows/ci.yml`) is the floor: build, typecheck, lint,
+    unit, markers, app build, plus the Docker image. A rule nobody runs is
+    a preference.
+29. **A skipped check never reports as a pass** — a suite whose fixture is
+    absent skips through `@carys/testkit` and is counted in `# skipped`.
+    Returning early with a `console.log` scores as a PASS and is banned:
+    that is how three `precomputed` checks sat green without executing.
+    `npm run verify` sets `CARYS_REQUIRE_SAMPLES=1` so a missing fixture
+    fails instead of skipping.
+30. **Lint covers what the other gates structurally cannot** — golden hashes
+    pin math, wire pins flows, `verify.test.ts` pins architecture; none of
+    them sees a floating promise or a literal that silently became
+    `Infinity`. Type-aware rules only, `--max-warnings 0`, and a rule that
+    fires only false positives gets deleted with its reason written down —
+    never left on as noise.

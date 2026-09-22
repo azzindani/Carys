@@ -13,6 +13,7 @@
   },
   "exclude": ["packages/app", "packages/ui"],
   "references": [
+    { "path": "./packages/testkit" },
     { "path": "./packages/volume-core" },
     { "path": "./packages/io" },
     { "path": "./packages/render-cpu" },

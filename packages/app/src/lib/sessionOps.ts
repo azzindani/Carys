@@ -3,7 +3,7 @@ import {
   fillGaps, keepLargest, open, regionGrow, smoothMask, splatFramePoint, strokeFrameLine, watershedSplit,
 } from '@carys/editor-seg';
 import {
-  fileMetaToSummary, isNrrdLike, isTiffLike, nrrdDetachedName,
+  fileMetaToSummary, isNrrdLike, nrrdDetachedName,
   readDataset, RTSTRUCT_SOP_CLASS, SEG_SOP_CLASS,
   writeNifti1, type DicomFileMeta,
 } from '@carys/io';

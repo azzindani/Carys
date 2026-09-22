@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { needs } from '@carys/testkit';
 import { renderGolden, type GoldenSpec } from './goldens.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url)); // dist/test
@@ -43,7 +44,13 @@ const SPECS: GoldenSpec[] = [
 ];
 
 describe('validation goldens', () => {
-  it('renders 5 mid-axial goldens (4 NIfTI + 1 DICOM); hashes match frozen', () => {
+  it('renders 5 mid-axial goldens (4 NIfTI + 1 DICOM); hashes match frozen', needs(
+    'brain_tumor_BraTS19_CBICA_AQN_1_flair.nii', 'brain_tumor_BraTS19_CBICA_AQN_1_seg.nii',
+    'liver_33_seg.nii', 'liver_33_img.nii',
+    'volume-covid19-A-0329.nii', 'volume-covid19-A-0329_seg.nii',
+    'cardiac_patient021_frame01.nii',
+    'lung_ct_01.dcm', 'lung_ct_02.dcm', 'lung_ct_03.dcm', 'lung_ct_04.dcm', 'lung_ct_05.dcm',
+  ), () => {
     mkdirSync(PNG_DIR, { recursive: true });
     const got: Record<string, string> = {};
     for (const s of SPECS) {

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { needs } from '@carys/testkit';
 import { createHash } from 'node:crypto';
 import { loadMask, loadField } from './goldens.js';
 import { extractBoundary, meshTriangleCount } from '../surface.js';
@@ -23,7 +24,9 @@ const SURF_SPECS = [
 ];
 
 describe('surface goldens', () => {
-  it('seg surfaces extract + render orbit frames; hashes frozen', () => {
+  it('seg surfaces extract + render orbit frames; hashes frozen', needs(
+    ...SURF_SPECS.map((s) => s.file),
+  ), () => {
     mkdirSync(PNG_DIR, { recursive: true });
     const got: Record<string, string> = {};
     for (const s of SURF_SPECS) {

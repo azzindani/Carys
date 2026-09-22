@@ -106,6 +106,13 @@ try {
     console.error(`AUDIT FAILURES (${failures.length}):\n  - ${failures.join('\n  - ')}`);
     process.exit(1);
   }
+  // A crash means nothing was measured, so it is not "clean" — the exit code
+  // was always right here, but the last line said CLEAN either way, which is
+  // the line a person reads.
+  if (failed) {
+    console.error('MOBILE AUDIT DID NOT RUN — nothing was measured (see AUDIT FAIL above)');
+    process.exit(failed);
+  }
   console.log('MOBILE AUDIT CLEAN');
-  process.exit(failed);
+  process.exit(0);
 }
