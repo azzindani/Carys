@@ -690,3 +690,31 @@ Not a feature lane — the spine that the other lanes are checked against.
   the first missing file rather than listing the expected set. Unblock: a
   checked-in fixture manifest (name + size + hash) that testkit reads.
 
+## Accessibility (2026-09-22)
+
+- DONE — **226 WCAG 2.1 A/AA violations to 0.** `--color-faint` had been
+  below AA (2.56-3.66:1) on all seven surfaces since it was written — 221
+  of the 226 nodes, and the token that carries every hint, micro-label and
+  readout. Raised to #8a97a9 with --color-muted to #a7b1c0 to keep the
+  hierarchy; ratios recorded in the token comment.
+- DONE — **Composite contrast.** `.dockrow` at opacity 0.55 and `.toolstrip`
+  at 0.72 composited their own labels down to 1.83:1 and 2.33:1. Both rest
+  at 0.85. A token can pass while the pixels fail.
+- DONE — **Two tablists that were not tablists.** `.filetabs` owned the "+"
+  action; the mobile deck's Tools/Display/Files are disclosures (re-tapping
+  closes, so none may be selected). Roles now match behaviour.
+- DONE — **`audit:a11y` is a gate**, in `npm run ci` and on every push.
+  Proven to fail: reverting --color-faint reproduced 218 failures and exit 1.
+  It runs without samples/, so a fixture-free runner still covers the chrome.
+- DONE — **`test/e2e/browser.mjs`.** `chromium.launch()` resolves a build
+  pinned to the Playwright version, which is why `audit:mobile` had become
+  un-runnable in sandboxes carrying a different revision. `CARYS_CHROMIUM`
+  overrides the executable; unset, nothing changes.
+- OPEN — **Keyboard navigation is unaudited.** axe checks roles and contrast,
+  not whether a keyboard can reach and drive the viewport, the docks and the
+  deck. Unblock: a wire leg that tabs through each route asserting focus
+  order and a visible focus ring, then a `:focus-visible` pass.
+- OPEN — **No reduced-motion or forced-colors handling.** Unblock: honour
+  `prefers-reduced-motion` for the pulse/shimmer animations and test the
+  Windows high-contrast path.
+
