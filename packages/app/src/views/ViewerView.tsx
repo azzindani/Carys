@@ -44,7 +44,13 @@ function FileTabs({ onOpen, id = 'filetabs', hidePlus = false }: {
     toast('Pick a series above to open it in a new tab');
   };
   return (
-    <div className="filetabs" id={id} role="tablist" aria-label="Open files">
+    <div className="filetabs" id={id}>
+      {/* The "+" opens a series picker — it is an action, not a tab, and a
+          tablist may only own tabs (axe: aria-required-children). The inner
+          wrapper carries the role so the "+" sits outside it; `display:
+          contents` keeps the tabs as direct flex children of .filetabs, so
+          nothing moves on screen. */}
+      <div className="filetabs-list" role="tablist" aria-label="Open files">
       {open.map((t) => (
         <button
           key={t} role="tab" aria-selected={t === series} data-tab={t}
@@ -64,6 +70,7 @@ function FileTabs({ onOpen, id = 'filetabs', hidePlus = false }: {
           )}
         </button>
       ))}
+      </div>
       {!hidePlus && (
         <button
           className="tab plus" title="Open a series in a new tab" aria-label="Open a series in a new tab"
@@ -189,9 +196,14 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
   // Deck tabs behave like tabs, not toggles: picking one always shows it,
   // and re-tapping the open one collapses the deck to give the image room.
   const pick = (s: Exclude<MSheet, null>): void => setUi({ mSheet: mSheet === s ? null : s });
+  // Disclosure buttons, not tabs. `pick` closes the open panel when you tap it
+  // again, so none may be selected — a tablist promises exactly one always is,
+  // and screen readers announced a broken one (axe: aria-required-children).
+  // aria-expanded + aria-controls describes what these actually do.
   const deckTab = (s: Exclude<MSheet, null>, label: string): JSX.Element => (
     <button
       className={`mbtn${mSheet === s ? ' on' : ''}`} aria-pressed={mSheet === s}
+      aria-expanded={mSheet === s} aria-controls={`mpanel-${s}`}
       title={`${label} panel`} onClick={() => pick(s)}
     >
       {label}
@@ -215,19 +227,19 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
               { value: 'coronal', label: 'Cor' }, { value: 'sagittal', label: 'Sag' },
             ]}
           />
-          <div className="deck-tabs" role="tablist" aria-label="Controls">
+          <div className="deck-tabs" role="group" aria-label="Controls">
             {deckTab('tools', 'Tools')}
             {deckTab('display', 'Display')}
             {deckTab('files', 'Files')}
           </div>
         </div>
         {mSheet === 'tools' && (
-          <div className="deck-body" id="mpanel-tools" role="tabpanel" aria-label="Tools">
+          <div className="deck-body" id="mpanel-tools" role="region" aria-label="Tools">
             <MprToolDock />
           </div>
         )}
         {mSheet === 'display' && (
-          <div className="deck-body" id="mpanel-display" role="tabpanel" aria-label="Display">
+          <div className="deck-body" id="mpanel-display" role="region" aria-label="Display">
             {/* SurfaceView portals its 3D dock here while the 3D viewport is
                 the one on screen — same dock as desktop, hosted where mobile
                 controls belong. */}
@@ -237,7 +249,7 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
           </div>
         )}
         {mSheet === 'files' && (
-          <div className="deck-body" id="mpanel-files" role="tabpanel" aria-label="Files">
+          <div className="deck-body" id="mpanel-files" role="region" aria-label="Files">
             <DarkSelect value={series} onChange={onOpenSeries} title="Open series" ariaLabel="Open series">
               {Object.keys(SERIES).map((k) => <option key={k} value={k}>{k}</option>)}
             </DarkSelect>

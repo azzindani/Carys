@@ -79,6 +79,14 @@ prefer the one with a test behind it.
     and the `useIsMobile` twin. Never two numbers drifting.
 22. **Interactive targets ≥24px, verified by audit** — `audit:mobile`
     measures; eyeballs don't count.
+22a. **Text clears WCAG AA (4.5:1) on every surface it can land on** —
+    measured with axe-core against the real rendered app, not judged by eye.
+    The ink ramp in `tokens.css` records its own ratios. An opacity that
+    fades chrome fades the words on it: check the composite, not the token.
+22b. **An ARIA role is a promise about behaviour** — `tablist` owns only
+    tabs and always has one selected; buttons that toggle a panel open and
+    shut are disclosures (`aria-expanded` + `aria-controls`), not tabs.
+    Borrowing a role for its looks makes the app lie to a screen reader.
 23. **Every overlay has an exit** — Esc, ✕, or re-tap. No trapped popups.
     Fullscreen always keeps its ⛶ visible.
 

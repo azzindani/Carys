@@ -25,10 +25,20 @@
   --color-line-strong: #2c3440;
   --color-line-accent: #1d4a46;
 
-  /* -- ink -- */
+  /* -- ink --
+     Measured against every surface with axe-core, not chosen by eye. The old
+     --color-faint (#5f6977) scored 2.56-3.66:1 and failed WCAG AA (4.5:1) on
+     ALL SEVEN surfaces, which was 221 contrast violations across every route:
+     the hints, micro-labels and metadata that carry a reading tool's secondary
+     information were the least legible text in it. Raised until the worst case
+     (surface-4, the lightest) clears AA with headroom, and --color-muted lifted
+     with it so the three-step hierarchy survives the change.
+       text  #e9edf3  12.13:1 on surface-4, 16.86:1 on bg
+       muted #a7b1c0   6.58:1 on surface-4,  9.14:1 on bg
+       faint #8a97a9   4.80:1 on surface-4,  6.68:1 on bg  */
   --color-text: #e9edf3;
-  --color-muted: #98a2b1;
-  --color-faint: #5f6977;
+  --color-muted: #a7b1c0;
+  --color-faint: #8a97a9;
   --color-on-accent: #04110f;
 
   /* -- brand + semantics -- */
