@@ -555,7 +555,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
         <div className="sep" />
         {ui.render3d === 'surface' ? (
           <>
-            <SliderRow label="Threshold" min={0} max={1000} step={1} value={ui.threshold} onInput={(v) => setUi({ threshold: v })} onCommit={() => { session.meshPinned = null; bump(); }} />
+            <SliderRow label="Threshold" min={session.autoThreshold?.lo ?? 0} max={session.autoThreshold?.hi ?? 1000} step={1} value={ui.threshold} onInput={(v) => setUi({ threshold: v })} onCommit={() => { session.meshPinned = null; bump(); }} />
             <Chip><span id="tval">{ui.threshold}</span></Chip>
             <div className="grp">
               <span className="lbl">Surface</span>

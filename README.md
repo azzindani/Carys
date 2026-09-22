@@ -57,6 +57,8 @@ npm run verify   # the full gate: adds e2e and REQUIRES samples/ (see below)
 npm run lint     # eslint, type-aware; --max-warnings 0
 npm run audit:a11y # axe-core WCAG 2.1 A/AA over every route, both breakpoints
 npm run test:unit  # unit suites; fixture-backed ones skip without samples/
+npm run gen:phantom 2>/dev/null || node scripts/gen-phantom.mjs  # synthetic .nii volumes
+npm run gen:ct   # synthetic 120-slice CT DICOM series → samples/ct-head-series/
 npm run serve    # static root on :8000
 # open http://localhost:8000/packages/ui/  (shell)
 ```

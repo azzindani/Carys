@@ -10,7 +10,7 @@ import {
 import { uploadDicomFile } from './dicomUpload';
 import { importDicomSeg } from './segImport';
 import { fitMeshToBox, fitPointsToBox, isGiftiLike, isMz3Like, isStlLike, isTckLike, isTrkLike, isTrxLike, parseGifti, parseMz3, parseStl, parseTck, parseTrk, parseTrx } from '@carys/render-cpu';
-import { histogram, PRESETS } from '@carys/volume-core';
+import { autoThreshold, histogram, PRESETS } from '@carys/volume-core';
 import { DEFAULT_HANGING, HANGING_RULES, hangingProtocol } from '@carys/study';
 import { addUploadedSeries, SERIES } from './catalog';
 import { idle, session } from './session';
@@ -186,8 +186,25 @@ export async function loadSeries(name: string, uploadedVol?: { dims: [number, nu
       }
       setUi({ growLo: Math.round(p90), growHi: Math.ceil(max) });
     } catch { /* keep previous window */ }
-    session.axialFrac = spec.axialFrac ?? 0.5;
-    if (spec.threshold3d !== undefined) setUi({ threshold: spec.threshold3d });
+    // The 3D view is data-driven for the same reason the window and the grow
+    // seed are.
+    //
+    // Source: it defaulted to the segmentation mask, so any series arriving
+    // without one — which is every plain DICOM series, since a segmentation is
+    // a separate object — opened the 3D pane on "empty mask" and looked like
+    // 3D was unsupported for that format. It never was: the extractor takes a
+    // Float64Array and dims and cannot tell DICOM from NIfTI. Fall back to the
+    // image when there is nothing segmented to show.
+    //
+    // Threshold: a fixed 0 fused brain and skull into one shell on every
+    // Hounsfield volume, and a fixed ceiling of 1000 could not reach cortical
+    // bone at ~1100 HU. A catalog entry may still pin its own.
+    const haveMask = session.editMask.some((v) => v > 0);
+    session.autoThreshold = autoThreshold(haveMask ? session.editMask : img.data);
+    setUi({
+      src: haveMask ? 'mask' : 'image',
+      threshold: spec.threshold3d ?? session.autoThreshold.value,
+    });
 
     const [nx, ny, nz] = img.dims;
     const init: SliceInit = {

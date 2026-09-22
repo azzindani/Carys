@@ -718,3 +718,37 @@ Not a feature lane — the spine that the other lanes are checked against.
   `prefers-reduced-motion` for the pulse/shimmer animations and test the
   Windows high-contrast path.
 
+## 3D from DICOM (2026-09-22)
+
+The 3D surface appeared to be NIfTI-only. It never was — the extractor takes
+a Float64Array plus dims and cannot tell the formats apart — but three
+defaults conspired to make DICOM look unsupported.
+
+- DONE — **The 3D source falls back to the image.** `src` defaulted to
+  `'mask'`, so any series arriving without a segmentation — every plain DICOM
+  series, since a segmentation is a separate object — opened the 3D pane on
+  "empty mask". The NIfTI phantoms ship `*_seg.nii` sidecars and so always had
+  one, which is exactly why the limitation looked like a format limitation.
+- DONE — **The isosurface threshold is data-driven** (`autoThreshold` in
+  volume-core). It was fixed at 0 with a slider capped at 1000: on Hounsfield
+  data a cut at 0 HU keeps everything denser than water, fusing brain and
+  skull into one featureless shell, and cortical bone at ~1100 HU sat past the
+  end of the control. Now: a label map cuts at 0, Hounsfield data at bone
+  (300), anything else at Otsu; the slider spans the volume's own range.
+  Measured on the CT phantom: threshold 0 gives 136,892 tris (one blob),
+  300 gives 242,616 (the skull).
+- DONE — **`scripts/gen-ct-series.mjs`**, a synthetic 120-slice CT study as
+  real Part-10 files, written with the repo's own writer and sharing its
+  anatomy with the NIfTI phantom (`scripts/phantom.mjs`, §4). Stored unsigned
+  with RescaleIntercept -1024; the round trip back through `parseDicomSlice`
+  returns -1000…1200 HU exactly. A fresh clone can now demonstrate the DICOM
+  lane end to end without any patient data.
+- OPEN — **No wire leg for the DICOM→3D journey.** The unit test pins the
+  threshold maths and the path was verified by hand in a real browser, but
+  §19 wants a leg. Unblock: add one to `test/e2e/wire.mjs` that opens
+  `ct-head-dicom` and asserts the tri count chip is non-zero.
+- OPEN — **CT surface presets.** Bone is the right default, but skin (~-300
+  HU) and soft tissue (~50 HU) are the other two cuts a reader wants, and
+  reaching them means dragging a slider across 2200 units. Unblock: a preset
+  trio in the 3D dock driven by the same Hounsfield constants.
+
