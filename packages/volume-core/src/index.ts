@@ -1,6 +1,7 @@
 export * from './types.js';
 export * from './lut.js';
 export * from './histogram.js';
+export * from './threshold.js';
 export * from './overlay.js';
 export * from './colortable.js';
 export * from './orientation.js';
