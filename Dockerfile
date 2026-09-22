@@ -27,10 +27,21 @@ COPY packages/ui/package.json packages/ui/
 RUN npm ci --no-audit --no-fund
 COPY packages/ ./packages/
 COPY eslint.config.js index.html ./
+# Committed inputs the gate reads and the build context was missing: the
+# provenance registry (digests/ + DIGESTS.json), the DIGEST receipts the
+# architecture test counts (docs/), and the hand-packed DICOM foundry frames
+# (test/e2e/foundry). ~15MB, build stage only — the serve stage copies dists
+# alone, so the shipped image is unchanged. These are repo content, always
+# present in a checkout, not the mounted samples/ fixtures.
+COPY DIGESTS.json ./
+COPY digests/ ./digests/
+COPY docs/ ./docs/
+COPY test/e2e/foundry/ ./test/e2e/foundry/
 # Sample-free gate. .dockerignore drops samples/, so anything that reads a
 # fixture must skip rather than fail here: `@carys/testkit` decides, and the
 # run reports the skips. (This claimed to be hermetic before it was — 20 tests
-# read samples/ unguarded, so this layer could not build from a clean tree.)
+# read samples/ unguarded and 29 more read committed inputs the context never
+# carried, so this layer could not build from a clean tree.)
 # The full fixture set is `npm run verify`, which sets CARYS_REQUIRE_SAMPLES=1.
 RUN npx tsc -b && npm run lint && npm run test:unit && npm run typecheck:app && npm run build:app
 
