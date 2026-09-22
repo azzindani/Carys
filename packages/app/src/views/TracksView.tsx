@@ -270,8 +270,9 @@ export function TracksView(): JSX.Element {
         <div className="pane" id="pane-tracks">
           <div className="pane-head"><span className="name">Features</span></div>
           <div className="stage">
+            {inLocus.length === 0 && <p className="hint">No features loaded.</p>}
             <dl className="kv" id="track-list">
-              {inLocus.length === 0 ? <div className="hint">No features loaded.</div> : inLocus.slice(0, MAX_ROWS).map((r, i) => {
+              {inLocus.length === 0 ? null : inLocus.slice(0, MAX_ROWS).map((r, i) => {
                 const target = residueOf(r);
                 return (
                   <div className="mrow" key={i} data-chr={r.chr}>

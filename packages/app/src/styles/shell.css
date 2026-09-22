@@ -102,6 +102,8 @@
 .ftop .iconbtn { min-height: var(--ctl-h); }
 .ftop .filetabs { flex: 1; min-width: 0; }
 .filetabs { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+/* role-only wrapper: contributes no box, so the tabs stay direct flex children */
+.filetabs-list { display: contents; }
 .filetabs .tab {
   display: flex; align-items: center; gap: var(--sp-2);
   min-height: var(--tap); padding: var(--sp-2) var(--sp-4);

@@ -25,7 +25,8 @@
   border: 1px solid var(--color-line); border-radius: var(--radius-lg);
   backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-2);
-  opacity: 0.72; transition: opacity var(--dur) var(--ease);
+  /* same reason as .dockrow: 0.72 put the tool captions at 2.33:1 */
+  opacity: 0.85; transition: opacity var(--dur) var(--ease);
 }
 .toolstrip:hover, .toolstrip:focus-within { opacity: 1; }
 
@@ -90,7 +91,10 @@
   border-radius: 0 0 var(--radius-md) var(--radius-md);
   backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   scrollbar-width: thin;
-  opacity: 0.55;
+  /* The bar recedes until you reach for it, but 0.55 took its labels to
+     1.83:1 against the image — the chrome disappeared and so did the words on
+     it. 0.85 still reads as "resting" and keeps every label above AA. */
+  opacity: 0.85;
   transition: opacity var(--dur) var(--ease);
 }
 .dockrow:hover, .dockrow:focus-within { opacity: 1; }
