@@ -752,3 +752,26 @@ defaults conspired to make DICOM look unsupported.
   reaching them means dragging a slider across 2200 units. Unblock: a preset
   trio in the 3D dock driven by the same Hounsfield constants.
 
+## First run on a clean clone (2026-09-22)
+
+- DONE — **A missing sample said the wrong thing.** All three fetches in
+  `loaders.ts` used the response without checking `res.ok`, so a 404 handed
+  the server's HTML error page to the NIfTI parser and the app reported
+  "This does not appear to be a NIFTI file!". That blames the data for being
+  malformed when it is simply absent — the normal state of a fresh clone,
+  where samples/ holds nothing but .gitkeep. `MissingSampleError` now names
+  the file and the command that fixes it (§12, §14).
+- DONE — **`npm run gen:samples`**, one command that fills samples/ with
+  synthetic phantoms from the repo's own writers (~42MB: head CT as NIfTI and
+  as a 120-slice DICOM series, OME-Zarr cells, a plate). Measured on a
+  simulated fresh clone: before, 0 canvases painted and a parser error;
+  after, 4 canvases and a 7,016-tri surface.
+- DONE — **`samples/.gitkeep` says what is expected**, not just where to put
+  it: the two ways to fill the directory, the size, and that `npm run verify`
+  needs the real set rather than the phantoms.
+- OPEN — **Catalog entries with no generator still 404** (lung_ct, cardiac,
+  prostate_mri and the other vendored series). They now fail with an
+  actionable message instead of a parser error, but the worklist still lists
+  13 studies when only some can open. Unblock: mark catalog entries that need
+  real data and show it in the worklist, or generate phantoms for them too.
+

@@ -20,6 +20,8 @@
     "test:shots": "node test/e2e/shots.mjs",
     "demo": "node test/e2e/demo.mjs",
     "audit:mobile": "node test/e2e/mobile-audit.mjs",
+    "gen:phantom": "node scripts/gen-phantom.mjs",
+    "gen:samples": "npm run gen:phantom && npm run gen:ct && npm run gen:cells && npm run gen:plate",
     "gen:cells": "node scripts/gen-cells-zarr.mjs",
     "gen:ct": "node scripts/gen-ct-series.mjs",
     "gen:plate": "node scripts/gen-plate-zarr.mjs",
