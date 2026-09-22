@@ -57,8 +57,7 @@ npm run verify   # the full gate: adds e2e and REQUIRES samples/ (see below)
 npm run lint     # eslint, type-aware; --max-warnings 0
 npm run audit:a11y # axe-core WCAG 2.1 A/AA over every route, both breakpoints
 npm run test:unit  # unit suites; fixture-backed ones skip without samples/
-npm run gen:phantom 2>/dev/null || node scripts/gen-phantom.mjs  # synthetic .nii volumes
-npm run gen:ct   # synthetic 120-slice CT DICOM series → samples/ct-head-series/
+npm run gen:samples # synthetic volumes into samples/ — do this first on a fresh clone
 npm run serve    # static root on :8000
 # open http://localhost:8000/packages/ui/  (shell)
 ```
@@ -66,7 +65,12 @@ npm run serve    # static root on :8000
 ### Fixtures and what runs without them
 
 `samples/` is ~343MB of vendored imaging, mounted rather than committed
-(`samples/.gitkeep`). A clean clone has none, so:
+(`samples/.gitkeep`) — 343MB does not belong in git and the privacy note
+forbids patient data in the repo. A clean clone has none, so **run
+`npm run gen:samples` first**: it writes synthetic phantoms with the repo's
+own writers (a head CT as NIfTI *and* as a 120-slice DICOM series, plus
+OME-Zarr cells and a plate) — enough to drive every route and the 3D
+surface, with no patient data. Then:
 
 - **`npm run ci` / `npm run test:unit`** — suites that need a fixture **skip**,
   and the run prints the skip count. Green here means green, not "nothing ran":
