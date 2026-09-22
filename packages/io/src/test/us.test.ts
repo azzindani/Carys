@@ -1,7 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { writePart10, type DcmElement } from '../dcm-write.js';
-import { US_IMAGE_SOP_CLASS } from '../us.js';
 import {
   cineFields, foldYbrFrame, isUsSopClass, physicalUnitsName,
   regionDataTypeName, regionSpatialFormatName, usRegionsFromBuffer,

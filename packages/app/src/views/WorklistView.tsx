@@ -354,7 +354,7 @@ function CohortSection({ onOpen }: {
                       if (markRead(key)) {
                         audit('read.read', key, cohortAuditDetail(cohort.id, c.id, 'read'));
                         setStatus(`read finished: ${c.title}`);
-                      } else setStatus(`read flow rejected for ${c.title} (${st.status})`);
+                      } else setStatus(`read flow rejected for ${c.title} (${st.status})`, 'error');
                       bump();
                     }}>Read</button>
                 )}
@@ -412,7 +412,7 @@ function ReadButtons({ rowKey }: { rowKey: string }): JSX.Element {
       audit(auditAction, rowKey, detail);
       setStatus(okMsg);
     } else {
-      setStatus(`read flow rejected for ${rowKey} (${st.status}${st.locked ? ', locked' : ''})`);
+      setStatus(`read flow rejected for ${rowKey} (${st.status}${st.locked ? ', locked' : ''})`, 'error');
     }
     bump();
   };
@@ -512,9 +512,9 @@ function WorklistRow({ record: r, onOpen, onStats }: {
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
       onStats({ ...anonymizeRecord(r, DEFAULT_PROFILE), bytes: clean.byteLength });
       setStatus(`anonymized ${r.key}`);
-      toast('Anonymized .nii saved');
+      toast('Anonymized .nii saved', 'ok');
     } catch (e) {
-      setStatus(`anonymize failed: ${(e as Error).message}`);
+      setStatus(`anonymize failed: ${(e as Error).message}`, 'error');
     }
   };
 

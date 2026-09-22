@@ -3,14 +3,14 @@ import {
   fillGaps, keepLargest, open, regionGrow, smoothMask, splatFramePoint, strokeFrameLine, watershedSplit,
 } from '@carys/editor-seg';
 import {
-  fileMetaToSummary, isNrrdLike, isTiffLike, nrrdDetachedName,
+  fileMetaToSummary, isNrrdLike, nrrdDetachedName,
   readDataset, RTSTRUCT_SOP_CLASS, SEG_SOP_CLASS,
   writeNifti1, type DicomFileMeta,
 } from '@carys/io';
 import { uploadDicomFile } from './dicomUpload';
 import { importDicomSeg } from './segImport';
 import { fitMeshToBox, fitPointsToBox, isGiftiLike, isMz3Like, isStlLike, isTckLike, isTrkLike, isTrxLike, parseGifti, parseMz3, parseStl, parseTck, parseTrk, parseTrx } from '@carys/render-cpu';
-import { histogram, PRESETS } from '@carys/volume-core';
+import { autoThreshold, histogram, PRESETS } from '@carys/volume-core';
 import { DEFAULT_HANGING, HANGING_RULES, hangingProtocol } from '@carys/study';
 import { addUploadedSeries, SERIES } from './catalog';
 import { idle, session } from './session';
@@ -84,7 +84,7 @@ export function setCompare(series: string, mode: 'checker' | 'alpha' | 'subtract
       toast(`Compare: ${u.series} vs ${series} (${mode})`);
     })
     .catch((e) => {
-      setStatus(`compare failed: ${(e as Error).message}`);
+      setStatus(`compare failed: ${(e as Error).message}`, 'error');
       setUi({ compareSeries: '', compareMode: 'off' });
       paintBus.mpr();
     });
@@ -186,8 +186,25 @@ export async function loadSeries(name: string, uploadedVol?: { dims: [number, nu
       }
       setUi({ growLo: Math.round(p90), growHi: Math.ceil(max) });
     } catch { /* keep previous window */ }
-    session.axialFrac = spec.axialFrac ?? 0.5;
-    if (spec.threshold3d !== undefined) setUi({ threshold: spec.threshold3d });
+    // The 3D view is data-driven for the same reason the window and the grow
+    // seed are.
+    //
+    // Source: it defaulted to the segmentation mask, so any series arriving
+    // without one — which is every plain DICOM series, since a segmentation is
+    // a separate object — opened the 3D pane on "empty mask" and looked like
+    // 3D was unsupported for that format. It never was: the extractor takes a
+    // Float64Array and dims and cannot tell DICOM from NIfTI. Fall back to the
+    // image when there is nothing segmented to show.
+    //
+    // Threshold: a fixed 0 fused brain and skull into one shell on every
+    // Hounsfield volume, and a fixed ceiling of 1000 could not reach cortical
+    // bone at ~1100 HU. A catalog entry may still pin its own.
+    const haveMask = session.editMask.some((v) => v > 0);
+    session.autoThreshold = autoThreshold(haveMask ? session.editMask : img.data);
+    setUi({
+      src: haveMask ? 'mask' : 'image',
+      threshold: spec.threshold3d ?? session.autoThreshold.value,
+    });
 
     const [nx, ny, nz] = img.dims;
     const init: SliceInit = {
@@ -222,20 +239,20 @@ export async function loadSeries(name: string, uploadedVol?: { dims: [number, nu
     return init;
   } catch (e) {
     if (signal.aborted || (e as Error)?.name === 'AbortError') return null;
-    setStatus(`failed: ${(e as Error).message}`);
+    setStatus(`failed: ${(e as Error).message}`, 'error');
     return null;
   }
 }
 
 export function doUndo(): void {
-  if (!session.editMask || !session.img) { toast('Nothing to undo'); return; }
+  if (!session.editMask || !session.img) { toast('Nothing to undo', 'error'); return; }
   const prev = undo.undo(session.editMask.length);
   if (prev) {
     session.editMask.set(prev);
     session.maskVer++;
     session.seg = { dims: session.img.dims, data: session.editMask };
     bump();
-  } else toast('Nothing to undo');
+  } else toast('Nothing to undo', 'error');
 }
 
 export function doClear(): void {
@@ -244,7 +261,7 @@ export function doClear(): void {
   session.editMask.fill(0);
   session.maskVer++;
   bump();
-  toast('Mask cleared');
+  toast('Mask cleared', 'ok');
 }
 
 export function stampAt(x: number, y: number, z: number, value: number): void {
@@ -297,7 +314,7 @@ export function saveAxialPng(canvas: HTMLCanvasElement): void {
   a.download = `axial-${getUi().series}.png`;
   a.href = canvas.toDataURL('image/png');
   a.click();
-  toast('Axial PNG saved');
+  toast('Axial PNG saved', 'ok');
 }
 
 export function saveMaskNii(): void {
@@ -312,7 +329,7 @@ export function saveMaskNii(): void {
   a.href = URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  toast('Mask .nii saved — open it in the 3D view upload');
+  toast('Mask .nii saved — open it in the 3D view upload', 'ok');
 }
 
 /** Shared file-open router (desktop toolbar + mobile Files panel): routes
@@ -353,7 +370,7 @@ export async function uploadNiiFile(f: File): Promise<void> {
     }
     toast(`Loaded ${f.name}`);
   } catch (err) {
-    setStatus(`upload failed: ${(err as Error).message}`);
+    setStatus(`upload failed: ${(err as Error).message}`, 'error');
   }
 }
 
@@ -394,7 +411,7 @@ export async function uploadNrrdPair(files: File[]): Promise<void> {
     }
     toast(`Loaded pair ${h.name} + ${dataFile.name}`);
   } catch (err) {
-    setStatus(`upload failed: ${(err as Error).message}`);
+    setStatus(`upload failed: ${(err as Error).message}`, 'error');
   }
 }
 
@@ -425,9 +442,9 @@ export async function importMeshFile(f: File): Promise<void> {
     session.mesh = mesh;
     bump();
     setStatus(`${tris.toLocaleString()} tris imported from ${f.name} — src/threshold edits re-extract`);
-    toast(`Mesh imported: ${tris.toLocaleString()} triangles`);
+    toast(`Mesh imported: ${tris.toLocaleString()} triangles`, 'ok');
   } catch (err) {
-    setStatus(`mesh import failed: ${(err as Error).message}`);
+    setStatus(`mesh import failed: ${(err as Error).message}`, 'error');
   }
 }
 
@@ -492,9 +509,9 @@ export async function importTractFile(f: File): Promise<void> {
     const noun = count === 1 ? 'streamline' : 'streamlines';
     const extra = scalarName ? ` · scalars: ${scalarName}` : '';
     setStatus(`${count.toLocaleString()} ${noun} imported from ${f.name}${extra}`);
-    toast(`Tracts imported: ${count.toLocaleString()} ${noun}${extra}`);
+    toast(`Tracts imported: ${count.toLocaleString()} ${noun}${extra}`, 'ok');
   } catch (err) {
-    setStatus(`tract import failed: ${(err as Error).message}`);
+    setStatus(`tract import failed: ${(err as Error).message}`, 'error');
   }
 }
 
@@ -606,7 +623,7 @@ export function setSpacing(axis: 0 | 1 | 2, raw: string): void {
   }
   const v = Number(raw);
   if (!Number.isFinite(v) || v <= 0 || v > 1000) {
-    setStatus(`spacing rejected: "${raw}" is not a positive mm value`);
+    setStatus(`spacing rejected: "${raw}" is not a positive mm value`, 'error');
     return;
   }
   const sp: [number, number, number] = [...(img.spacing ?? [1, 1, 1])] as [number, number, number];

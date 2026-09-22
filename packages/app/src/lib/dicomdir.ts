@@ -33,7 +33,7 @@ export async function parseDicomDirFile(f: File): Promise<DicomDir | null> {
     setStatus(`DICOMDIR ${f.name}: ${dir.studies.length} studie(s) · ${dir.imageCount} image refs`);
     return dir;
   } catch (err) {
-    setStatus(`DICOMDIR rejected: ${(err as Error).message}`);
+    setStatus(`DICOMDIR rejected: ${(err as Error).message}`, 'error');
     return null;
   }
 }
@@ -69,6 +69,6 @@ export async function openDicomDirSeries(
         : `DICOMDIR series loaded: ${matched.length} file(s)`,
     );
   } catch (err) {
-    setStatus(`DICOMDIR open failed: ${(err as Error).message}`);
+    setStatus(`DICOMDIR open failed: ${(err as Error).message}`, 'error');
   }
 }

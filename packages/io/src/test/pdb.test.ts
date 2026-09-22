@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { needs, sample } from '@carys/testkit';
 import { bundleRange } from '@carys/volume-core';
 import { parsePdb, selectResidueAtoms } from '../pdb.js';
 
@@ -37,9 +37,9 @@ describe('pdb', () => {
     assert.deepEqual(selectResidueAtoms(model, { residues: [9] }), []);
     assert.deepEqual(selectResidueAtoms(model, { residues: [] }), []);
   });
-  it('real 1CRN crambin: 327 atoms, 46 residues, exact first atom', () => {
+  it('real 1CRN crambin: 327 atoms, 46 residues, exact first atom', needs('1crn.pdb'), () => {
     // samples/1crn.pdb vendored from https://files.rcsb.org/download/1CRN.pdb
-    const m = parsePdb(readFileSync(join(process.cwd(), 'samples/1crn.pdb'), 'utf8'));
+    const m = parsePdb(readFileSync(sample('1crn.pdb')!, 'utf8'));
     assert.equal(m.atoms.length, 327);
     assert.equal(m.residues.length, 46);
     assert.deepEqual(m.atoms[0], {
@@ -49,10 +49,10 @@ describe('pdb', () => {
     assert.deepEqual(m.residues[0], { chain: 'A', seqId: 1, index: 0, label: 'THR1' });
     assert.ok(m.atoms.every((a) => Number.isFinite(a.x + a.y + a.z)));
   });
-  it('AlphaFold ubiquitin carries pLDDT in B-factor across all bands', () => {
+  it('AlphaFold ubiquitin carries pLDDT in B-factor across all bands', needs('af-p0cg48-ubiquitin.pdb'), () => {
     // samples/af-p0cg48-ubiquitin.pdb vendored from
     // https://alphafold.ebi.ac.uk/files/AF-P0CG48-F1-model_v6.pdb (2026-09-09)
-    const m = parsePdb(readFileSync(join(process.cwd(), 'samples/af-p0cg48-ubiquitin.pdb'), 'utf8'));
+    const m = parsePdb(readFileSync(sample('af-p0cg48-ubiquitin.pdb')!, 'utf8'));
     assert.equal(m.atoms.length, 5417);
     const bs = m.atoms.map((a) => a.bfactor ?? NaN);
     assert.ok(bs.every((b) => Number.isFinite(b)), 'every atom needs a B-factor');

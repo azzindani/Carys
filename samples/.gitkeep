@@ -1,2 +1,19 @@
-Drop public/mock samples here (e.g. OpenNeuro NIfTI, PDB 4HHB, OME-NGFF).
-No patient data. See README privacy note.
+Study data lives here and is never committed: 343MB of imaging does not
+belong in git, and the README privacy note forbids patient data in the repo.
+A fresh clone therefore has an empty samples/ and every catalog entry 404s
+until you fill it.
+
+Two ways to fill it:
+
+  npm run gen:samples     synthetic phantoms, written by the repo's own
+                          writers — a head CT as NIfTI volumes and as a
+                          120-slice DICOM series, plus OME-Zarr cells and a
+                          plate. Deterministic, ~50MB, no patient data.
+                          Enough to drive every route and the 3D surface.
+
+  drop your own           public/mock data only (OpenNeuro NIfTI, PDB 4HHB,
+                          OME-NGFF, TCIA). Filenames the catalog expects are
+                          in packages/app/src/lib/catalog.ts.
+
+`npm run verify` sets CARYS_REQUIRE_SAMPLES=1 and fails on a missing fixture
+rather than skipping it, so it needs the real set, not the phantoms.

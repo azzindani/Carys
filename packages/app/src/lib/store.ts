@@ -38,7 +38,10 @@ const initial: UiState = {
   proj: 'slice', slab: 9, oblA: 0, oblB: 0, oblPlane: 'axial' as const, growLo: 100, growHi: 3000, measureKind: 'length',
   layout: 'tri', sync: true, hang: 'default',
   compareSeries: '', compareMode: 'off' as CompareMode, compareAlpha: 0.5,
-  tabs: [], fullVp: null, mView: 'v3d', mSheet: null, docksOpen: true, cineFps: 4, invert: false, lut: 'Grayscale',
+  // Chrome starts out of the way: the details drawer closed, the mobile
+  // control deck collapsed to its switcher strip. Tools reveal on demand,
+  // the way a site's nav does — the image is the product.
+  tabs: [], fullVp: null, mView: 'v3d', mSheet: null, docksOpen: true, insOpen: false, cineFps: 4, invert: false, lut: 'Grayscale',
   ...loadAppearance(),
 };
 

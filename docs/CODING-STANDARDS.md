@@ -20,9 +20,14 @@ prefer the one with a test behind it.
 
 ## No hardcoding
 
-5. **Tokens live in exactly one place** — colors and fonts in `:root` only
-   (`packages/app/src/index.css`); type flows through `--ts`, rhythm
-   through the density levels. No literal color/font/size anywhere else.
+5. **Tokens live in exactly one place** — color, type, rhythm and rounding
+   in `packages/app/src/styles/tokens.css` only (Tailwind `@theme` plus the
+   `:root` ramps). Type flows through `--ts`, rhythm through `--sp`, corners
+   through the `--radius-*` rungs. No literal color/font/size/radius in any
+   other stylesheet or component. Nested rounding is arithmetic, not taste:
+   a surface inset by `p` inside a parent of radius `R` uses
+   `calc(var(--radius-*) - var(--sp-*))` so the arcs stay concentric. `index.css` is an import manifest, nothing
+   else.
 6. **No magic numbers in logic** — named budgets (`render-cpu/perf`),
    named epochs (`paintToken`), cache keys that encode every input
    (series + src + threshold + method + mask version).
@@ -74,6 +79,16 @@ prefer the one with a test behind it.
     and the `useIsMobile` twin. Never two numbers drifting.
 22. **Interactive targets ≥24px, verified by audit** — `audit:mobile`
     measures; eyeballs don't count.
+22a. **Text clears WCAG AA (4.5:1) on every surface it can land on** —
+    checked by `audit:a11y` (`test/e2e/a11y.mjs`, axe-core over 8 routes x 2
+    breakpoints, in `npm run ci`), not judged by eye. The ink ramp in
+    `tokens.css` records its own ratios. An opacity that fades chrome fades
+    the words on it: the gate reads the composite, not the token.
+22b. **An ARIA role is a promise about behaviour** — same checker. `tablist`
+    owns only tabs and always has one selected; buttons that toggle a panel
+    open and shut are disclosures (`aria-expanded` + `aria-controls`), not
+    tabs. Borrowing a role for its looks makes the app lie to a screen
+    reader.
 23. **Every overlay has an exit** — Esc, ✕, or re-tap. No trapped popups.
     Fullscreen always keeps its ⛶ visible.
 
@@ -84,7 +99,26 @@ prefer the one with a test behind it.
 25. **Deferred work gets an owner + unblock step** — "blocked" is a
     terminal state with a name on it (see the PHASES closeout ledger),
     never a vague TODO.
-26. **No TODO/FIXME in source** — the ledger owns the future.
+26. **No TODO/FIXME in source** — the ledger owns the future. Checked by
+    `no-warning-comments` in `eslint.config.js`, at the start of a comment
+    (so a sentence that mentions the word, or a mask diagram drawn in Xs,
+    is not a violation).
 27. **Verify before claiming** — `build` + `typecheck` + full gates before
     "done," every time. Screenshots are reviewed with eyes; green checks
     alone don't mean it looks good.
+28. **A gate runs on every push, or it is not a gate** — `npm run ci`
+    (`.github/workflows/ci.yml`) is the floor: build, typecheck, lint,
+    unit, markers, app build, plus the Docker image. A rule nobody runs is
+    a preference.
+29. **A skipped check never reports as a pass** — a suite whose fixture is
+    absent skips through `@carys/testkit` and is counted in `# skipped`.
+    Returning early with a `console.log` scores as a PASS and is banned:
+    that is how three `precomputed` checks sat green without executing.
+    `npm run verify` sets `CARYS_REQUIRE_SAMPLES=1` so a missing fixture
+    fails instead of skipping.
+30. **Lint covers what the other gates structurally cannot** — golden hashes
+    pin math, wire pins flows, `verify.test.ts` pins architecture; none of
+    them sees a floating promise or a literal that silently became
+    `Infinity`. Type-aware rules only, `--max-warnings 0`, and a rule that
+    fires only false positives gets deleted with its reason written down —
+    never left on as noise.

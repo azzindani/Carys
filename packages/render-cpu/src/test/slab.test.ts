@@ -67,7 +67,7 @@ describe('oblique', () => {
   it('zero rotation reproduces the orthogonal slice', () => {
     const v = ramp([9, 7, 8]);
     const { row, col } = obliqueBasis('axial', 0, 0);
-    const [nx, ny, nz] = v.dims;
+    const [nx, ny] = v.dims;
     const wb = Math.ceil(nx) + 1, hb = Math.ceil(ny) + 1;
     // center the plane on voxel (4,3,5) with unit basis
     const out = resliceOblique(v, [4, 3, 5], row, col, wb, hb, WL);

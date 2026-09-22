@@ -64,6 +64,55 @@ marker-free watershed split (Manhattan EDT + top-down flood; shape necks
 only, never adds voxels).
 Every op = pure function, undoable, testable without UI.
 
+## Design system (`packages/app/src/styles` + `src/ui`)
+
+Tailwind v4 supplies utilities and the `@theme` token store; Radix backs the
+components whose hand-rolled versions were behaviourally wrong (popover:
+outside-click + Escape + focus restore; tooltip). Sliders stay native
+`<input type="range">` on purpose — the wire suite drives them with real key
+events and reads `.inputValue()`.
+
+```
+styles/tokens.css      color / type / rhythm / rounding — the only literals
+styles/base.css        reset, document chrome, focus, scrollbars
+styles/components.css  shared classes every view uses
+styles/shell.css       rail, topbar, main grid, inspector, status
+styles/viewport.css    viewport grid + the 3D-tool treatment
+styles/responsive.css  desktop >1280 / tablet 981–1280 / mobile ≤980
+```
+
+Layout has three real modes, not one squeezed twice: desktop pairs an icon
+rail with the viewport grid and the inspector column; tablet drops the
+inspector under the stage; mobile gives the top half to imaging and the
+bottom half to a permanent control deck, so tools never cover the image they
+act on. 980px is the mobile edge and is the twin of `lib/isMobile.ts` (§21).
+
+The chrome is built to read as an instrument rather than a web page:
+
+- **Scrub fields, not slider rows.** `SliderRow` renders a compact rectangle
+  carrying its own label, a proportional fill and a right-aligned value,
+  dragged horizontally. It is still a native `<input type="range">` layered
+  at full size over the fill — the wire suite focuses these, sends real arrow
+  keys and reads `.inputValue()`, so a div-based slider would break it.
+- **A tool column, not a wrapping toolbar.** `#dock-mpr` renders in `column`
+  mode against the viewport edge on desktop, and flat inside the mobile
+  control deck. One dock, two layouts — `#undogrp` has to stay inside
+  `#dock-mpr` and `#modeseg` inside `#mpanel-tools`, which e2e addresses.
+- **Density scales by pointer, not breakpoint.** `--ctl-h` is 26px under a
+  mouse and 44px under a finger, so instrument tightness and the §22 touch
+  floor come from one variable instead of fighting.
+- **Rounding stays proportional but tight** (3→19px). Pills are reserved for
+  status dots and notifications; a pill-shaped control reads as a web page.
+
+The viewport borrows the look of a three.js/Blender-class viewport — graded
+stage, floor grid, corner brackets, orientation axis gizmo — but every pixel
+of imagery is still CPU-rasterised into a 2D canvas. The gizmo is SVG chrome
+that reflects orbit/tilt and is operable (clicking an axis snaps the camera),
+but it renders no imagery. No WebGL context is created and no `three` import
+exists, and `verify.test.ts` enforces both. Anatomical edge letters stay on
+the canvas via `iopEdgeLabels` — the DOM HUD draws framing only, so there is
+one implementation, not two (§4).
+
 ## UI (`packages/ui`, static, serve repo root)
 
 - `slice.html` — MPR 3-view + seg overlay + paint/erase + undo + PNG/.nii export.

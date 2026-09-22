@@ -2,11 +2,13 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { listSamples, needsAny } from '@carys/testkit';
 import { readHeader, readImage } from '../nifti1.js';
 import { maskVolume } from '@carys/measure';
 import type { Volume } from '@carys/volume-core';
 
 const SAMPLES = join(process.cwd(), 'samples');
+const HAVE = listSamples((f) => f.endsWith('.nii'));
 const bufOf = (f: string): ArrayBuffer => Uint8Array.from(readFileSync(join(SAMPLES, f))).buffer as ArrayBuffer;
 
 const DTYPE_ARRAYS = {
@@ -26,7 +28,7 @@ const PAIRS: [string, string, string][] = [
   ['lesion', 'brain_lession_16_rr_mni_flair.nii', 'brain_lession_16_rr_mni_lesion.nii'],
 ];
 
-describe('samples: segmentation volumes (mm^3)', () => {
+describe('samples: segmentation volumes (mm^3)', needsAny('NIfTI samples', HAVE), () => {
   it('every pair has positive sub-image volume with bbox inside dims', () => {
     for (const [name, imgF, segF] of PAIRS) {
       const hs = readHeader(bufOf(segF));

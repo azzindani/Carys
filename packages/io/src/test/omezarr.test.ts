@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { needs, SAMPLES_DIR } from '@carys/testkit';
 import { gzipSync } from 'fflate';
 import {
   OmeZarrStore, OmeZarrError, chunkElements, chunkKey, decodeChunk,
@@ -201,7 +202,7 @@ describe('omezarr live path', () => {
 // disk-backed fetch instead of an in-memory map. Goldens below are exact
 // pixel values + integer channel sums from the generator.
 
-const ZARR_DIR = join(process.cwd(), 'samples', 'cells_demo.zarr');
+const ZARR_DIR = join(SAMPLES_DIR, 'cells_demo.zarr');
 
 /** File-backed fetch: maps store-relative URLs onto the vendored tree. */
 function diskFetch(base: string): FetchFn {
@@ -221,7 +222,7 @@ function diskFetch(base: string): FetchFn {
 const sum = (a: Uint8Array): number => a.reduce((s, v) => s + v, 0);
 
 describe('omezarr vendored store', () => {
-  it('opens from disk with both pyramid levels', async () => {
+  it('opens from disk with both pyramid levels', needs('cells_demo.zarr'), async () => {
     const store = await OmeZarrStore.open('file://cells_demo', diskFetch('file://cells_demo'));
     assert.equal(store.levels.length, 2);
     assert.deepEqual(store.meta.axes, ['c', 'z', 'y', 'x']);
@@ -231,7 +232,7 @@ describe('omezarr vendored store', () => {
     assert.deepEqual(store.levels[1]!.meta.shape, [2, 1, 64, 64]);
     assert.equal(store.levels[1]!.compressor, 'gzip');
   });
-  it('tiles match goldens, seams assemble, sums fingerprint channels', async () => {
+  it('tiles match goldens, seams assemble, sums fingerprint channels', needs('cells_demo.zarr'), async () => {
     const store = await OmeZarrStore.open('file://cells_demo', diskFetch('file://cells_demo'));
     // blob centers + ring peaks (discriminating, not background)
     const b1 = await store.getTile({ s: 0, c: 0, z: 0, x: 40, y: 44, w: 1, h: 1 });
@@ -259,7 +260,7 @@ describe('omezarr vendored store', () => {
   });
 });
 
-const PLATE_DIR = join(process.cwd(), 'samples', 'plate_demo.zarr');
+const PLATE_DIR = join(SAMPLES_DIR, 'plate_demo.zarr');
 
 /** File-backed fetch over the vendored plate (mirrors diskFetch above). */
 function plateFetch(base: string): FetchFn {
@@ -277,7 +278,7 @@ function plateFetch(base: string): FetchFn {
 }
 
 describe('omezarr vendored plate', () => {
-  it('plate root resolves both wells to openable image stores', async () => {
+  it('plate root resolves both wells to openable image stores', needs('plate_demo.zarr'), async () => {
     const base = 'file://plate';
     const za = await (await plateFetch(base)(`${base}/.zattrs`)).json();
     const plate = parsePlateAttrs(za)!;
@@ -303,7 +304,7 @@ describe('omezarr vendored plate', () => {
 // become goldens; today there are none. zarrita + FileSystemStore stay
 // test-only — io ships dependency-free.
 describe('omezarr vs zarrita reference', () => {
-  it('every chunk byte-equal on both levels + seam tile agrees', async () => {
+  it('every chunk byte-equal on both levels + seam tile agrees', needs('cells_demo.zarr'), async () => {
     const zarr = await import('zarrita');
     const { FileSystemStore } = await import('@zarrita/storage');
     const store = await OmeZarrStore.open('file://cells_demo', diskFetch('file://cells_demo'));

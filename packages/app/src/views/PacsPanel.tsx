@@ -51,7 +51,7 @@ export function PacsPanel({ onPull }: { onPull: (key: string) => void }): JSX.El
       setStudies(rows);
       setStatus(`PACS: ${rows.length} studies`);
     } catch (e) {
-      setStatus(`PACS search failed: ${e instanceof DicomWebError ? e.message : String(e)}`);
+      setStatus(`PACS search failed: ${e instanceof DicomWebError ? e.message : String(e)}`, 'error');
     } finally {
       setBusy(false);
     }
@@ -64,7 +64,7 @@ export function PacsPanel({ onPull }: { onPull: (key: string) => void }): JSX.El
       const rows = await pacsClient(active.baseUrl).searchSeries(st.studyUID);
       setSeries({ study: st, rows });
     } catch (e) {
-      setStatus(`PACS series failed: ${e instanceof DicomWebError ? e.message : String(e)}`);
+      setStatus(`PACS series failed: ${e instanceof DicomWebError ? e.message : String(e)}`, 'error');
     } finally {
       setBusy(false);
     }

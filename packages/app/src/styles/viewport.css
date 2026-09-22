@@ -1,0 +1,296 @@
+/* ============================================================================
+   Viewport grid + the 3D-tool treatment.
+
+   The look is borrowed from three.js/Blender-class viewports — graded stage,
+   floor grid, corner HUD, axis gizmo — but every pixel of actual imagery is
+   still CPU-rasterised into a 2D canvas. No WebGL context is created and no
+   `three` import exists; verify.test.ts enforces both.
+   ========================================================================= */
+
+/* Tool column + viewports. A tool palette is an icon strip, not a menu:
+   56px of glyphs against the viewport edge instead of 152px of labelled
+   rows, so the image keeps the width. */
+.workarea { flex: 1; min-height: 0; min-width: 0; display: flex; gap: var(--sp-2); }
+/* The tool palette floats against the left edge of the image rather than
+   holding a column of its own. */
+.toolstrip {
+  /* below the floating toolbar AND below the pane header, so it covers
+     neither — chrome may float over the image, never over other chrome. */
+  position: absolute; left: var(--sp-3);
+  top: calc(var(--dockbar-h) + var(--ctl-h) + var(--sp-5));
+  z-index: 12; width: 54px;
+  max-height: calc(100% - var(--dockbar-h) - var(--ctl-h) - var(--sp-8));
+  display: flex; flex-direction: column;
+  background: color-mix(in srgb, var(--color-surface-1) 88%, transparent);
+  border: 1px solid var(--color-line); border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-2);
+  /* same reason as .dockrow: 0.72 put the tool captions at 2.33:1 */
+  opacity: 0.85; transition: opacity var(--dur) var(--ease);
+}
+.toolstrip:hover, .toolstrip:focus-within { opacity: 1; }
+
+/* A dock laid out as a column: groups stack, controls go full width. */
+.dock.column {
+  width: 100%; flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+  gap: var(--sp-2); overflow-y: auto; padding: var(--sp-2) var(--sp-1);
+}
+.dock.column .grp { flex-direction: column; align-items: stretch; gap: var(--sp-1); padding: 0; }
+.dock.column .seg { flex-direction: column; gap: 1px; background: transparent; border: 0; padding: 0; }
+.dock.column .seg button {
+  flex-direction: column; justify-content: center; gap: 2px;
+  display: flex; align-items: center; padding: var(--sp-1) 0;
+  /* concentric inside .toolstrip's --sp-1 padding */
+  min-height: 42px; border-radius: calc(var(--radius-lg) - var(--sp-1));
+}
+.dock.column .seg button svg { width: 17px; height: 17px; flex: none; }
+.dock.column .seg button .tl { font-size: var(--fs-3xs); font-weight: 600; letter-spacing: 0.02em; }
+/* value-only field: no room for a label in a 56px palette */
+.dock.column .field { padding: 0 var(--sp-2); }
+.dock.column .field-lbl { display: none; }
+.dock.column .field-val { padding-left: 0; margin: 0 auto; }
+.dock.column #undogrp { flex-direction: column; gap: 1px; }
+.dock.column #undogrp .iconbtn { padding: 0; font-size: var(--fs-3xs); width: 100%; }
+.dock.column #undogrp .iconbtn svg { width: 13px; height: 13px; }
+.dock.column .switch { margin: 0 auto; }
+.dock.column .grp:has(.switch) .lbl { display: none; }
+.dock.column .sep { width: auto; height: 1px; align-self: stretch; margin: var(--sp-1) 0; }
+.dock.column .field { width: 100%; min-width: 0; }
+/* A switch and its label belong on one line; only stacked groups go column. */
+.dock.column .grp:has(.switch) { flex-direction: row; align-items: center; gap: var(--sp-2); }
+
+
+.viewgrid {
+  flex: 1; min-height: 0; min-width: 0;
+  display: grid; gap: var(--sp-2); align-items: stretch;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+}
+/* The toolbar floats over the image, the way a site's nav floats over the
+   hero — it does not push the content down. The viewport keeps the whole
+   work area and the bar rides on top, fading back until you reach for it.
+   The grid insets its *content* by the bar's height so the bar never covers
+   a pane header; the grid's own box is unchanged, so toggling the toolbar
+   still costs the image no height. */
+/* The bar's height is derived, not guessed: a magic 42px clipped a 69px
+   dock on desktop and was ~20px short of a single row on touch, where
+   --ctl-h is 44px. One row of controls plus the bar's own padding. */
+.workarea {
+  position: relative;
+  --dockbar-h: calc(var(--ctl-h) + var(--sp-3) * 2 + 2px);
+}
+.workarea:has(.dockrow) .viewgrid { padding-top: var(--dockbar-h); }
+.dockrow {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 12;
+  height: var(--dockbar-h);
+  display: flex; gap: var(--sp-2);
+  flex-wrap: nowrap; align-items: center;
+  overflow-x: auto; overflow-y: hidden;
+  padding: var(--sp-2) var(--sp-3);
+  background: color-mix(in srgb, var(--color-surface-1) 88%, transparent);
+  border-bottom: 1px solid var(--color-line);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  scrollbar-width: thin;
+  /* The bar recedes until you reach for it, but 0.55 took its labels to
+     1.83:1 against the image — the chrome disappeared and so did the words on
+     it. 0.85 still reads as "resting" and keeps every label above AA. */
+  opacity: 0.85;
+  transition: opacity var(--dur) var(--ease);
+}
+.dockrow:hover, .dockrow:focus-within { opacity: 1; }
+/* `max-width: 100%` from the floating-dock recipe capped each dock's *box* at
+   the bar's width while its controls kept their intrinsic size, so the
+   controls spilled out of a box that stopped short and landed on top of the
+   next dock. In the bar a dock is measured by what it holds; the bar scrolls. */
+.dockrow .dock {
+  flex: none; flex-wrap: nowrap; align-items: center;
+  width: max-content; max-width: none;
+  background: transparent; border: 0; box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  padding: 0; border-radius: 0;
+}
+/* a hairline between groups instead of three floating boxes */
+.dockrow .dock + .dock { border-left: 1px solid var(--color-line); padding-left: var(--sp-2); }
+.dockrow .dock .grp { flex: none; }
+/* Nothing in the bar wraps internally — a caption that breaks onto a second
+   line makes the dock taller than the bar, and the overflow gets clipped
+   mid-glyph. The row scrolls sideways instead. */
+.dockrow .dock, .dockrow .dock * { white-space: nowrap; }
+.dockrow .dock .chip, .dockrow .dock .lbl { flex: none; }
+.dockrow::-webkit-scrollbar { height: 6px; }
+/* The bar scrolls sideways when the controls outrun the width; without an
+   edge fade there is nothing to say so, and controls just look cut off. */
+.dockrow { mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent 100%); }
+/* portal target for the 3D dock: contributes no box of its own */
+.dockslot { display: contents; }
+
+.vp { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+/* SurfaceView wraps its pane in a `.panes` row, whose page-flow defaults
+   (wrap + align-items:flex-start, no flex sizing) made it size to content and
+   refuse to shrink — the 3D pane then overflowed its track. Inside a viewport
+   it is a pass-through column, exactly like `.panes-2d` already is. */
+.vp > .panes {
+  flex: 1 1 0; min-height: 0; gap: 0;
+  display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch;
+}
+.panes-2d { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.panes-2d[data-layout="axial"] #pane-axial,
+.panes-2d[data-layout="coronal"] #pane-coronal,
+.panes-2d[data-layout="sagittal"] #pane-sagittal { flex-grow: 1.8; }
+.vp .pane { flex: 1 1 0; min-height: 0; max-width: none; }
+.vp3d .pane { flex: 1; }
+.vp3d .tfpane { max-width: none; flex: none; }
+
+/* ---- the stage: a graded 3D viewport, not a black box -------------------
+   Canvases letterbox with object-fit, so this backdrop is what fills the
+   void around the image — turning dead space into viewport. */
+.vp .stage {
+  flex: 1; min-height: 0; min-width: 0;
+  display: flex; flex-direction: row; align-items: stretch;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgb(45 212 191 / 0.045), transparent 58%),
+    linear-gradient(180deg, #0a0d12 0%, var(--color-stage) 62%);
+}
+.vp .stage canvas {
+  width: 100%; height: 100%; object-fit: contain;
+  min-width: 0; min-height: 0;
+  border-radius: 0;
+  /* Inside the grid the pane decides the box and object-fit letterboxes the
+     raster. An intrinsic ratio here would out-vote the row height and push
+     the pane past its track (it did, on phones). The standalone Surface page
+     keeps its square below. */
+  aspect-ratio: auto;
+}
+.viewport-canvas {
+  position: relative; flex: 1; min-width: 0; min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+/* Floor grid — a ground-plane reference, so it belongs to the 3D viewport
+   only. Behind a reconstructed slice it is not scenery, it is contamination
+   over the thing being read. */
+.vp3d .viewport-canvas::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.04) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(180deg, transparent 12%, black 92%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 12%, black 92%);
+}
+.viewport-canvas > canvas { position: relative; z-index: 1; }
+
+/* ---- viewport corner overlay ------------------------------------------
+   Study identity in the four corners, the way a reading workstation shows
+   it. Never intercepts the pointer: painting and window/level drags belong
+   to the canvas underneath. */
+.vp-ov {
+  position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  font-family: var(--font-mono); font-size: var(--fs-3xs); line-height: 1.45;
+  color: rgb(255 255 255 / 0.5);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
+}
+.vp-ov > div { position: absolute; display: flex; flex-direction: column; max-width: 46%; }
+.vp-ov span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vp-ov-tl { top: var(--sp-2); left: var(--sp-3); }
+.vp-ov-tr { top: var(--sp-2); right: var(--sp-3); text-align: right; align-items: flex-end; }
+.vp-ov-bl { bottom: var(--sp-2); left: var(--sp-3); }
+.vp-ov-br { bottom: var(--sp-2); right: var(--sp-3); text-align: right; align-items: flex-end; }
+/* The first line of each corner is the identifying one — brighten it. */
+.vp-ov-tl span:first-child { color: rgb(255 255 255 / 0.74); }
+.vp-ov-warn {
+  top: var(--sp-2); left: 50%; transform: translateX(-50%);
+  color: var(--color-warn); opacity: 0.7; letter-spacing: 0.06em;
+  max-width: 56%; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ---- axis gizmo: SVG, bottom-left of the 3D viewport ------------------- */
+.gizmo {
+  position: absolute; left: var(--sp-3); bottom: var(--sp-3); z-index: 4;
+  width: 58px; height: 58px; pointer-events: none;
+  opacity: 0.88; transition: opacity var(--dur) var(--ease);
+}
+.gizmo text { font-family: var(--font-mono); font-size: 7px; font-weight: 700; }
+/* operable gizmo: each axis is a click target that snaps the camera */
+.gizmo.live { pointer-events: auto; }
+.gizmo.live:hover { opacity: 1; }
+.gizmo.live .gz-ax { cursor: pointer; }
+.gizmo.live .gz-ax circle { transition: r var(--dur-fast) var(--ease); }
+.gizmo.live .gz-ax:hover circle { r: 7.4; }
+
+/* ---- side rail: per-viewport sliders + zoom, uniform in every pane ----- */
+.vrail {
+  flex: none; width: 60px;
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-2);
+  margin: var(--sp-2) var(--sp-2) var(--sp-2) 0;
+  background: color-mix(in srgb, var(--color-surface-2) 72%, transparent);
+  border: 1px solid var(--color-line);
+  /* concentric with the stage it floats in */
+  border-radius: calc(var(--radius-lg) - var(--sp-1) - var(--sp-2));
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+.vrail .grp { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); }
+.vrail .grp .lbl { font-size: var(--fs-3xs); }
+.vrail .vzoom { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.vrail .iconbtn { min-width: 32px; min-height: 32px; padding: var(--sp-1); }
+.vrail .chip.zoom { margin-left: 0; font-size: var(--fs-3xs); padding: 2px var(--sp-2); }
+#pane-3d .vrail { justify-content: flex-start; }
+#pane-3d .vrail .grp { flex: 1 1 0; min-height: 104px; max-height: 210px; }
+
+.vrail input[type="range"].styled.vert {
+  flex: 1 1 0; min-height: 48px; width: 100%;
+  writing-mode: vertical-lr; direction: rtl;
+  background: transparent; cursor: pointer;
+}
+.vrail input[type="range"].styled.vert::-webkit-slider-runnable-track {
+  width: 4px; height: auto; background: var(--color-surface-4); border-radius: var(--radius-pill);
+}
+.vrail input[type="range"].styled.vert::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px; margin-left: -5.5px;
+  border-radius: 50%; background: var(--color-text); border: none;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.6), var(--ring-accent);
+}
+.vrail input[type="range"].styled.vert::-moz-range-track { width: 4px; background: var(--color-surface-4); border-radius: var(--radius-pill); }
+.vrail input[type="range"].styled.vert::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: var(--color-text); border: none; }
+
+/* Standalone Surface route keeps a square stage; inside the viewport grid
+   (`.vp`) the pane owns the box and object-fit letterboxes the raster, so an
+   intrinsic ratio there would out-vote the row height. */
+#view3d { cursor: grab; aspect-ratio: 1; }
+.vp #view3d { aspect-ratio: auto; }
+#view3d:active { cursor: grabbing; }
+
+/* ---- fullscreen: chosen viewport spans the grid, the rest hides -------- */
+.viewgrid[data-full="v3d"], .viewgrid[data-full="axial"],
+.viewgrid[data-full="coronal"], .viewgrid[data-full="sagittal"] { grid-template-columns: minmax(0, 1fr); }
+.viewgrid[data-full="v3d"] .vp2d { display: none; }
+.viewgrid[data-full="axial"] .vp3d,
+.viewgrid[data-full="coronal"] .vp3d,
+.viewgrid[data-full="sagittal"] .vp3d { display: none; }
+.viewgrid[data-full="axial"] #pane-coronal, .viewgrid[data-full="axial"] #pane-sagittal,
+.viewgrid[data-full="coronal"] #pane-axial, .viewgrid[data-full="coronal"] #pane-sagittal,
+.viewgrid[data-full="sagittal"] #pane-axial, .viewgrid[data-full="sagittal"] #pane-coronal { display: none; }
+
+.tfpane { flex: 1 1 560px; max-width: 700px; }
+.tfwrap { padding: var(--sp-2) var(--sp-4) var(--sp-4); }
+#c-cells { width: 100%; height: auto; image-rendering: pixelated; aspect-ratio: 1; }
+#chaninfo .mrow dd, #cellinfo .mrow dd, #track-list .mrow dd { white-space: normal; text-align: right; line-height: 1.5; }
+/* Inline row links inside data lists. They read as text, but they are real
+   buttons, so they clear the 24px floor on BOTH axes (§22) — several of
+   these share one `dd`, and flex was squeezing each to a 15px sliver that
+   wrapped one character per line. */
+.cellrow, #track-list .reslink {
+  display: inline-flex; align-items: center;
+  font: inherit; background: none; border: 0;
+  min-height: 24px; min-width: 24px;
+  padding: var(--sp-1) var(--sp-1); text-align: right;
+}
+#cellinfo .cellrow { color: inherit; }
+#cellinfo .cellrow:hover { color: var(--color-text); }
+#cellinfo .cellrow.on { color: var(--color-accent); }
+#track-list .reslink { color: var(--color-accent); }
+#track-list .reslink:hover { color: var(--color-text); }
+#storeinfo { white-space: normal; line-height: 1.6; word-break: break-word; overflow-wrap: anywhere; }
+#pane-channels #chaninfo, #pane-channels #storeinfo { margin-inline: var(--sp-4); }

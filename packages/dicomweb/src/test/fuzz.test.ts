@@ -5,8 +5,6 @@ import { buildMultipartRelated, parseMultipartRelated, partsOfType } from '../mu
 import { buildStowBody } from '../stow.js';
 import { mulberry32, randInt } from './rng.js';
 
-const enc = new TextEncoder();
-
 describe('multipart fuzz', () => {
   it('round-trips 140 CRLF-hostile bodies byte-exact', () => {
     const rng = mulberry32(313131);

@@ -1,0 +1,300 @@
+/* ============================================================================
+   Responsive layers.
+
+   Three real modes, not one desktop layout squeezed twice:
+     desktop  >1280   icon rail + viewport grid + inspector column
+     tablet   981–1280 icon rail + viewport grid, inspector folds under
+     mobile   ≤980    no rail; imaging owns the top, controls own the bottom
+
+   980px is the mobile edge and is the twin of lib/isMobile.ts (§21 — one
+   breakpoint value, never two drifting).
+   ========================================================================= */
+
+/* ------------------------------------------------------------- 1280 down
+   Lower-bounded at 981px: these are tablet rules, and without the bound they
+   also matched phones — where `.viewgrid { min-height: 58vh }` pinned the
+   imaging row open and pushed the control deck off the bottom of the screen. */
+@media (min-width: 981px) and (max-width: 1280px) {
+  .main { grid-template-columns: minmax(0, 1fr) 264px; gap: var(--sp-3); padding-inline: var(--sp-4); }
+  .rail { width: 54px; }
+  .rail-btn .rl { display: none; }
+  .rail-btn { min-height: 42px; }
+  .logo .word, .logo .tag { display: none; }
+  .logo .mark { display: flex; }
+}
+
+/* ---------------------------------------------------- tablet: 981–1100 */
+@media (min-width: 981px) and (max-width: 1100px) {
+  /* the inspector stops paying for its column — it folds under the stage */
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .inspector {
+    max-height: none; align-self: stretch; margin-top: var(--sp-4);
+    /* two columns of readouts instead of one tall strip */
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 0 var(--sp-6); padding-bottom: var(--sp-4);
+  }
+  .inspector section { border-bottom: none; border-top: 1px solid var(--color-line); }
+  .viewgrid { min-height: 58vh; }
+  .kbd-btn kbd { display: none; }
+}
+
+/* -------------------------------------- narrow enough to stop sharing rows
+   Two panes side by side leave a canvas ~450px wide on a 1024 tablet. Below
+   1280 a canvas pane takes the whole row and its companions drop beneath. */
+@media (max-width: 1280px) {
+  .panes:has(canvas) > .pane { flex: 1 1 100%; max-width: 100%; }
+}
+
+/* ------------------------------------------- tablet portrait (981px up)
+   A side-by-side split wastes a tall screen: each column got ~500px of
+   width while 1366px of height went to letterbox. Stack instead — 3D full
+   width on top, the three slices in a row beneath, so every pane gets the
+   full width of the device. */
+@media (min-width: 981px) and (orientation: portrait) {
+  .viewgrid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1.05fr) minmax(0, 1fr);
+  }
+  /* `.vp > .panes` sets column and out-ranks a bare `.panes-2d`, so this
+     has to match at least as specifically to win. */
+  .vp > .panes.panes-2d { flex-direction: row; }
+  .vp > .panes.panes-2d[data-layout="axial"] #pane-axial,
+  .vp > .panes.panes-2d[data-layout="coronal"] #pane-coronal,
+  .vp > .panes.panes-2d[data-layout="sagittal"] #pane-sagittal { flex-grow: 1.8; }
+  /* slice panes are narrow in a row of three: trim the rail and head */
+  .vp2d .vrail { width: 44px; }
+  .vp2d .pane-head { padding: 0 var(--sp-2); }
+  /* fullscreen still collapses to the single chosen viewport */
+  .viewgrid[data-full="v3d"], .viewgrid[data-full="axial"],
+  .viewgrid[data-full="coronal"], .viewgrid[data-full="sagittal"] {
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+
+/* ------------------------------------------------------- mobile: 980 down
+   Imaging on top, controls on the bottom half — the deck is a permanent
+   surface, not an overlay, so the image is never covered by its own tools. */
+@media (max-width: 980px) {
+  :root { --deck-h: 46dvh; }
+
+  .rail { display: none; }
+  .shell { display: block; }
+
+  html:has(.viewgrid), body:has(.viewgrid) { height: 100dvh; }
+  #root:has(.viewgrid) { height: 100dvh; overflow: hidden; }
+  .frame:has(.viewgrid) { height: 100dvh; }
+
+  .top { padding: var(--sp-2) var(--sp-3); gap: var(--sp-2); }
+  .top .iconbtn.burger { display: inline-flex; }
+  .top .navlink, .top .kbd-btn, .top select.dark, .iconbtn.docktoggle { display: none; }
+  .logo .word, .logo .tag { display: none; }
+  .logo .mark { display: flex; }
+
+  /* imaging: everything above the deck */
+  .main:has(.viewgrid) {
+    display: flex; flex-direction: column; height: 100%; min-height: 0;
+    padding: var(--sp-2) var(--sp-3) 0; gap: 0;
+  }
+  /* Explicit rows, not flex shrinking: the canvas carries an intrinsic
+     aspect-ratio that kept the imaging row from yielding, which pushed the
+     deck past the bottom of the screen. minmax(0,1fr) clamps it for real. */
+  .main:has(.viewgrid) .viewport {
+    flex: 1 1 auto; min-height: 0; overflow: hidden;
+    display: grid; grid-template-rows: auto minmax(0, 1fr) var(--deck-h);
+    /* gap, not a margin on .deck — a margin sits outside the track and
+       pushed the deck past the bottom of the screen by exactly its size. */
+    row-gap: var(--sp-2);
+  }
+  .main:has(.viewgrid) .viewport:has(.deck[data-open="false"]) {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .main:has(.viewgrid) .inspector { display: none; }
+  .dockrow { display: none; }
+  /* the tool column is a desktop affordance; mobile tools live in the deck */
+  .workarea { display: contents; }
+  .toolstrip { display: none; }
+
+  /* The tab strip is one chip tall on a phone; it was costing ~6% of the
+     screen to show a single filename. */
+  .ftop { padding: 0 0 var(--sp-1); }
+  .ftop .filetabs .tab { min-height: 30px; padding: 0 var(--sp-3); }
+  .ftop .filetabs .tab.plus { min-width: 34px; justify-content: center; }
+  .top { padding: var(--sp-1) var(--sp-2); }
+  .ftop .filetabs { flex-wrap: nowrap; overflow: hidden; }
+  .ftop .filetabs .tab:not(.on):not(.plus) { display: none; }
+  .ftop .filetabs .tab.on { flex: 1 1 auto; min-width: 0; }
+  .ftop .filetabs .tab.on .tname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* one viewport fills the imaging half */
+  .viewgrid { display: flex; flex-direction: column; gap: 0; }
+  #vp-3d, #vp-2d { flex: 1 1 0; min-height: 0; }
+  .viewgrid[data-mview="v3d"] .vp2d { display: none; }
+  .viewgrid[data-mview="axial"] .vp3d,
+  .viewgrid[data-mview="coronal"] .vp3d,
+  .viewgrid[data-mview="sagittal"] .vp3d { display: none; }
+  .viewgrid[data-mview="axial"] #pane-coronal, .viewgrid[data-mview="axial"] #pane-sagittal,
+  .viewgrid[data-mview="coronal"] #pane-axial, .viewgrid[data-mview="coronal"] #pane-sagittal,
+  .viewgrid[data-mview="sagittal"] #pane-axial, .viewgrid[data-mview="sagittal"] #pane-coronal { display: none; }
+  .vp2d .panes-2d { flex: 1; min-height: 0; }
+  .vp .pane { border-radius: var(--radius-lg); }
+  .pane-head { padding: var(--sp-2) var(--sp-3); flex-wrap: wrap; row-gap: var(--sp-1); }
+  .vrail { width: 54px; }
+
+  /* ---- the control deck: bottom half, permanent ----
+     Sits inside .viewport's flex column so the imaging grid above it keeps
+     every pixel the deck does not claim. Flush to the bottom edge, rounded
+     at the top, side gutters inherited from .main. */
+  .deck {
+    display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden;
+    height: 100%;
+    padding: var(--sp-3) var(--sp-3) calc(var(--sp-2) + env(safe-area-inset-bottom, 0px));
+    background: var(--color-surface-1);
+    border: 1px solid var(--color-line-strong);
+    border-bottom: 0;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+    box-shadow: 0 -6px 24px rgb(0 0 0 / 0.34);
+  }
+  /* collapsed: only the switcher + tabs show, image takes the screen */
+  .deck[data-open="false"] { height: auto; }
+
+
+  .mobilebar {
+    flex: none; display: flex; flex-direction: column; gap: var(--sp-2);
+  }
+  .mobilebar .seg { width: 100%; }
+  .mobilebar .seg button { flex: 1; justify-content: center; padding-inline: var(--sp-1); }
+
+  .deck-tabs {
+    flex: none; display: flex; align-items: center; gap: var(--sp-1);
+    padding-bottom: var(--sp-2); border-bottom: 1px solid var(--color-line);
+  }
+  .mbtn {
+    flex: 1; min-height: var(--tap); padding: var(--sp-2) var(--sp-3);
+    background: transparent; border: 1px solid transparent; border-radius: var(--radius-md);
+    color: var(--color-faint); font-size: var(--fs-sm); font-weight: 600;
+    transition: all var(--dur-fast) var(--ease);
+  }
+  .mbtn:hover { color: var(--color-text); background: var(--color-surface-2); }
+  .mbtn.on { color: var(--color-accent); background: var(--color-accent-dim); border-color: var(--color-line-accent); }
+
+  .deck-body {
+    flex: 1; min-height: 0; min-width: 0;
+    overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+    padding-top: var(--sp-3);
+    display: flex; flex-direction: column; gap: var(--sp-3);
+  }
+  /* Docks go flat inside the deck: the deck is already a panel, so a second
+     bordered box around each group is noise. A hairline separates them. */
+  .deck-body .dock {
+    width: 100%; max-width: 100%; margin: 0; padding: var(--sp-2) 0;
+    background: transparent; border: 0; border-radius: 0;
+    box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+    justify-content: flex-start; row-gap: var(--sp-3); column-gap: var(--sp-2);
+  }
+  .deck-body .dock + .dock { border-top: 1px solid var(--color-line); }
+  .deck-body #deck-3d:empty { display: none; }
+
+  /* Docks were authored for a wide toolbar: their groups never had to
+     shrink. In a 390px deck an unshrinkable group pushes the whole document
+     sideways, so every level here is allowed to wrap and give up width. */
+  /* Groups stack into rows here, so the dock's vertical dividers would
+     dangle at the end of each wrapped line. The row gap separates them. */
+  .deck-body .dock .sep { display: none; }
+  .deck-body .dock .grp { min-width: 0; max-width: 100%; flex-wrap: wrap; }
+  .deck-body .dock .grp > * { min-width: 0; }
+  .deck-body .seg { flex-wrap: wrap; max-width: 100%; }
+  .deck-body select.dark { max-width: 100%; min-width: 0; flex: 1 1 140px; }
+  .deck-body input[type="range"].styled { width: auto; flex: 1 1 110px; min-width: 80px; }
+  .deck-body .urlinput, .deck-body .textinput { width: 100%; min-width: 0; }
+
+  .minfo { display: flex; flex-direction: column; gap: var(--sp-1); }
+  .minfo div { display: flex; justify-content: space-between; gap: var(--sp-4); font-size: var(--fs-xs); }
+  .minfo dt { color: var(--color-faint); }
+  .minfo dd { margin: 0; font-family: var(--font-mono); }
+
+  .mp-head { display: flex; align-items: center; justify-content: space-between; }
+  .mp-head .name { font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 600; }
+
+  /* `grid-template-columns: auto 1fr` lets a long label eat the row: the
+     value column collapsed to 15px and its buttons wrapped one character
+     per line. One column, label over value, and they get the full width. */
+  .kv { grid-template-columns: minmax(0, 1fr); gap: var(--sp-1) 0; }
+  .kv dd { text-align: left; }
+  .kv dt { margin-top: var(--sp-2); }
+  .mrow dd { justify-content: flex-start; }
+  .cellrow, #track-list .reslink, #cellinfo .cellrow { text-align: left; }
+  #chaninfo .mrow dd, #cellinfo .mrow dd, #track-list .mrow dd { text-align: left; }
+
+  /* Every route spent ~100px on a title and a sentence of prose before any
+     content. On a 390x844 screen that is an eighth of the display. */
+  .view-title { margin-bottom: var(--sp-3); gap: var(--sp-2); }
+  .view-title h1 { font-size: var(--fs-lg); }
+  .view-title p { display: none; }
+
+  /* Page-flow docks scroll sideways instead of wrapping into a wall: the
+     worklist filters, cohort and QC panels pushed the study list below the
+     fold, so the list — the point of the screen — was never visible.
+     A dock holding a definition list is a panel, not a strip, so it is
+     excluded: forcing `nowrap` on the cohort panel collapsed its single-column
+     table to zero width and spilled the rows past the right edge of the
+     screen, one glyph per line, on top of the panel's own caption. */
+  .main:not(:has(.viewgrid)) .dock:not(:has(dl)) {
+    width: 100%; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+  .main:not(:has(.viewgrid)) .dock:not(:has(dl)) .grp { flex: none; }
+  /* the panel form: one column, full width, nothing sideways */
+  .main:not(:has(.viewgrid)) .dock:has(dl) { width: 100%; }
+  .main:not(:has(.viewgrid)) .dock:has(dl) > * { flex: 1 1 100%; min-width: 0; }
+
+  /* Viewport header: the name and the live readout, nothing else. The tris
+     count is already in the status line, and the zoom chip duplicates the
+     +/- pair beside it. */
+  .vp .pane-head { min-height: var(--ctl-h); }
+  .vp #pane-3d .pane-head .chip:not(.zoom) { display: none; }
+
+  /* The 3D orbit/tilt rail is a mouse affordance. On touch, one finger
+     orbits and two fingers pinch-zoom, so the rail is ~13% of the width
+     spent on controls the gestures already cover. */
+  .vp3d .vrail { display: none; }
+
+  /* non-viewer routes: ordinary page flow, deck absent */
+  .main:not(:has(.viewgrid)) { display: block; padding: var(--sp-4) var(--sp-3); }
+  .status { display: none; }
+
+  /* mobile fullscreen: pure viewport, deck and chrome out of the way */
+  #root:has(.viewgrid[data-full]:not([data-full=""])) .top,
+  #root:has(.viewgrid[data-full]:not([data-full=""])) .ftop,
+  #root:has(.viewgrid[data-full]:not([data-full=""])) .deck { display: none; }
+}
+
+/* ----------------------------------------------------- phone: 560 down */
+@media (max-width: 560px) {
+  :root { --deck-h: 48dvh; }
+  .view-title h1 { font-size: var(--fs-lg); }
+  .wl-row { flex-wrap: wrap; }
+  .wl-main { flex: 1 1 60%; }
+  .wl-actions { flex: 1 1 100%; }
+  .wl-open { flex: 1; }
+  .urlinput, .wl-search, .wl-search-sm { width: 100%; }
+  .dock { width: 100%; }
+  .mobilebar .seg button { font-size: var(--fs-xs); }
+}
+
+/* ------------------------------------------------ landscape phone rescue
+   A 50/50 split is unusable at 380px tall — give the image the room and let
+   the deck scroll. */
+@media (max-width: 980px) and (max-height: 520px) {
+  :root { --deck-h: 62dvh; }
+  .deck { border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+}
+
+/* ------------------------------------------------------- coarse pointers */
+@media (pointer: coarse) {
+  #view-mpr canvas, #view3d { touch-action: none; }
+  .chip.zoom { padding: var(--sp-2) var(--sp-4); }
+  /* 18px reads fine under a mouse; a finger needs the full floor (§22) */
+  .chk input[type="checkbox"] { width: 24px; height: 24px; }
+  .chip.zoom { min-height: var(--tap); }
+  .switch { --sw-w: 46px; --sw-h: 26px; --sw-thumb: 20px; }
+}

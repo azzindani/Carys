@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { JSX } from 'react';
 import { cursorAxes, cursorOnCanvas, filterTracts, presetTF, projectCursor, projectFibers, renderMesh, TF_PRESETS, type TF, type TFPresetName } from '@carys/render-cpu';
 import { ACCENT } from '../lib/palette';
@@ -17,6 +18,8 @@ import { getUi, setUi, useUi, useUiPick } from '../lib/store';
 import { useIsMobile } from '../lib/isMobile';
 import { bump, useVersion } from '../lib/version';
 import { Chip, DarkSelect, IconBtn, Seg, SliderRow, Switch } from '../ui/primitives';
+import { AxisGizmo } from '../ui/Icons';
+import { ViewportOverlay } from '../ui/ViewportOverlay';
 import type { Method, Render3D, Source } from '../lib/types';
 import { TfEditor } from './TfEditor';
 
@@ -70,7 +73,22 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
   // Mobile keeps the 3D toolbar behind a disclosure so the viewport owns
   // the stage; desktop renders it open like before.
   const isMobile = useIsMobile();
-  const [toolsOpen, setToolsOpen] = useState(false);
+  // In the grid (`bare`) the 3D pane is one of four viewports; its dock is
+  // only relevant while that viewport is the one mobile is showing.
+  const mView = useUiPick('mView');
+  const mSheet = useUiPick('mSheet');
+  const show3dTools = !bare || mView === 'v3d';
+  // Mobile hosts this dock inside the control deck rather than above the
+  // image. The slot only exists while the Display panel is open, so resolve
+  // it after commit.
+  const [deckSlot, setDeckSlot] = useState<HTMLElement | null>(null);
+  const docksOpen = useUiPick('docksOpen');
+  useEffect(() => {
+    if (!bare) { setDeckSlot(null); return; }
+    // Mobile: the control deck. Desktop: the toolbar strip. Either way the
+    // dock stops stacking above the image and costing it height.
+    setDeckSlot(document.getElementById(isMobile ? 'deck-3d' : 'dockslot-3d'));
+  }, [isMobile, bare, mSheet, mView, docksOpen]);
 
   /** Data range of the current VR field (for preset construction). */
   const fieldRange = (): [number, number] => {
@@ -161,7 +179,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       setStatus(`VR ${r.w}×${r.h} · ${(r.ms / 1000).toFixed(1)}s via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
     } catch (e) {
       if (mine !== vrToken.current) return;
-      setStatus(`VR failed: ${(e as Error).message}`);
+      setStatus(`VR failed: ${(e as Error).message}`, 'error');
     }
   };
 
@@ -412,7 +430,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       if (ro) ro.textContent = `${keep.length.toLocaleString()} tract${keep.length === 1 ? '' : 's'} · preset ${preset.id} · ${Math.round(session.zoom3d * 100)}%`;
       setStatus(`${preset.title}: ${keep.length}/${pinned.count} pass · ${preset.lesson} · teaching waypoints, not patient anatomy · ${EDUCATION_BADGE}`);
     } catch (e) {
-      setStatus(`preset filter failed: ${(e as Error).message}`);
+      setStatus(`preset filter failed: ${(e as Error).message}`, 'error');
     }
   };
 
@@ -442,13 +460,42 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
 
   /** Drag-to-orbit: the demo's slow orbit drag now really rotates the volume. */
   const orbDrag = useRef<{ x: number; y: number } | null>(null);
+  // Touch: one finger orbits, two fingers pinch to zoom — the same contract
+  // a 3D viewport gives a trackpad, so zoom is a gesture and not a button.
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ d: number; z: number } | null>(null);
+
   const onOrbitDown = (e: React.PointerEvent): void => {
+    if (e.pointerType === 'touch') {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.current.size === 2) {
+        const [a, b] = [...touches.current.values()];
+        orbDrag.current = null;                       // a pinch is not an orbit
+        pinch.current = { d: Math.hypot(a!.x - b!.x, a!.y - b!.y), z: session.zoom3d };
+        return;
+      }
+      if (touches.current.size > 2) return;
+    }
     orbDrag.current = { x: e.clientX, y: e.clientY };
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
   const onOrbitMove = (e: React.PointerEvent): void => {
+    if (e.pointerType === 'touch' && touches.current.has(e.pointerId)) {
+      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const p = pinch.current;
+      if (p && touches.current.size >= 2) {
+        const [a, b] = [...touches.current.values()];
+        const d = Math.hypot(a!.x - b!.x, a!.y - b!.y);
+        if (p.d > 0) {
+          session.zoom3d = Math.min(8, Math.max(0.4, p.z * (d / p.d)));
+          queueOrbit();
+        }
+        return;
+      }
+    }
     const d = orbDrag.current;
-    if (!d || !(e.buttons & 1)) return;
+    // Touch reports buttons === 0 while dragging, so only gate a mouse on it.
+    if (!d || (e.pointerType !== 'touch' && !(e.buttons & 1))) return;
     const TAU = Math.PI * 2;
     const o = (((angles.current.orbit + (e.clientX - d.x) * 0.006) % TAU) + TAU) % TAU;
     const t = Math.min(1.2, Math.max(-1.2, angles.current.tilt + (e.clientY - d.y) * 0.004));
@@ -457,7 +504,24 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     setTilt(t);
     queueOrbit();
   };
-  const onOrbitUp = (): void => { orbDrag.current = null; };
+  const onOrbitUp = (e?: React.PointerEvent): void => {
+    if (e?.pointerType === 'touch') {
+      touches.current.delete(e.pointerId);
+      if (touches.current.size < 2) pinch.current = null;
+    }
+    orbDrag.current = null;
+  };
+
+  /** One dock, two homes: above the viewport on desktop, inside the control
+   *  deck on mobile — so tools never cover the image they act on. */
+  const dockHost = (dock: JSX.Element): JSX.Element | null => {
+    if (!bare) return dock;                       // standalone Surface route
+    if (!show3dTools) return null;                // 3D viewport not on screen
+    if (deckSlot) return createPortal(dock, deckSlot);
+    // No slot yet (first commit) or toolbar hidden: desktop keeps it inline
+    // rather than losing the controls entirely.
+    return isMobile ? null : dock;
+  };
 
   return (
     <>
@@ -467,15 +531,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
           <p>drag to orbit — extracted on demand, cached per edit</p>
         </div>
       )}
-      {isMobile && (
-        <button
-          className={`vpdisclose${toolsOpen ? ' on' : ''}`} aria-expanded={toolsOpen}
-          onClick={() => setToolsOpen((o) => !o)}
-        >
-          3D controls
-        </button>
-      )}
-      {(!isMobile || toolsOpen) && (
+      {dockHost(
       <div className="dock" id="dock-3d">
         <div className="grp">
           <span className="lbl">Render</span>
@@ -499,7 +555,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
         <div className="sep" />
         {ui.render3d === 'surface' ? (
           <>
-            <SliderRow label="Threshold" min={0} max={1000} step={1} value={ui.threshold} onInput={(v) => setUi({ threshold: v })} onCommit={() => { session.meshPinned = null; bump(); }} />
+            <SliderRow label="Threshold" min={session.autoThreshold?.lo ?? 0} max={session.autoThreshold?.hi ?? 1000} step={1} value={ui.threshold} onInput={(v) => setUi({ threshold: v })} onCommit={() => { session.meshPinned = null; bump(); }} />
             <Chip><span id="tval">{ui.threshold}</span></Chip>
             <div className="grp">
               <span className="lbl">Surface</span>
@@ -605,6 +661,14 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
                 onPointerDown={onOrbitDown}
                 onPointerMove={onOrbitMove}
                 onPointerUp={onOrbitUp}
+                onPointerCancel={onOrbitUp}
+              />
+              {/* Viewport chrome, drawn as SVG/CSS over the CPU raster — the
+                  orientation read every 3D tool gives you, with no GL context. */}
+              <ViewportOverlay compact />
+              <AxisGizmo
+                orbit={orbit} tilt={tilt}
+                onSnap={(o, t) => { setOrbit(o); setTilt(t); queueOrbit(); }}
               />
             </div>
             <div className="vrail" aria-label="3D orbit controls">
