@@ -24,7 +24,9 @@ prefer the one with a test behind it.
    in `packages/app/src/styles/tokens.css` only (Tailwind `@theme` plus the
    `:root` ramps). Type flows through `--ts`, rhythm through `--sp`, corners
    through the `--radius-*` rungs. No literal color/font/size/radius in any
-   other stylesheet or component. `index.css` is an import manifest, nothing
+   other stylesheet or component. Nested rounding is arithmetic, not taste:
+   a surface inset by `p` inside a parent of radius `R` uses
+   `calc(var(--radius-*) - var(--sp-*))` so the arcs stay concentric. `index.css` is an import manifest, nothing
    else.
 6. **No magic numbers in logic** — named budgets (`render-cpu/perf`),
    named epochs (`paintToken`), cache keys that encode every input

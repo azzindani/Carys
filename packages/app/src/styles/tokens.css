@@ -46,18 +46,26 @@
   --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* -- rounding: a proportional scale. Nested corners step down one rung so
-        an inner edge stays concentric with the outer one (inner = outer − pad).
-        Tuned to instrument density: a 3D tool's corners are tight (Blender
-        ~5px, Spline ~10px). Pills are reserved for status dots and badges —
-        a pill-shaped control reads as a web page, not a tool. */
-  --radius-2xs: 3px;
-  --radius-xs: 5px;
-  --radius-sm: 7px;
-  --radius-md: 9px;
-  --radius-lg: 12px;
-  --radius-xl: 15px;
-  --radius-2xl: 19px;
+  /* -- rounding ------------------------------------------------------------
+     A softly rounded scale, each rung ~1.3x the last, so corners read as a
+     deliberate family rather than seven unrelated numbers.
+
+     PROPORTIONAL NESTING IS THE RULE, and it is arithmetic, not vibes: a
+     surface inset by `p` inside a parent of radius `R` uses `R - p`, so the
+     two arcs stay concentric and the gap between them is even the whole way
+     round. Every nesting site below spells that out as
+     `calc(var(--radius-*) - var(--sp-*))` against the real inset token —
+     an earlier pass claimed this in a comment while giving parent and child
+     the same radius, which cannot be concentric.
+
+     Pills stay for status dots and toasts only. */
+  --radius-2xs: 6px;
+  --radius-xs: 9px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 21px;
+  --radius-xl: 27px;
+  --radius-2xl: 34px;
   --radius-pill: 999px;
 }
 
