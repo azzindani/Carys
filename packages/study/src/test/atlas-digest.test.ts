@@ -46,12 +46,14 @@ describe('atlas digest registry', () => {
   it('A2 goldens: rib pair + pelvis + sacrum + skull hash-match frozen', () => {
     // Same AtlasView-mirror harness as the A1 goldens: member concat +
     // parseMz3 normals + fitMeshToBox over boundsDims + renderMesh.
+    // Re-frozen for F6 (per-pixel shading, 2× supersampling) after the old
+    // and new renders were compared side by side.
     const FROZEN2: Record<string, string> = {
-      'rib-r6': 'c9bf3ce81745704b',
-      'rib-l6': '8ac74f605e870ade',
-      pelvis: '804a781b04e93397',
-      sacrum: 'e71790fc27a80ee5',
-      skull: '2d8eac9f39da7279',
+      'rib-r6': '97b9a85f7d35761a',
+      'rib-l6': '6ac04a56d06515ea',
+      pelvis: '7b79e0759e82b538',
+      sacrum: '3c1a185613173257',
+      skull: '03a9f4a255cf061e',
     };
     const SPECS2: Record<string, string[]> = {
       'rib-r6': ['FJ3344.mz3'],
@@ -90,10 +92,11 @@ describe('atlas digest registry', () => {
   it('atlas goldens: 3 renders hash-match frozen (femur, scapula, sternum)', () => {
     // Mirrors AtlasView pixel-for-pixel: member concat + parseMz3 normals +
     // fitMeshToBox over boundsDims + renderMesh at orbit 0.7 / tilt 0.3.
+    // re-frozen for F6 shading after an old/new side-by-side, like A2's
     const FROZEN: Record<string, string> = {
-      'femur-r': 'dc728b5d7cc33adf',
-      'scapula-l': '078df7e7b8ad3148',
-      sternum: 'cf75eed4ec1a4fb3',
+      'femur-r': '8243008c00f74504',
+      'scapula-l': '513bc5e45c4487cd',
+      sternum: '40168079b7f856bc',
     };
     const SPECS: Record<string, string[]> = {
       'femur-r': ['FJ3365.mz3'],

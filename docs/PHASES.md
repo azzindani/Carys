@@ -1067,9 +1067,25 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   implicit surface through the slice constraints instead of per-column
   interpolation — owner render lane; pinned by thick-slices.test.ts, which
   fails when the bound is met so this note gets lifted.
-- OPEN — **F6. Per-pixel shading.** Interpolated normals, Blinn-Phong with a
+- DONE — **F6. Per-pixel shading.** Interpolated normals, Blinn-Phong with a
   soft specular, 2× supersampled edges. Surface goldens re-frozen only after
-  the PNGs are looked at.
+  the PNGs are looked at. `raster.ts` interpolates the three vertex normals
+  and lights each pixel: the old ambient + Lambert terms plus a white
+  highlight (0.22, exponent 40), drawn at 2× and box-filtered down. On a
+  10×20 lat/long sphere the largest step between neighbouring pixels drops
+  from 63 grey levels (per-face) to 8; the highlight peaks at 196 against a
+  diffuse maximum of 150 (`raster-shading.test.ts`). Two old defects came
+  out: the barycentric weights were paired with the wrong vertices (depth
+  was interpolated wrongly all along, invisible under flat shading, seams
+  under smooth), and the cull on one normal dropped visible silhouette
+  triangles — 12 background pinholes over 24 views of the BraTS tumour, 0
+  with the cull on all three. The app orbits at 1× and repaints at 2× 160 ms
+  after the last move (`orbitOverlay.ts` holds the tract and cursor
+  overlays SurfaceView redraws on both). Skull CT, 117,602 triangles, 560²:
+  32 ms per-face → 35 ms at 1×, 98 ms at 2× (median of 15, each vertex
+  transformed once, the highlight skipped where it adds under ¼ grey level).
+  Surface and atlas goldens re-frozen after old/new side by side; the
+  atlas skull's dotted seam cracks are gone.
 - OPEN — **F7. Ambient occlusion and outlines.** Screen-space AO from the
   z-buffer and silhouette edges, as a post-pass. Accept: a deterministic
   golden, and a crevice phantom darker than its rim.
