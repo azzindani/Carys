@@ -87,6 +87,10 @@ frame the same physical box.
 - Volume raycast: orthographic front-to-back CPU compositing (`vr.ts`). Rays
   march in mm and sample in voxels; the step is in voxels of the finest axis,
   and unit spacing is bit-identical to the old voxel-space renderer.
+  Opacity is corrected to a reference step (`alphaStep`), and a frame can
+  be one pass of a jittered progressive refinement (`jitter`, averaged by
+  `addPass`); SurfaceView shows pass 1 at once and refines to 4 while the
+  view is still.
 - NOT built: WASM marching-cubes (CPU cuberille + surface nets cover it).
 - Proteins: project spheres/sticks on CPU, paint pLDDT / chain (proven to 5.4k atoms; `.pdb` + `.cif` open).
 - Cells: tile pyramid + channel composite on CPU.

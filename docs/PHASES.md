@@ -1108,10 +1108,27 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   view. The app's 3D dock has a Depth cues switch, on by default: BraTS
   tumour mean 131.9 off → 120.8 on. Skull CT 117,602 triangles, 560²:
   32 → 46 ms at 1× (orbit), 95 → 149 ms at 2× (settled).
-- OPEN — **F8. Volume render quality.** Jittered ray starts refined while
+- DONE — **F8. Volume render quality.** Jittered ray starts refined while
   the view is still (no wood-grain rings), opacity corrected for step size,
   smoother sampling. Accept: a slab phantom rendered at two step sizes has
   the same opacity; unit spacing stays bit-identical when refinement is off.
+  `render-cpu/vr.ts`, both opt-in. `alphaStep` corrects each sample to
+  α' = 1 − (1 − α)^(step / alphaStep): a 6-voxel slab at 0.1 per voxel
+  reads 0.4667 at steps 0.5, 1, 1.5, 2 and 3 (analytic 0.4686; 8-bit
+  rounding), where uncorrected it ranged 0.188–0.718. `jitter: { pass, of }`
+  starts each ray at a stratified fraction of a step, scrambled per pixel
+  by an integer hash, and moves it to its cell of a √of × √of grid in the
+  pixel; `addPass` averages. On a shaded ball at step 3, rms against a
+  quarter-voxel reference: one lattice 2.12 (the rings), one pass 4.09
+  (speckle instead), 4 passes 1.39, 16 passes 0.97; edges gain grey levels
+  (3 → 9 on a cube). Interleaved gradient noise was tried as the scramble
+  and dropped: without temporal blur it leaves a diagonal hatch. Plain
+  calls hash-match the pre-F8 renderer on three configurations
+  (`vr-quality.test.ts`). The app renders pass 1 at once and refines to 4
+  while nothing changes (any orbit, zoom or control cancels); opacity is
+  defined at the full step, 1.5, so full renders keep their look and the
+  draft (step 3) now matches it instead of rendering at about half the
+  opacity. BraTS FLAIR draft in the app: 2.8 s first pass, 7.4 s for 4.
 - OPEN — **F9. Volume render speed.** Empty-space skipping (min/max bricks)
   and the image split across workers. Accept: identical pixels to the
   unskipped render; full quality on the chest CT at least 2× faster.

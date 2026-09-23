@@ -21,6 +21,10 @@ export interface VrParams {
   bounds: VrBounds | null;
   /** voxel size in mm: the volume is drawn at physical proportions */
   spacing: [number, number, number];
+  /** the step the TF's opacity is defined for (render-cpu/vr.ts) */
+  alphaStep?: number;
+  /** one pass of a progressive refinement */
+  jitter?: { pass: number; of: number };
 }
 
 export interface VrResult {
@@ -133,7 +137,7 @@ export function createExtractor() {
           id, method: 'volume', dims, dtype: 'float64', buffer: copy,
           w: vr.w, h: vr.h, angleY: vr.angleY, tiltX: vr.tiltX, zoom: vr.zoom,
           tf: vr.tf, step: vr.step, shade: vr.shade, density: vr.density,
-          bounds: vr.bounds, spacing: vr.spacing,
+          bounds: vr.bounds, spacing: vr.spacing, alphaStep: vr.alphaStep, jitter: vr.jitter,
         }, [copy]);
         const r = await p;
         usedWorker = true;
@@ -145,7 +149,7 @@ export function createExtractor() {
     const r = renderVolume({ dims, data }, {
       width: vr.w, height: vr.h, angleY: vr.angleY, tiltX: vr.tiltX,
       zoom: vr.zoom, tf: vr.tf, step: vr.step, shade: vr.shade, density: vr.density,
-      bounds: vr.bounds, spacing: vr.spacing,
+      bounds: vr.bounds, spacing: vr.spacing, alphaStep: vr.alphaStep, jitter: vr.jitter,
     });
     usedWorker = false;
     return r;

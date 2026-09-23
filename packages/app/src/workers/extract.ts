@@ -41,6 +41,8 @@ interface VolumeRequest {
   density: number;
   bounds: { min: [number, number, number]; max: [number, number, number] } | null;
   spacing: [number, number, number];
+  alphaStep?: number;
+  jitter?: { pass: number; of: number };
 }
 
 type Request = MeshRequest | VolumeRequest;
@@ -61,7 +63,7 @@ onmessage = (e: MessageEvent<Request>) => {
         {
           width: req.w, height: req.h, angleY: req.angleY, tiltX: req.tiltX,
           zoom: req.zoom, tf: req.tf, step: req.step, shade: req.shade, density: req.density,
-          bounds: req.bounds, spacing: req.spacing,
+          bounds: req.bounds, spacing: req.spacing, alphaStep: req.alphaStep, jitter: req.jitter,
         },
       );
       const buf = rgba.buffer as ArrayBuffer;
