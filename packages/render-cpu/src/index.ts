@@ -8,6 +8,7 @@ export * from './mip-rotate.js';
 export * from './oblique.js';
 export * from './tf.js';
 export * from './vr.js';
+export * from './vr-light.js';
 export * from './surface.js';
 export * from './surface-nets.js';
 export * from './raster.js';

@@ -22,8 +22,13 @@
 // ray still steps through it one step at a time, so every sample it does
 // take sits where it always did. `rows` renders an interleaved share of
 // the rows, for a pool of workers.
+//
+// Cinematic lighting (F10, opt-in): soft shadows and ambient light from a
+// coarse extinction grid, one light and two sky directions per pass
+// (vr-light.ts); the passes of a refinement accumulate them.
 import type { Vec3 } from './oblique.js';
 import { maxOpacity, sampleSortedTF, sortTF, type TF } from './tf.js';
+import { cachedExtinction, cellAt, passLight, SKY_PER_PASS, type PassLight } from './vr-light.js';
 
 export interface VrVolume {
   dims: [number, number, number];
@@ -60,7 +65,16 @@ export interface VrOpts {
   skipEmpty?: boolean;
   /** render rows from, from + every, …; the rest stay zero */
   rows?: { from: number; every: number };
+  /** soft shadows + ambient light, this pass's share (`jitter`) */
+  cinematic?: boolean;
 }
+
+/** Cinematic shading: a small fill no shadow reaches, the sky (ambient,
+ *  occluded) and the key light (shadowed). An open surface facing the key
+ *  light gets 1.22, as bright as the plain headlight's 1.0 plus the sky. */
+const CIN_FILL = 0.12;
+const CIN_AMBIENT = 0.5;
+const CIN_DIFFUSE = 0.6;
 
 /**
  * One frame from the shares of `rows`-split renders: row y comes from
@@ -165,6 +179,38 @@ export function intersectAABB(o: Vec3, d: Vec3, min: Vec3, max: Vec3): [number, 
   return [t0, t1];
 }
 
+/**
+ * Light at a sample under this pass's lights. With a gradient (per mm,
+ * world axes) the outward normal is −gradient: the key light is Lambert
+ * times its transmittance, the sky a cosine-weighted estimate over the
+ * pass's directions (4/K Σ max(0, n·ω) T is unbiased for the hemisphere).
+ * Without one, half the key light and the plain mean of the sky. Each
+ * light is read one cell toward its source: at the sample itself the
+ * coarse grid would mix in the cells behind a lit surface (shadow acne).
+ */
+function cinematicShade(c: PassLight, toVox: Vec3, x: number, y: number, z: number, g: Vec3 | null): number {
+  const bias = Math.max(c.grid.cell[0], c.grid.cell[1], c.grid.cell[2]);
+  const read = (T: Float32Array, d: Vec3): number =>
+    cellAt(c.grid, T, x + d[0] * bias * toVox[0], y + d[1] * bias * toVox[1], z + d[2] * bias * toVox[2]);
+  const S = read(c.shadow, c.light);
+  const l = g ? Math.hypot(g[0], g[1], g[2]) : 0;
+  let key = 0.5, sky = 0;
+  if (g && l > 1e-9) {
+    const nx = -g[0] / l, ny = -g[1] / l, nz = -g[2] / l;
+    key = Math.max(0, nx * c.light[0] + ny * c.light[1] + nz * c.light[2]);
+    for (let k = 0; k < c.sky.length; k++) {
+      const w = c.sky[k]!;
+      const cos = nx * w[0] + ny * w[1] + nz * w[2];
+      if (cos > 0) sky += cos * read(c.skyT[k]!, w);
+    }
+    sky = Math.min(1, (4 / SKY_PER_PASS) * sky);
+  } else {
+    for (let k = 0; k < c.sky.length; k++) sky += read(c.skyT[k]!, c.sky[k]!);
+    sky /= c.sky.length;
+  }
+  return CIN_FILL + CIN_AMBIENT * sky + CIN_DIFFUSE * key * S;
+}
+
 function invRot(angleY: number, tiltX: number, vx: number, vy: number, vz: number): Vec3 {
   // inverse of Ry(angleY) then Rx(tiltX): Rx(-tiltX) then Ry(-angleY)
   const cx = Math.cos(-tiltX), sx = Math.sin(-tiltX);
@@ -262,6 +308,13 @@ export function renderVolume(vol: VrVolume, opts: VrOpts): { rgba: Uint8ClampedA
   // view rotation for gradients
   const cyv = Math.cos(opts.angleY), syv = Math.sin(opts.angleY);
   const cxv = Math.cos(opts.tiltX), sxv = Math.sin(opts.tiltX);
+  // this pass's lights: the headlight in world axes, jittered, and the sky
+  let cin: PassLight | null = null;
+  if (opts.cinematic) {
+    const refMm = (opts.alphaStep ?? opts.step ?? 2) * minSp;
+    const lw = invRot(opts.angleY, opts.tiltX, light[0], light[1], light[2]);
+    cin = passLight(cachedExtinction(field, dims, sp, stops, density, refMm), lw, jit?.pass ?? 0, jit?.of ?? 1);
+  }
 
   const rows = opts.rows ?? { from: 0, every: 1 };
   if (!(Number.isInteger(rows.from) && Number.isInteger(rows.every) && rows.every >= 1 && rows.from >= 0 && rows.from < rows.every)) {
@@ -306,7 +359,13 @@ export function renderVolume(vol: VrVolume, opts: VrOpts): { rgba: Uint8ClampedA
         const alpha = opacityOf(s.a);
         if (alpha <= MIN_ALPHA) continue;
         let sh = 1;
-        if (shade) {
+        if (cin) {
+          sh = cinematicShade(cin, toVox, x, y, z, shade ? [
+            (tri0(x + 1, y, z) - tri0(x - 1, y, z)) * toVox[0],
+            (tri0(x, y + 1, z) - tri0(x, y - 1, z)) * toVox[1],
+            (tri0(x, y, z + 1) - tri0(x, y, z - 1)) * toVox[2],
+          ] : null);
+        } else if (shade) {
           // central differences in voxel space, per mm (the gradient scales
           // by the inverse spacing, or shading tilts on anisotropic grids)
           const gx = (tri0(x + 1, y, z) - tri0(x - 1, y, z)) * toVox[0];

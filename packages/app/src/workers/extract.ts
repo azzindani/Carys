@@ -51,6 +51,7 @@ interface VolumeRequest {
   spacing: [number, number, number];
   alphaStep?: number;
   jitter?: { pass: number; of: number };
+  cinematic?: boolean;
 }
 
 /** Frees the held volume (the 3D view left volume mode). */
@@ -80,7 +81,7 @@ onmessage = (e: MessageEvent<Request>) => {
         {
           width: req.w, height: req.h, angleY: req.angleY, tiltX: req.tiltX,
           zoom: req.zoom, tf: req.tf, step: req.step, shade: req.shade, density: req.density,
-          bounds: req.bounds, spacing: req.spacing, alphaStep: req.alphaStep, jitter: req.jitter, rows: req.rows,
+          bounds: req.bounds, spacing: req.spacing, alphaStep: req.alphaStep, jitter: req.jitter, rows: req.rows, cinematic: req.cinematic,
         },
       );
       const buf = rgba.buffer as ArrayBuffer;

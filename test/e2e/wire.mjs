@@ -2824,6 +2824,23 @@ try {
   if (!(cuesOff > cuesOn * 1.02)) fail(`depth cues off should brighten the surface: on ${cuesOn.toFixed(1)}, off ${cuesOff.toFixed(1)}`);
   else if (cuesBack !== cuesOn) fail(`depth cues back on should restore the frame: ${cuesOn} vs ${cuesBack}`);
   else console.log(`depth cues: surface mean ${cuesOn.toFixed(1)} on, ${cuesOff.toFixed(1)} off`);
+
+  // ---- 41c. F10 cinematic volume lighting accumulates pass by pass while
+  // the view is still; an orbit starts it over; leaving volume mode ends it
+  // (a late pass used to be able to paint over the surface).
+  await page25b.click('#renderseg button[data-r="volume"]');
+  await page25b.click('#srcseg button[data-s="image"]');
+  await page25b.locator('#dock-3d input[aria-label="Cinematic"]').check({ force: true });
+  const ro3d = () => page25b.locator('#ro-3d').textContent();
+  await page25b.waitForFunction(() => /· [2-9]\/16 passes · cinematic$/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 120000 });
+  const accumulated = await ro3d();
+  await page25b.locator('input[aria-label="Orbit"]').fill('1.2');
+  await page25b.waitForFunction(() => /^VR \d+×\d+ · [\d.]+s · cinematic$/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 60000 });
+  console.log(`cinematic: ${accumulated} -> orbit restarts at pass 1`);
+  await page25b.click('#renderseg button[data-r="surface"]');
+  await page25b.waitForTimeout(3000);
+  const after = await ro3d();
+  if (!/tris/.test(after ?? '')) fail(`a volume pass painted over the surface: ${after}`);
   await page25b.close();
 
   // ---- 42. G3 radiomics CSV import: hand-rolled pyradiomics-shaped CSV

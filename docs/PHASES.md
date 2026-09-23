@@ -1154,8 +1154,32 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   with NaN; three row shares merge to the whole frame. Fixed on the way:
   a failed volume render in the worker replied without a kind, was read
   as a mesh reply, and never settled.
-- OPEN — **F10. Cinematic lighting, progressive.** Soft shadows and ambient
+- DONE — **F10. Cinematic lighting, progressive.** Soft shadows and ambient
   light accumulating while idle, cancelled by any interaction.
+  `render-cpu/vr-light.ts`, opt-in (`renderVolume({ cinematic })`, plain
+  calls hash-unchanged). The TF turns the volume into extinction per mm,
+  averaged onto a grid of at most 2²⁰ near-cubic cells and cached per field
+  and TF; light from a direction is propagated through it in one sweep,
+  slice by slice from the light (each cell reads the slice upstream,
+  bilinear, and leaves its own extinction out so a lit surface does not
+  shadow itself; reads are taken one cell toward the light). Each pass
+  lights with the headlight jittered inside a 0.14 rad cone (the mean over
+  passes is an area light: soft shadows) and two sky directions from a
+  spherical Fibonacci set spread over all passes, cosine-weighted by the
+  normal (the mean: ambient occlusion). Opacity does not depend on light,
+  so averaging the passes' images averages the lighting. Measured
+  (`vr-light.test.ts`): a slab's transmittance matches exp(−σ·path) to
+  1e-6 straight and oblique; a ball's shadow falls on its plate where the
+  headlight puts it, plate 71.9 in it vs 140.3 open (plain: 168.0 both); a
+  slot's floor 64.1 vs rim 139.9 (plain 165.9 vs 168.0); rms against a
+  64-pass reference 4.76 after 4 passes, 2.04 after 16. Chest CT: grid
+  128×128×58 built in 551 ms (once per TF), light sweeps 227 ms a pass,
+  a 560² bone pass 3.6 → 4.2 s on one thread. The VR dock's Cinematic
+  switch refines over 16 passes (4×4 sub-pixel grid, 32 sky directions),
+  pass 1 at once; any orbit, zoom or control restarts it, and leaving
+  volume mode now ends it (a late pass could paint over the surface).
+  Wire leg 41c: passes accumulate, an orbit restarts at pass 1, the
+  surface is not overwritten.
 - OPEN — **F11. Level of detail.** Quadric-error decimation into an LOD
   chain; the coarse level draws while orbiting, the full one when still.
   Accept: decimated mesh within 0.2 mm of the full one on the phantoms.
