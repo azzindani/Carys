@@ -4,7 +4,7 @@ import type { PatientGeometry, Reorientation } from '@carys/volume-core';
 
 export type View = 'mpr';
 /** Fullscreen viewport: null = grid, 'v3d' = 3D, or one 2D plane. */
-export type Tool = 'view' | 'paint' | 'erase' | 'grow' | 'measure';
+export type Tool = 'view' | 'paint' | 'erase' | 'grow' | 'measure' | 'curve';
 export type MeasureKind = 'length' | 'angle' | 'probe' | 'ellipse' | 'roi' | 'cobb';
 export type Source = 'mask' | 'image';
 export type Method = 'blocky' | 'smooth';
@@ -120,6 +120,10 @@ export interface UiState {
   /** how the 2D panes show the mask (F14): each label's outline over a
    *  light fill, or the opaque fill */
   maskLook: 'outline' | 'fill';
+  /** the straightened view along the clicked curve (F16): how far it
+   *  reaches either side of the curve, mm, and its turn about it, degrees */
+  cprWidth: number;
+  cprAngle: number;
   brush: number;
   threshold: number;
   series: string;

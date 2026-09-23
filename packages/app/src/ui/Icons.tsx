@@ -144,6 +144,18 @@ export function IconGrow(p: P): JSX.Element {
   );
 }
 
+/** A curve through three points: the centreline tool (F16). */
+export function IconCurve(p: P): JSX.Element {
+  return (
+    <svg {...box} {...p}>
+      <path d="M3 15c3-9 7 2 14-10" />
+      <circle cx="3.5" cy="14.5" r="1.4" />
+      <circle cx="10" cy="10" r="1.4" />
+      <circle cx="16.5" cy="5.5" r="1.4" />
+    </svg>
+  );
+}
+
 export function IconMeasure(p: P): JSX.Element {
   return (
     <svg {...box} {...p}>

@@ -16,6 +16,7 @@ import type { MSheet, MView } from '../lib/types';
 import { MprTuneDock, MprToolDock, SegDock } from './MprView';
 import { MprPanes } from './MprPanes';
 import { SurfaceView } from './SurfaceView';
+import { CprPanel } from './CprPanel';
 
 /** File tabs: one tab per open file (series). The topbar series picker and
  *  the worklist open files into tabs; switching tabs reloads that series,
@@ -119,6 +120,7 @@ function ViewGrid({ sliceInit, axialCanvasRef, extractor, full, mView }: {
     <div className="viewgrid" data-full={full} data-mview={mView} id="viewgrid">
       <div className="vp vp3d" id="vp-3d">
         <SurfaceView extractor={extractor} bare />
+        <CprPanel />
       </div>
       <div className="vp vp2d" id="vp-2d">
         <MprPanes sliceInit={sliceInit} axialCanvasRef={axialCanvasRef} />

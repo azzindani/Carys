@@ -12,6 +12,7 @@ import { LABEL_FILL_ALPHA, LABEL_LUT } from '../lib/palette';
 import { fmtDims, session } from '../lib/session';
 import { drawChrome, drawMeasures, fmtVal } from './paneChrome';
 import { drawLabelOutlines } from './paneLabels';
+import { curveClick, drawCurve } from './paneCurve';
 import { fitPane, planeSpacing, toBitmap, type PaneView } from './paneView';
 
 import { doUndo, pushUndo } from '../lib/sessionOps';
@@ -225,6 +226,7 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     ctx.restore();
     const outlines = outlineRef.current[plane];
     if (outlines) drawLabelOutlines(ctx, outlines, v);
+    drawCurve(ctx, plane, v, sl.idx);
     if (getUi().tool === 'measure' || session.measurements.some((m) => m.plane === plane)) {
       drawMeasures(ctx, plane, v, sl.idx);
     }
@@ -499,6 +501,10 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     }
     if (getUi().tool === 'measure') {
       measureClick(hostRef.current, plane, e);
+      return;
+    }
+    if (getUi().tool === 'curve') {
+      curveClick(hostRef.current, plane, e);
       return;
     }
     if (getUi().tool === 'view') {

@@ -78,6 +78,7 @@
   position: relative;
   --dockbar-h: calc(var(--ctl-h) + var(--sp-3) * 2 + 2px);
   --toolstrip-w: 54px;
+  --cpr-h: 190px;
 }
 .workarea:has(.dockrow) .viewgrid { padding-top: var(--dockbar-h); }
 .dockrow {
@@ -314,6 +315,12 @@
 #track-list .reslink:hover { color: var(--color-text); }
 #storeinfo { white-space: normal; line-height: 1.6; word-break: break-word; overflow-wrap: anywhere; }
 #pane-channels #chaninfo, #pane-channels #storeinfo { margin-inline: var(--sp-4); }
+
+/* the straightened view along the Curve tool's curve (F16), under the 3D image */
+.vp3d .cprpane { flex: none; max-width: none; }
+.cprwrap { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); }
+.cprwrap canvas { width: 100%; height: var(--cpr-h); object-fit: contain; background: var(--color-sunken); cursor: crosshair; }
+.cprctl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); }
 
 /* the 3D clip controls (F13), under the 3D image */
 .clippane { flex: none; }

@@ -24,6 +24,11 @@ export const LABEL_COLORS: readonly (readonly [number, number, number])[] = [
 export const LABEL_FILL_ALPHA = 0.3;
 /** Label outline width, CSS px. */
 export const LABEL_OUTLINE_PX = 1.5;
+/** The Curve tool's centreline on the panes and its clicks on the
+ *  straightened view (F16): amber, apart from the teal crosshair and the
+ *  label colours' reds. */
+export const CURVE_COLOR = '#fbbf24';
+export const CURVE_DIM = 'rgba(251,191,36,0.45)';
 
 /** A label's colour: the table, then hues 137.5° apart (teal skipped). */
 export function labelRgb(v: number): readonly [number, number, number] {

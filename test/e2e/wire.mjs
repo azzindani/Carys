@@ -2986,6 +2986,97 @@ try {
   if (!['L1 ·', 'L2 ·', 'L4 ·'].every((t) => segRows?.includes(t))) fail(`segments table lacks a BraTS label: ${segRows}`);
   await page25c.close();
 
+  // ---- 41h. F16 curved reformat on the spine CT: click the vertebral
+  // bodies on the sagittal pane with the Curve tool (found as each label's
+  // largest blob in the Fill look), and the straightened view's middle row
+  // runs through them: a tap at each click's tick lands on a vertebra, the
+  // labels in order, and still after a quarter turn about the curve.
+  const page25d = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page25d.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
+  await page25d.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await page25d.waitForFunction(() => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''), null, { timeout: 90000 });
+  await page25d.click('#openpal'); await page25d.fill('#palinput', 'spine-ct-seg');
+  await page25d.waitForSelector('#pallist li'); await page25d.click('#pallist li');
+  // loaded when the sagittal pane spans the spine CT's 243 slices, and
+  // settled (its opening slices applied) before moving to 118
+  await page25d.waitForFunction(() => /^\d+ \/ 242/.test(document.getElementById('ro-sagittal')?.textContent ?? ''), null, { timeout: 120000 });
+  await page25d.waitForTimeout(1500);
+  await page25d.locator('#s-sagittal').fill('118');
+  await page25d.waitForFunction(() => (document.getElementById('ro-sagittal')?.textContent ?? '').startsWith('118 /'), null, { timeout: 30000 });
+  await page25d.waitForTimeout(500);
+  await page25d.click('#masklook button[data-look="fill"]');
+  await page25d.waitForTimeout(500);
+  const bodies = await page25d.evaluate(() => {
+    const cv = document.getElementById('c-sagittal');
+    const W = cv.width, H = cv.height, d = cv.getContext('2d').getImageData(0, 0, W, H).data;
+    const byColour = new Map();
+    for (let p = 0; p < W * H; p++) {
+      const i = p * 4;
+      if (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]) < 60) continue;
+      const k = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2];
+      if (!byColour.has(k)) byColour.set(k, []);
+      byColour.get(k).push(p);
+    }
+    const r = cv.getBoundingClientRect(), sx = r.width / W, sy = r.height / H, out = [];
+    for (const px of byColour.values()) {
+      const set = new Set(px), seen = new Set();
+      let best = [];
+      for (const p0 of px) {
+        if (seen.has(p0)) continue;
+        const comp = [], st = [p0];
+        seen.add(p0);
+        while (st.length) { const p = st.pop(); comp.push(p); for (const q of [p - 1, p + 1, p - W, p + W]) if (set.has(q) && !seen.has(q)) { seen.add(q); st.push(q); } }
+        if (comp.length > best.length) best = comp;
+      }
+      let cx = 0, cy = 0;
+      for (const p of best) { cx += p % W; cy += Math.floor(p / W); }
+      out.push({ n: best.length, x: r.left + (cx / best.length + 0.5) * sx, y: r.top + (cy / best.length + 0.5) * sy });
+    }
+    // bodies, not scraps of a process the slice cuts: at least a quarter of
+    // the largest (whatever size the pane is)
+    const big = Math.max(...out.map((b) => b.n));
+    return out.filter((b) => b.n >= big / 4).sort((a, b) => a.y - b.y);
+  });
+  await page25d.click('#masklook button[data-look="outline"]');
+  await page25d.click('#modeseg button[data-mode="curve"]');
+  for (const b of bodies) await page25d.mouse.click(b.x, b.y);
+  await page25d.waitForFunction((n) => new RegExp(`mm · ${n} points`).test(document.getElementById('ro-cpr')?.textContent ?? ''), bodies.length, { timeout: 30000 })
+    .catch(async () => fail(`curve: ${bodies.length} bodies clicked, the view says ${await page25d.locator('#ro-cpr').textContent()} · sagittal ${await page25d.locator('#ro-sagittal').textContent()}`));
+  const cprText = await page25d.locator('#ro-cpr').textContent();
+  /** Tap the straightened view's middle row at each click's tick; the labels there. */
+  const labelsAtTicks = async () => {
+    const t = await page25d.evaluate(() => {
+      const cv = document.getElementById('c-cpr');
+      const d = cv.getContext('2d').getImageData(0, 0, cv.width, 1).data;
+      const cols = [];
+      for (let x = 0; x < cv.width; x++) if (d[x * 4] === 251 && d[x * 4 + 1] === 191 && d[x * 4 + 2] === 36) cols.push(x);
+      return { cols, w: cv.width, h: cv.height };
+    });
+    const b = await page25d.locator('#c-cpr').boundingBox();
+    const k = Math.min(b.width / t.w, b.height / t.h), x0 = b.x + (b.width - t.w * k) / 2;
+    const labels = [];
+    for (const c of t.cols) {
+      const before = await page25d.locator('#status-text').textContent();
+      await page25d.mouse.click(x0 + (c + 0.5) * k, b.y + b.height / 2);
+      await page25d.waitForFunction((b0) => { const s = document.getElementById('status-text')?.textContent ?? ''; return s.startsWith('CPR →') && s !== b0; }, before, { timeout: 10000 }).catch(() => {});
+      labels.push(Number((await page25d.locator('#status-text').textContent())?.match(/label (\d+)/)?.[1] ?? -1));
+    }
+    return labels;
+  };
+  const inOrder = (l) => l.every((v, i) => v > 0 && (i === 0 || v !== l[i - 1])) && (l.every((v, i) => i === 0 || v > l[i - 1]) || l.every((v, i) => i === 0 || v < l[i - 1]));
+  const flat = await labelsAtTicks();
+  await page25d.locator('#pane-cpr input[aria-label="Rotate °"]').fill('90');
+  await page25d.waitForTimeout(800);
+  const turned = await labelsAtTicks();
+  if (!(bodies.length >= 6 && flat.length === bodies.length && inOrder(flat) && turned.join() === flat.join())) {
+    fail(`curved reformat: ${bodies.length} bodies clicked, ${cprText}, labels at the ticks ${flat} (turned ${turned})`);
+  } else console.log(`curved reformat: ${cprText} · labels at the clicks ${flat.join(' → ')}, the same turned 90°`);
+  await page25d.click('#pane-cpr button[title="Remove the last point"]');
+  await page25d.waitForFunction((n) => new RegExp(`· ${n} points`).test(document.getElementById('ro-cpr')?.textContent ?? ''), bodies.length - 1, { timeout: 10000 });
+  await page25d.click('#pane-cpr button[title="Clear the curve"]');
+  await page25d.waitForFunction(() => /^click 2 points/.test(document.getElementById('ro-cpr')?.textContent ?? ''), null, { timeout: 10000 });
+  await page25d.close();
+
   // ---- 42. G3 radiomics CSV import: hand-rolled pyradiomics-shaped CSV
   // lands tagged rows in the measurement table (offline features shown,
   // never computed in-viewer — same provenance contract as leg 29b).

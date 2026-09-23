@@ -1315,5 +1315,29 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   stack wants the state after). Journey A2 on BraTS: strokes on axial 60
   and 66, Interp fills 61–65 (slice 63: 0 → 121 px of label colour), one
   undo takes the fill back, the next the second stroke only.
-- OPEN — **F16. Curved reformat, usable.** A centreline tool on the panes,
+- DONE — **F16. Curved reformat, usable.** A centreline tool on the panes,
   a straightened view from `cpr.ts`, e2e on a real vessel or spine series.
+  `render-cpu/cpr.ts`: `straightenedCpr` replaces `curvedReformat` (a
+  polyline in voxels, 128 columns whatever the length, across always in
+  the axial plane). The clicks become a centripetal Catmull-Rom spline in
+  mm (ends extrapolated on the parabola through the last three clicks; a
+  mirrored end straightened the end segments, 0.63 mm off an arc), sampled
+  every finest-voxel mm along and across, so the image is millimetre-true
+  on any voxel; across is perpendicular to the curve and to the pane it
+  was drawn on, turned about it by Rotate; `cprVoxel` maps a pixel back.
+  A 6 mm tube bent on a 120° arc (R 30 mm, 0.8 × 0.8 × 2 mm voxels), five
+  clicks: length 62.73 mm against 62.83, every station within 0.14 mm of
+  the arc (the clicks' polyline: 1.02 mm), the band 0.38 mm off the middle
+  row where 61 points on the exact arc give 0.41 (the voxelized tube's
+  floor; the polyline 0.98). 1.6–4.4 ms for a 196 mm curve on the
+  243×243×127 spine CT. App: a Curve tool in the tool strip (a tap adds
+  the voxel under it), the curve drawn on every pane (the same path the
+  view follows, clicks filled on their own slice), and the straightened
+  view under the 3D image with Width and Rotate, ticks at the clicks, Undo
+  point and Clear curve; a tap on it moves the panes to the voxel under it
+  and says its value and label. Wire leg 41h on the spine CT: the six
+  whole vertebral bodies on sagittal 118 clicked (each label's largest
+  blob, at least a quarter of the biggest: the top one, cut by the edge of
+  the volume, is left out), 153.6 mm; taps at the six ticks on the middle
+  row land on labels 17 → 18 → 19 → 20 → 21 → 22, and the same after a
+  90° turn.

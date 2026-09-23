@@ -109,6 +109,13 @@ frame the same physical box.
   renderer's own frame (nearest drawn triangle; where a volume ray turns
   half opaque). A tap on the 3D view (`views/orbitPointer.ts`,
   `views/pick3d.ts`) moves the panes there through `paintBus.jumpTo`.
+- Curved reformat (`cpr.ts`): the Curve tool's clicks (voxels) become a
+  centripetal Catmull-Rom spline in mm; the straightened view samples
+  across it, perpendicular to the curve and to the pane it was drawn on
+  (turned about it on request), mm-true both ways, and maps any pixel back
+  to its voxel. The panes draw the same path (`views/paneCurve.ts`); the
+  view is `views/CprPanel.tsx`, under the 3D image, and a tap on it moves
+  the panes through `paintBus.jumpTo`.
 - Clipping (`clip.ts`): a crop box and a plane, one convex region, taken
   by the rasterizer (back faces drawn darker as the inside; per-vertex
   outcodes skip whole triangles), the raycaster (one kept interval per

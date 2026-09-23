@@ -36,7 +36,7 @@ export function saveAppearance(textSize: TextSize, density: Density): void {
 const initial: UiState = {
   view: 'mpr', render3d: 'surface', tool: 'view', src: 'mask', method: 'smooth', smooth3d: 0,
   clip3d: CLIP_OFF,
-  preset: 'auto', overlay: true, maskLook: 'outline', brush: 3, threshold: 0, series: '',
+  preset: 'auto', overlay: true, maskLook: 'outline', cprWidth: 30, cprAngle: 0, brush: 3, threshold: 0, series: '',
   proj: 'slice', slab: 9, oblA: 0, oblB: 0, oblPlane: 'axial' as const, growLo: 100, growHi: 3000, measureKind: 'length',
   layout: 'tri', sync: true, hang: 'default',
   compareSeries: '', compareMode: 'off' as CompareMode, compareAlpha: 0.5,
