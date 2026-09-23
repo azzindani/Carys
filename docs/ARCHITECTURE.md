@@ -104,6 +104,13 @@ frame the same physical box.
   renderer's own frame (nearest drawn triangle; where a volume ray turns
   half opaque). A tap on the 3D view (`views/orbitPointer.ts`,
   `views/pick3d.ts`) moves the panes there through `paintBus.jumpTo`.
+- Clipping (`clip.ts`): a crop box and a plane, one convex region, taken
+  by the rasterizer (back faces drawn darker as the inside; per-vertex
+  outcodes skip whole triangles), the raycaster (one kept interval per
+  ray, on the unclipped sample lattice), the cinematic light (clipped cells
+  cast nothing) and both picks. The app keeps it as fractions of the
+  volume (`lib/clip3d.ts`, `views/ClipPanel.tsx`); off, every render is
+  the unclipped one.
 - NOT built: WASM marching-cubes (CPU cuberille + surface nets cover it).
 - Proteins: project spheres/sticks on CPU, paint pLDDT / chain (proven to 5.4k atoms; `.pdb` + `.cif` open).
 - Cells: tile pyramid + channel composite on CPU.

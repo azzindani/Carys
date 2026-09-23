@@ -141,7 +141,7 @@
 .panes-2d[data-layout="sagittal"] #pane-sagittal { flex-grow: 1.8; }
 .vp .pane { flex: 1 1 0; min-height: 0; max-width: none; }
 .vp3d .pane { flex: 1; }
-.vp3d .tfpane { max-width: none; flex: none; }
+.vp3d .tfpane, .vp3d .clippane { max-width: none; flex: none; }
 
 /* ---- the stage: a graded 3D viewport, not a black box -------------------
    Canvases letterbox with object-fit, so this backdrop is what fills the
@@ -314,3 +314,9 @@
 #track-list .reslink:hover { color: var(--color-text); }
 #storeinfo { white-space: normal; line-height: 1.6; word-break: break-word; overflow-wrap: anywhere; }
 #pane-channels #chaninfo, #pane-channels #storeinfo { margin-inline: var(--sp-4); }
+
+/* the 3D clip controls (F13), under the 3D image */
+.clippane { flex: none; }
+.clipwrap .grp { display: flex; align-items: center; gap: var(--sp-2); }
+.clipwrap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); padding: var(--sp-2) var(--sp-4); }
+.clipwrap + .clipwrap { padding-top: 0; }

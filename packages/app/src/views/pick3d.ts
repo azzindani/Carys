@@ -1,9 +1,11 @@
 // 3D → 2D picking (F12, docs/PHASES.md): a tap on the 3D view moves every
 // pane to the point under it — the surface's nearest face, or where the
-// volume render turns half opaque (render-cpu/pick.ts) — and the status
-// says what was hit. A surface is hit on its boundary, so the voxel taken
-// is the first one of the structure a short way along the ray.
+// volume render turns half opaque (render-cpu/pick.ts), past whatever the
+// clip removed — and the status says what was hit. A surface is hit on its
+// boundary, so the voxel taken is the first one of the structure a short
+// way along the ray.
 import { pickSurface, pickVolume, type PickHit, type TF } from '@carys/render-cpu';
+import { clipOf } from '../lib/clip3d';
 import { paintBus } from '../lib/paintBus';
 import { physicalMesh, toMm, vrBounds } from '../lib/physical3d';
 import { session } from '../lib/session';
@@ -43,13 +45,14 @@ export function pick3d(view: PickView, clientX: number, clientY: number): void {
     hit = pickVolume({ dims: img.dims, data: mask ? Float64Array.from(mask) : img.data }, {
       width: canvas.width, height: canvas.height, angleY: view.orbit, tiltX: view.tilt, zoom: view.zoom,
       tf: view.vr.tf, density: view.vr.density, alphaStep: view.vr.alphaStep, step: PICK_STEP,
-      spacing: sp, bounds: mask ? vrBounds(mask, img.dims) : null,
+      spacing: sp, bounds: mask ? vrBounds(mask, img.dims) : null, clip: clipOf(u.clip3d, img.dims, -0.5),
     }, x, y);
   } else if (session.mesh) {
     // the surface is drawn in mm: pick it there, then back to voxels
-    const h = pickSurface(physicalMesh(session.mesh, sp), toMm(img.dims, sp), {
+    const box = toMm(img.dims, sp);
+    const h = pickSurface(physicalMesh(session.mesh, sp), box, {
       width: canvas.width, height: canvas.height, angleY: view.orbit, tiltX: view.tilt, zoom: view.zoom,
-      center: view.center ? toMm(view.center, sp) : undefined,
+      center: view.center ? toMm(view.center, sp) : undefined, clip: clipOf(u.clip3d, box),
     }, x, y);
     if (h) {
       const d: V3 = [h.dir[0] / sp[0], h.dir[1] / sp[1], h.dir[2] / sp[2]];

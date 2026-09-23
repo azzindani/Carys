@@ -95,6 +95,17 @@ export type Render3D = 'surface' | 'volume';
 export type TextSize = 'xs' | 's' | 'm' | 'l' | 'xl';
 export type Density = 'xs' | 's' | 'm' | 'l' | 'xl';
 
+/** The 3D views' clip (F13): a plane across one axis at a fraction of the
+ *  volume (keeping the low side, or the high one flipped) and a crop box
+ *  in fractions per axis [x0, x1, y0, y1, z0, z1]. Off draws everything. */
+export interface Clip3d {
+  on: boolean;
+  plane: 'none' | 'axial' | 'coronal' | 'sagittal';
+  at: number;
+  flip: boolean;
+  box: [number, number, number, number, number, number];
+}
+
 export interface UiState {
   view: View;
   render3d: Render3D;
@@ -103,6 +114,7 @@ export interface UiState {
   method: Method;
   /** 3D surface smoothing, 0 (as extracted) … 1; volume-preserving (F4) */
   smooth3d: number;
+  clip3d: Clip3d;
   preset: string;
   overlay: boolean;
   brush: number;

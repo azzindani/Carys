@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { CLIP_OFF } from './clip3d';
 import type { CompareMode, Density, TextSize, UiState } from './types';
 
 // Tiny typed external store. State owns the DOM: components subscribe and
@@ -34,6 +35,7 @@ export function saveAppearance(textSize: TextSize, density: Density): void {
 
 const initial: UiState = {
   view: 'mpr', render3d: 'surface', tool: 'view', src: 'mask', method: 'smooth', smooth3d: 0,
+  clip3d: CLIP_OFF,
   preset: 'auto', overlay: true, brush: 3, threshold: 0, series: '',
   proj: 'slice', slab: 9, oblA: 0, oblB: 0, oblPlane: 'axial' as const, growLo: 100, growHi: 3000, measureKind: 'length',
   layout: 'tri', sync: true, hang: 'default',

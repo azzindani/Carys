@@ -23,4 +23,5 @@ export * from './cursor3d.js';
 export * from './mesh-smooth.js';
 export * from './decimate.js';
 export * from './pick.js';
+export * from './clip.js';
 export * from './thick-slices.js';
