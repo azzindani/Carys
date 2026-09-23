@@ -1,6 +1,19 @@
 // CPU volume raycaster: orthographic front-to-back compositing with
 // gradient shading, early termination, and AABB-bounded marching.
 // Same orbit/tilt convention as the mesh rasterizer (raster.ts).
+//
+// Quality (F8, docs/PHASES.md), both opt-in so a plain call renders as it
+// always did:
+// - `alphaStep` corrects each sample's opacity for the step it stands
+//   for, α' = 1 − (1 − α)^(step / alphaStep), so a coarse draft is as
+//   opaque as a fine render.
+// - `jitter` makes a frame one pass of a progressive refinement. Rays that
+//   all start on one lattice slice a surface into wood-grain rings; each
+//   pass instead starts every ray at a stratified fraction of a step,
+//   scrambled per pixel by an integer hash (interleaved gradient noise was
+//   tried: it leaves a diagonal hatch without temporal blur), and moves it
+//   to its cell of a g×g grid inside the pixel. The mean of the passes
+//   (`addPass`) is a finer step with anti-aliased edges.
 import { sampleTrilinear, type Vec3 } from './oblique.js';
 import { sampleTF, type TF } from './tf.js';
 
@@ -30,6 +43,31 @@ export interface VrOpts {
   field?: Float64Array | null;
   /** tight voxel-space bounds (padded by caller): rays march only inside */
   bounds?: { min: Vec3; max: Vec3 } | null;
+  /** the step (voxels of the finest axis) the TF's opacity is defined for;
+   *  default: the step itself, no correction */
+  alphaStep?: number;
+  /** pass `pass` of `of` (a square: 1, 4, 9 …) of a progressive refinement */
+  jitter?: { pass: number; of: number };
+}
+
+/** Per-pixel scramble in [0, 1): the murmur3 finalizer over the pixel. */
+function scramble(x: number, y: number): number {
+  let h = (Math.imul(x, 0x27d4eb2d) ^ Math.imul(y, 0x165667b1)) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/**
+ * Running mean of refinement passes: adds pass number `n` (1-based) to
+ * `sum` and returns the averaged frame. Throws `vr-pass-size` when the
+ * pass does not match the sum.
+ */
+export function addPass(sum: Float32Array, rgba: Uint8ClampedArray, n: number): Uint8ClampedArray {
+  if (sum.length !== rgba.length || !(n >= 1)) throw new RangeError(`vr-pass-size: ${rgba.length} into ${sum.length}, pass ${n}`);
+  const out = new Uint8ClampedArray(rgba.length);
+  for (let i = 0; i < rgba.length; i++) { sum[i] += rgba[i]!; out[i] = sum[i]! / n; }
+  return out;
 }
 
 /** Slab-method ray/AABB intersect. Returns [tEnter, tExit] or null. */
@@ -75,6 +113,17 @@ export function renderVolume(vol: VrVolume, opts: VrOpts): { rgba: Uint8ClampedA
   const minSp = Math.min(sp[0], sp[1], sp[2]);
   const ext: Vec3 = [nx * sp[0], ny * sp[1], nz * sp[2]];
   const step = (opts.step ?? 2) * minSp;
+  if (opts.alphaStep !== undefined && !(opts.alphaStep > 0)) throw new RangeError(`vr-alpha-step: ${opts.alphaStep}`);
+  // exponent 1 skips the correction: 1 − (1 − α) is not α in floating point
+  const alphaK = opts.alphaStep === undefined ? 1 : (opts.step ?? 2) / opts.alphaStep;
+  const jit = opts.jitter ?? null;
+  const grid = jit ? Math.round(Math.sqrt(jit.of)) : 1;
+  if (jit && !(Number.isInteger(jit.pass) && grid >= 1 && grid * grid === jit.of && jit.pass >= 0 && jit.pass < jit.of)) {
+    throw new RangeError(`vr-jitter: pass ${jit.pass} of ${jit.of}`);
+  }
+  // this pass's cell inside the pixel (0 = the pixel corner, as before)
+  const subX = jit ? ((jit.pass % grid) + 0.5) / grid : 0;
+  const subY = jit ? (Math.floor(jit.pass / grid) + 0.5) / grid : 0;
   const shade = opts.shade ?? true;
   const density = opts.density ?? 1;
   const field = opts.field ?? data;
@@ -111,12 +160,15 @@ export function renderVolume(vol: VrVolume, opts: VrOpts): { rgba: Uint8ClampedA
 
   for (let py = 0; py < H; py++) {
     for (let px = 0; px < W; px++) {
-      const vx = (px - W / 2) / scale;
-      const vy = -(py - H / 2) / scale;
+      const vx = (px + subX - W / 2) / scale;
+      const vy = -(py + subY - H / 2) / scale;
       // ray origin on the view plane, in mm about the volume centre
       const vc = invRot(opts.angleY, opts.tiltX, vx, vy, 0);
       const org: Vec3 = [vc[0] + center[0], vc[1] + center[1], vc[2] + center[2]];
-      let t0 = -R, t1 = R;
+      // ray starts: one lattice for every ray, or this pass's stratum of it
+      // scrambled per pixel
+      const phase = jit ? ((scramble(px, py) + jit.pass / jit.of) % 1) * step : 0;
+      let t0 = -R + phase, t1 = R;
       if (bounds) {
         const hit = intersectAABB(org, marchDir, bounds.min, bounds.max);
         if (!hit) {
@@ -129,7 +181,9 @@ export function renderVolume(vol: VrVolume, opts: VrOpts): { rgba: Uint8ClampedA
         t1 = Math.min(t1, hit[1]);
         // Phase-lock to the unbounded lattice so bounded and unbounded
         // renders sample identical positions (bit-exact, not just close).
-        t0 = -R + Math.ceil((t0 + R) / step) * step;
+        t0 = jit
+          ? -R + phase + Math.ceil((t0 - (-R + phase)) / step) * step
+          : -R + Math.ceil((t0 + R) / step) * step;
       }
       let r = 0, g = 0, b = 0, a = 0;
       for (let t = t0; t <= t1 && a < 0.995; t += step) {
@@ -139,7 +193,8 @@ export function renderVolume(vol: VrVolume, opts: VrOpts): { rgba: Uint8ClampedA
         const v = sampleTrilinear(field, dims, [x, y, z]);
         if (v == null) continue;
         const s = sampleTF(opts.tf, v);
-        const alpha = Math.min(1, s.a * density);
+        let alpha = Math.min(1, s.a * density);
+        if (alphaK !== 1) alpha = 1 - (1 - alpha) ** alphaK;
         if (alpha <= 0.003) continue;
         let sh = 1;
         if (shade) {

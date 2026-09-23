@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { JSX } from 'react';
-import { filterTracts, presetTF, renderMesh, TF_PRESETS, type TF, type TFPresetName } from '@carys/render-cpu';
+import { addPass, filterTracts, presetTF, renderMesh, TF_PRESETS, type TF, type TFPresetName } from '@carys/render-cpu';
 import {
   presetRois, tractPresetById, TRACT_PRESETS,
 } from '@carys/volume-core';
@@ -26,6 +26,10 @@ import { drawCursor3d, drawFibers } from './orbitOverlay';
 
 /** Quiet time after the last orbit frame before the anti-aliased repaint. */
 const ORBIT_SETTLE_MS = 160;
+/** Volume render refinement (F8): passes averaged while the view is still,
+ *  a 2×2 sub-pixel grid; opacity is defined at the full-quality step. */
+const VR_PASSES = 4;
+const VR_ALPHA_STEP = 1.5;
 
 /** 3D viewport of the grid: surface/volume render + orbit tools. Bare mode
  *  skips the title (the file tabs head the combined viewer instead). */
@@ -156,32 +160,41 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     setAmbientStatus('raycasting…');
     await new Promise((r) => setTimeout(r, 10));
     try {
-      const r = await extractor.renderVr(field, img.dims, {
-        w: rw, h: rh,
-        angleY: angles.current.orbit, tiltX: angles.current.tilt,
-        zoom: session.zoom3d, tf: currentTF(),
-        step: full ? 1.5 : 3, shade, density, bounds,
-        // in mm, like the surface: a 5 mm-slice CT is not a fifth of its height
-        spacing: img.spacing ?? [1, 1, 1],
-      });
-      if (mine !== vrToken.current || pmine !== session.paintToken || getUi().series !== s0) return;
-      const ctx = cv.getContext('2d')!;
-      if (full) {
-        ctx.putImageData(new ImageData(new Uint8ClampedArray(r.rgba), r.w, r.h), 0, 0);
-      } else {
-        const tmp = document.createElement('canvas');
-        tmp.width = r.w; tmp.height = r.h;
-        tmp.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(r.rgba), r.w, r.h), 0, 0);
-        ctx.imageSmoothingEnabled = true;
-        ctx.clearRect(0, 0, cv.width, cv.height);
-        ctx.drawImage(tmp, 0, 0, cv.width, cv.height);
+      // pass 1 shows at once; the rest refine it until anything changes
+      const sum = new Float32Array(rw * rh * 4);
+      let ms = 0;
+      for (let k = 0; k < VR_PASSES; k++) {
+        const r = await extractor.renderVr(field, img.dims, {
+          w: rw, h: rh,
+          angleY: angles.current.orbit, tiltX: angles.current.tilt,
+          zoom: session.zoom3d, tf: currentTF(),
+          step: full ? 1.5 : 3, alphaStep: VR_ALPHA_STEP, jitter: { pass: k, of: VR_PASSES },
+          shade, density, bounds,
+          // in mm, like the surface: a 5 mm-slice CT is not a fifth of its height
+          spacing: img.spacing ?? [1, 1, 1],
+        });
+        if (mine !== vrToken.current || pmine !== session.paintToken || getUi().series !== s0) return;
+        ms += r.ms;
+        const frame = new ImageData(new Uint8ClampedArray(addPass(sum, r.rgba, k + 1)), r.w, r.h);
+        const ctx = cv.getContext('2d')!;
+        if (full) {
+          ctx.putImageData(frame, 0, 0);
+        } else {
+          const tmp = document.createElement('canvas');
+          tmp.width = r.w; tmp.height = r.h;
+          tmp.getContext('2d')!.putImageData(frame, 0, 0);
+          ctx.imageSmoothingEnabled = true;
+          ctx.clearRect(0, 0, cv.width, cv.height);
+          ctx.drawImage(tmp, 0, 0, cv.width, cv.height);
+        }
+        setEngineFromExtractor();
+        const passes = k > 0 ? ` · ${k + 1}/${VR_PASSES} passes` : '';
+        const ro = document.getElementById('ro-3d');
+        if (ro) ro.textContent = `VR ${r.w}×${r.h} · ${(ms / 1000).toFixed(1)}s${passes}`;
+        const zchip = document.getElementById('zoom3d');
+        if (zchip) zchip.textContent = `${Math.round(session.zoom3d * 100)}%`;
+        setAmbientStatus(`VR ${r.w}×${r.h} · ${(ms / 1000).toFixed(1)}s${passes} via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
       }
-      setEngineFromExtractor();
-      const ro = document.getElementById('ro-3d');
-      if (ro) ro.textContent = `VR ${r.w}×${r.h} · ${(r.ms / 1000).toFixed(1)}s`;
-      const zchip = document.getElementById('zoom3d');
-      if (zchip) zchip.textContent = `${Math.round(session.zoom3d * 100)}%`;
-      setAmbientStatus(`VR ${r.w}×${r.h} · ${(r.ms / 1000).toFixed(1)}s via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
     } catch (e) {
       if (mine !== vrToken.current) return;
       setStatus(`VR failed: ${(e as Error).message}`, 'error');
