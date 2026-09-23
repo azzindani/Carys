@@ -972,13 +972,37 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   512×512×58 1.9 → 0.70 s, BraTS mask 1.7 → 0.56 s, skull CT 0.69 → 0.12 s.
   The `skull-ct-smooth` surface golden was re-frozen after comparing old
   and new renders side by side.
-- OPEN — **F3. Anti-aliased masks.** Masks become a signed distance field
-  (or a narrow smoothing) before extraction at the midpoint. Accept: a
-  binary sphere mask's mesh is within 0.25 voxel of the true surface, with
-  no terraces by the staircase score.
+- DONE — **F3. Anti-aliased masks.** `maskNets` (`render-cpu/surface-nets.ts`):
+  constrained elastic surface nets (Gibson 1998) — every vertex relaxes
+  toward its neighbours for 20 Taubin rounds (λ 0.5, μ −0.53) but never
+  leaves its cell, the cube between the inside and outside voxel centres it
+  separates. The queued options were measured first and dropped: a blur of
+  the mask clamped back to its voxels met the sphere bound (σ 0.8 mm:
+  0.07 mm, 5°) but a one-voxel plate lost 88% of its volume; a plain
+  signed distance field crosses zero at the same midpoints as the mask, so
+  alone it terraces the same way. The smooth method on a mask source now
+  runs maskNets (worker and main-thread paths). Mask surfaces, plain nets →
+  maskNets (mean error · volume · staircase):
+
+  | phantom | plain nets | maskNets |
+  |---|---|---|
+  | sphere, 1 mm | 0.145 mm · −0.0% · 16.1° | **0.076 mm · +0.7% · 5.4°** |
+  | torus, 1 mm | 0.138 mm · +0.5% · 14.7° | 0.082 mm · +1.7% · 5.5° |
+  | tube r 1.2 mm (a vessel) | 0.153 mm · −5.1% · 21.8° | 0.057 mm · −0.2% · 7.7° |
+  | plate, one voxel thick | −9.1% volume | −9.2% (thickness kept) |
+  | ellipsoid, 0.8×0.8×2.5 mm | 0.40 mm · 24° | 0.30 mm · 16° |
+  | sphere, 5 mm slices | 0.67 mm · 23.5° | 0.59 mm · 17.4° (F5) |
+
+  Cost on the real masks, best of three: +45 to +90 ms (covid 512×512×58
+  386 → 474 ms). On the samples, hepatic vessel branches survive intact and
+  the BraTS tumour is smoother at voxel scale but keeps its larger terraces:
+  the segmentation itself steps 2–23 voxels between neighbouring columns
+  (only 44% of its steps are one voxel). Removing those means overriding the
+  mask's own voxels, which is F4's user-controlled smoothing, not this.
 - OPEN — **F4. Volume-preserving mesh smoothing.** Taubin λ/μ or
   windowed-sinc, a strength control in the 3D dock. Accept: volume change
-  < 1% on the phantoms, staircase score better than F3 alone.
+  < 1% on the phantoms, staircase score better than F3 alone, and the
+  BraTS tumour's multi-voxel terraces (measured in F3) visibly reduced.
 - OPEN — **F5. Thick slices.** Shape-based (distance-field) interpolation
   between slices for masks, cubic along z for intensity, before extraction.
   Accept: the ellipsoid on a 1×1×5 mm grid meets the F2/F3 bounds; the

@@ -73,6 +73,43 @@ export function torus(c: V3, major: number, minor: number): Phantom {
   };
 }
 
+/** Axis-aligned box with half-sizes h: exact distance. Thin in one axis, a
+ *  plate — the shape a blur-based smoother melts away. */
+export function box(c: V3, h: V3): Phantom {
+  const q = (p: V3): V3 => [Math.abs(p[0] - c[0]) - h[0], Math.abs(p[1] - c[1]) - h[1], Math.abs(p[2] - c[2]) - h[2]];
+  return {
+    name: `box ${h.map((v) => v * 2).join('×')}`,
+    sdf: (p) => {
+      const d = q(p);
+      return Math.hypot(Math.max(d[0], 0), Math.max(d[1], 0), Math.max(d[2], 0)) + Math.min(Math.max(d[0], d[1], d[2]), 0);
+    },
+    normal: (p) => {
+      const d = q(p);
+      const k = d[0] >= d[1] && d[0] >= d[2] ? 0 : d[1] >= d[2] ? 1 : 2;
+      const n: V3 = [0, 0, 0];
+      n[k] = p[k] >= c[k] ? 1 : -1;
+      return n;
+    },
+    volume: 8 * h[0] * h[1] * h[2],
+  };
+}
+
+/** Capsule (a tube with round ends) from a to b: exact distance — a vessel. */
+export function capsule(a: V3, b: V3, r: number): Phantom {
+  const ab: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const len2 = ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2;
+  const axis = (p: V3): V3 => {
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1] + (p[2] - a[2]) * ab[2]) / len2));
+    return [p[0] - (a[0] + t * ab[0]), p[1] - (a[1] + t * ab[1]), p[2] - (a[2] + t * ab[2])];
+  };
+  return {
+    name: `capsule r${r}`,
+    sdf: (p) => { const d = axis(p); return Math.hypot(d[0], d[1], d[2]) - r; },
+    normal: (p) => unit(axis(p)),
+    volume: Math.PI * r * r * Math.sqrt(len2) + (4 / 3) * Math.PI * r ** 3,
+  };
+}
+
 /** erf, Abramowitz & Stegun 7.1.26 (|error| < 1.5e-7). */
 export function erf(x: number): number {
   const s = x < 0 ? -1 : 1;

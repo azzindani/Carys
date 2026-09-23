@@ -1,7 +1,7 @@
 // Mesh-extraction + volume-rendering worker, bundled by Vite.
 // Transfer protocol: field buffer in, mesh/RGBA buffers out, zero copies.
 import { extractBoundary, renderVolume } from '@carys/render-cpu';
-import { surfaceNets } from '@carys/render-cpu';
+import { maskNets, surfaceNets } from '@carys/render-cpu';
 import type { TF } from '@carys/render-cpu';
 
 const CTORS = {
@@ -65,9 +65,13 @@ onmessage = (e: MessageEvent<Request>) => {
       return;
     }
     const [nx, ny, nz] = req.dims;
-    const mesh = req.method === 'smooth'
-      ? surfaceNets(field, nx, ny, nz, req.threshold + 0.5)
-      : extractBoundary(toMask(field, req.threshold), nx, ny, nz);
+    // A mask arrives as bytes (extractor.ts); its smooth surface is relaxed
+    // in its cells (maskNets), an image's is placed on the field itself.
+    const mesh = req.method !== 'smooth'
+      ? extractBoundary(toMask(field, req.threshold), nx, ny, nz)
+      : req.dtype === 'uint8'
+        ? maskNets(toMask(field, req.threshold), nx, ny, nz)
+        : surfaceNets(field, nx, ny, nz, req.threshold + 0.5);
     const positions = mesh.positions.buffer as ArrayBuffer;
     const normals = mesh.normals.buffer as ArrayBuffer;
     const indices = mesh.indices.buffer as ArrayBuffer;
