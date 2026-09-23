@@ -14,7 +14,7 @@ import { drawChrome, drawMeasures, fmtVal } from './paneChrome';
 import { drawLabelOutlines } from './paneLabels';
 import { fitPane, planeSpacing, toBitmap, type PaneView } from './paneView';
 
-import { doUndo } from '../lib/sessionOps';
+import { doUndo, pushUndo } from '../lib/sessionOps';
 import { setAmbientStatus, setStatus } from '../lib/status';
 import { getUi, setUi, useUiPick } from '../lib/store';
 import { bump, useVersion } from '../lib/version';
@@ -26,6 +26,10 @@ import type { SliceInit } from '../lib/sessionOps';
 import { PLANES } from '../lib/types';
 
 const TITLES: Record<Plane, string> = { axial: 'Axial', coronal: 'Coronal', sagittal: 'Sagittal' };
+
+/** Opening slices already applied (module-wide: a remount keeps where the
+ *  panes are rather than going back to them). */
+const appliedInits = new WeakSet<SliceInit>();
 
 /** Baked 256-entry LUTs by Papaya table name (pure function of the name). */
 const lutCache = new Map<string, ColorTable>();
@@ -303,7 +307,12 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     // Uploads bypass App's sliceInit prop: consume the pending init once.
     const pending = session.pendingSliceInit;
     if (pending) session.pendingSliceInit = null;
-    const init = pending ?? sliceInit;
+    // A series' opening slices apply once: App keeps the prop set, and
+    // re-applying it on every bump sent the panes back there after each
+    // paint stroke (painting every few slices, F15, could not be done).
+    const fresh = sliceInit && !appliedInits.has(sliceInit) ? sliceInit : null;
+    if (fresh) appliedInits.add(fresh);
+    const init = pending ?? fresh;
     if (init) {
       for (const p of PLANES) {
         const s = sliderRefs.current[p];
@@ -473,7 +482,9 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
       const m = touchesRef.current[plane];
       m.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (m.size === 2) {
-        // Second finger: abandon any one-finger stroke and start a pinch.
+        // Second finger: abandon any one-finger stroke and start a pinch
+        // (what it painted stays, and is an undo step of its own).
+        if (strokeState.current.stroke || strokeState.current.oblStroke) pushUndo();
         strokeState.current.stroke = null;
         strokeState.current.oblStroke = null;
         dragRef.current = null;
@@ -525,6 +536,7 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     if (strokeState.current.stroke || strokeState.current.oblStroke) {
       strokeState.current.stroke = null;
       strokeState.current.oblStroke = null;
+      pushUndo();
       session.maskVer++;
       paintAll();
       bump();

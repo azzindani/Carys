@@ -128,8 +128,13 @@ Port from Cornerstone tools + CACTAS brush + ITK-Wasm filters:
 threshold → region-grow → connected-components → fill-hole, plus brush
 paint/erase (Bresenham pen), flood fill, RLE undo stack, and a
 marker-free watershed split (Manhattan EDT + top-down flood; shape necks
-only, never adds voxels).
-Every op = pure function, undoable, testable without UI.
+only, never adds voxels). Filling between painted slices is
+`render-cpu/slice-fill.ts` (F15): F5's exact 2D distance maps, a cubic
+across the painted slices, per label (labels painted together are one
+shape), across the axis the painting was sparse along.
+Every op = pure function, undoable, testable without UI. The mask's undo
+stack holds states: the loaded one, then a snapshot after every edit
+(stroke end, seg op, clear, import), and undo steps back one.
 
 ## Design system (`packages/app/src/styles` + `src/ui`)
 

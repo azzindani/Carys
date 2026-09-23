@@ -2,7 +2,6 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { decodeRLE, drawPenLine, drawPt, encodeRLE, floodFill } from '../drawing.js';
 import { fillHoles } from '../fillholes.js';
-import { interpolateSlices } from '../interp.js';
 import { islandSizes } from '../islands.js';
 import { close, countVoxels, dilate, erode, open } from '../morph.js';
 import { regionGrow } from '../ops.js';
@@ -87,29 +86,6 @@ describe('islands partition', () => {
       const sum = sizes.reduce((a, s) => a + s.size, 0);
       assert.equal(sum, countVoxels(m), `case ${t}`);
       for (let i = 1; i < sizes.length; i++) assert.ok(sizes[i - 1]!.size >= sizes[i]!.size, `case ${t}`);
-    }
-  });
-});
-
-describe('interp endpoints', () => {
-  it('t=0/1 exact, mid bounded by union/intersection (40 pairs)', () => {
-    const rng = mulberry32(6161);
-    for (let t = 0; t < 40; t++) {
-      const w = randInt(rng, 4, 12), h = randInt(rng, 4, 12);
-      const a = new Uint8Array(w * h);
-      const b = new Uint8Array(w * h);
-      for (let i = 0; i < a.length; i++) {
-        a[i] = rng() < 0.4 ? 1 : 0;
-        b[i] = rng() < 0.4 ? 1 : 0;
-      }
-      assert.deepEqual(interpolateSlices(a, b, w, h, 0), a);
-      assert.deepEqual(interpolateSlices(a, b, w, h, 1), b);
-      const mid = interpolateSlices(a, b, w, h, 0.5);
-      assert.equal(mid.length, a.length, `case ${t}`);
-      for (let i = 0; i < mid.length; i++) {
-        if (a[i] && b[i]) assert.equal(mid[i], 1, `case ${t}: intersection must survive`);
-        if (!a[i] && !b[i]) assert.equal(mid[i], 0, `case ${t}: outside union must stay empty`);
-      }
     }
   });
 });

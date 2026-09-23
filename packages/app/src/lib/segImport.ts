@@ -82,8 +82,8 @@ export async function importDicomSeg(buf: ArrayBuffer, name: string): Promise<vo
     setStatus('no segments decoded');
     return;
   }
-  pushUndo();
   session.editMask.set(incoming);
+  pushUndo();
   session.maskVer++;
   session.seg = { dims: img.dims, data: session.editMask };
   bump();

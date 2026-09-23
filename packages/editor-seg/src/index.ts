@@ -9,4 +9,3 @@ export * from './fillholes.js';
 export * from './segments.js';
 export * from './morph.js';
 export * from './islands.js';
-export * from './interp.js';

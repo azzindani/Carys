@@ -80,6 +80,66 @@ try {
   );
   console.log('journey undo reverts the stroke');
 
+  // ---- A2. F15 paint every few slices -> Interp fills between -> one undo
+  // takes the fill back, the painted slices stay.
+  await page.click('#dock-mpr #undogrp button[title="Clear mask"]');
+  await page.waitForFunction(() => {
+    const dd = [...document.querySelectorAll('#maskinfo dd')];
+    return dd.some((d) => d.textContent.trim() === '0');
+  }, null, { timeout: 30000 });
+  const toSlice = async (z) => {
+    await page.locator('#s-axial').fill(String(z));
+    await page.waitForFunction((w) => (document.getElementById('ro-axial')?.textContent ?? '').startsWith(`${w} /`), z, { timeout: 30000 });
+  };
+  const stroke = async (dy) => {
+    const b = await page.locator('#c-axial').boundingBox();
+    await page.mouse.move(b.x + b.width / 2 - 30, b.y + b.height / 2 + dy);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2 + 30, b.y + b.height / 2 + dy, { steps: 8 });
+    await page.mouse.up();
+  };
+  /** Axial pane pixels near the label 1 colour: the mask drawn on this slice. */
+  const redPx = () => page.evaluate(() => {
+    const cv = document.getElementById('c-axial');
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 255) + Math.abs(d[i + 1] - 60) + Math.abs(d[i + 2] - 60) <= 60) n++;
+    return n;
+  });
+  // one structure's cross-sections: the second overlaps the first, shifted
+  await toSlice(60); await stroke(0);
+  await page.waitForTimeout(500);
+  const oneStroke = await vox();
+  await toSlice(66); await stroke(4);
+  await page.waitForTimeout(700);
+  const painted = await vox();
+  await toSlice(63);
+  const between0 = await redPx();
+  await page.click('#dock-seg button[title="Fill between painted slices (any plane, each label)"]');
+  await page.waitForFunction(() => /^interp: .* axial slices · label 1/.test(document.getElementById('status-text')?.textContent ?? ''), null, { timeout: 60000 });
+  const said = await page.locator('#status-text').textContent();
+  await page.waitForTimeout(700);
+  const filled = await vox(), between1 = await redPx();
+  if (!(between0 === 0 && between1 > 20 && Number(filled.replace(/,/g, '')) > Number(painted.replace(/,/g, '')))) {
+    fail(`interp: ${said} · slice 63 ${between0} -> ${between1} px · ${painted} -> ${filled} vox`);
+  } else console.log(`journey interp fills between painted slices: ${said} · slice 63 ${between0} -> ${between1} px`);
+  await page.click('#dock-mpr #undogrp button[title="Undo stroke"]');
+  await page.waitForFunction((b) => {
+    const dd = [...document.querySelectorAll('#maskinfo dd')];
+    return dd.some((d) => d.textContent.trim() === b);
+  }, painted, { timeout: 30000 });
+  await page.waitForTimeout(500);
+  if (await redPx() !== 0) fail('one undo left the fill on slice 63');
+  else console.log(`journey one undo takes the fill back (${filled} -> ${painted} vox)`);
+  // and the next undo takes back the second stroke, not both (undo used
+  // to land one change too far back)
+  await page.click('#dock-mpr #undogrp button[title="Undo stroke"]');
+  await page.waitForFunction((b) => {
+    const dd = [...document.querySelectorAll('#maskinfo dd')];
+    return dd.some((d) => d.textContent.trim() === b);
+  }, oneStroke, { timeout: 30000 });
+  console.log(`journey the next undo takes back one stroke (${painted} -> ${oneStroke} vox)`);
+
   // ---- B. measure length -> report counts it.
   await page.click('#modeseg button[data-mode="measure"]');
   const cbox = await page.locator('#c-axial').boundingBox();

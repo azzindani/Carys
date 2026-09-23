@@ -253,15 +253,15 @@ export function paintDown(
       }
     }
     const [a, b] = planeVoxel('axial', e.clientX, e.clientY);
-    pushUndo();
     const n = growFromSeed(a, b, host.planeIdx('axial'));
+    pushUndo();
     host.paint('axial');
     toast(n > 0 ? `Grew ${n.toLocaleString()} voxels [${u.growLo}, ${u.growHi}]` : 'Seed outside window — adjust Lo/Hi');
     return;
   }
   (e.target as { setPointerCapture?: (id: number) => void } | null)
     ?.setPointerCapture?.(e.pointerId ?? 0);
-  pushUndo();
+  // the stroke's snapshot is taken when it ends (MprPanes' pointer up)
   const v = getUi().tool === 'paint' ? 1 : 0;
   if (fr) {
     const [i, j] = host.contentXY(plane, e.clientX, e.clientY);

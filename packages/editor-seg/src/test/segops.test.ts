@@ -1,7 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { islandSizes, keepLargest, removeSmall } from '../islands.js';
-import { fillGaps, interpolateSlices, signedDistance } from '../interp.js';
 import { close, countVoxels, dilate, erode, marginMm, open, outline, smoothMask } from '../morph.js';
 import type { Dims3 } from '../morph.js';
 
@@ -78,41 +77,5 @@ describe('islands', () => {
     assert.equal(countVoxels(keepLargest(m, D)), 64);
     assert.equal(countVoxels(removeSmall(m, D, 8)), 72);
     assert.equal(countVoxels(removeSmall(m, D, 1)), 73);
-  });
-});
-
-describe('interpolation', () => {
-  it('signed distance is negative inside, positive outside', () => {
-    const s = new Uint8Array(7 * 7);
-    for (let y = 2; y <= 4; y++) {
-      for (let x = 2; x <= 4; x++) s[y * 7 + x] = 1;
-    }
-    const d = signedDistance(s, 7, 7);
-    assert.ok(d[3 * 7 + 3]! < 0);
-    assert.ok(d[0]! > 0);
-    assert.ok(d[2 * 7 + 2]! < 0); // corner of the square still inside
-  });
-  it('t=0/t=1 reproduce the keyframes', () => {
-    const a = new Uint8Array(36).fill(1);
-    const b = new Uint8Array(36);
-    assert.deepEqual(interpolateSlices(a, b, 6, 6, 0), a);
-    assert.deepEqual(interpolateSlices(a, b, 6, 6, 1), b);
-  });
-  it('fillGaps morphs across empty runs and reports count', () => {
-    const d3: Dims3 = { nx: 8, ny: 8, nz: 6 };
-    const m = new Uint8Array(8 * 8 * 6);
-    for (let y = 2; y <= 5; y++) {
-      for (let x = 2; x <= 5; x++) {
-        m[0 * 64 + y * 8 + x] = 1;
-        m[5 * 64 + y * 8 + x] = 1;
-      }
-    }
-    const { mask, filled } = fillGaps(m, d3);
-    assert.equal(filled, 4);
-    assert.ok(countVoxels(mask) > 32);
-    // middle slice is a morph, not empty and not a copy-paste artifact
-    let mid = 0;
-    for (let i = 0; i < 64; i++) if (mask[2 * 64 + i]) mid++;
-    assert.ok(mid >= 16 && mid <= 16, `mid slice ${mid}`);
   });
 });
