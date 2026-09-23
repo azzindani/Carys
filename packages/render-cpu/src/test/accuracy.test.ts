@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { extractBoundary } from '../surface.js';
 import { smoothMesh } from '../mesh-smooth.js';
 import { maskNets, surfaceNets } from '../surface-nets.js';
+import { smoothSurface } from '../thick-slices.js';
 import {
   box, capsule, ellipsoid, erf, sampleIntensity, sampleMask, scoreMesh, sphere, torus,
   type Phantom, type SurfaceScore, type V3,
@@ -24,8 +25,9 @@ const CASES: Case[] = [
   { id: 'torus-iso', ph: torus([20, 20, 10], 11, 4), dims: [40, 40, 20], sp: [1, 1, 1] },
 ];
 
-/** The four paths the app runs (extract worker: threshold T, smooth iso
- *  T + 0.5; a mask binarized at 0, its smooth surface relaxed by maskNets). */
+/** The four paths the app runs: blocky cuts at T; smooth goes through
+ *  smoothSurface (thick slices interpolated, F5; else the image at T + 0.5
+ *  on its own field, a mask relaxed in its cells). */
 const THRESHOLD = 500;
 function paths(c: Case): Record<string, { positions: Float32Array; indices: Uint32Array }> {
   const [nx, ny, nz] = c.dims;
@@ -33,9 +35,9 @@ function paths(c: Case): Record<string, { positions: Float32Array; indices: Uint
   const m = sampleMask(c.ph, c.dims, c.sp);
   return {
     'blocky-image': extractBoundary(f, nx, ny, nz, THRESHOLD),
-    'smooth-image': surfaceNets(f, nx, ny, nz, THRESHOLD + 0.5),
+    'smooth-image': smoothSurface(f, nx, ny, nz, c.sp, THRESHOLD, false).mesh,
     'blocky-mask': extractBoundary(m, nx, ny, nz, 0),
-    'smooth-mask': maskNets(m, nx, ny, nz),
+    'smooth-mask': smoothSurface(m, nx, ny, nz, c.sp, 0, true).mesh,
   };
 }
 
@@ -44,19 +46,21 @@ type Row = [meanErr: number, maxErr: number, volErrPct: number, normalDevDeg: nu
 /** mm, mm, %, degrees. Blocky rows: the F1 baseline (2026-09-23). Smooth
  *  image rows: after F2 (the 1 mm sphere was 0.430 mm / −1.87% / 5.4°, half
  *  a voxel off the voxel-centre convention). Smooth mask rows: after F3
- *  (plain nets on the mask measured 0.145 mm / −0.04% / 16.1° there). */
+ *  (plain nets on the mask measured 0.145 mm / −0.04% / 16.1° there).
+ *  Thick grids (sphere-thick, ellipsoid-aniso): after F5 — the 5 mm sphere
+ *  was 0.452 mm / 14.9° (image) and 0.586 mm / 17.4° (mask). */
 const MEASURED: Record<string, Record<string, Row>> = {
   'sphere-iso': {
     'blocky-image': [0.342, 0.770, 0.84, 45.0], 'smooth-image': [0.026, 0.067, -0.92, 3.3],
     'blocky-mask': [0.342, 0.770, 0.84, 45.0], 'smooth-mask': [0.076, 0.193, 0.65, 5.4],
   },
   'sphere-thick': {
-    'blocky-image': [0.927, 2.500, -4.98, 43.3], 'smooth-image': [0.452, 1.409, -8.06, 14.9],
-    'blocky-mask': [0.927, 2.500, -4.98, 43.3], 'smooth-mask': [0.586, 2.499, -6.53, 17.4],
+    'blocky-image': [0.927, 2.500, -4.98, 43.3], 'smooth-image': [0.150, 0.562, -4.42, 6.2],
+    'blocky-mask': [0.927, 2.500, -4.98, 43.3], 'smooth-mask': [0.205, 0.523, -3.48, 8.5],
   },
   'ellipsoid-aniso': {
-    'blocky-image': [0.619, 1.493, 1.05, 44.4], 'smooth-image': [0.180, 0.486, -1.47, 10.8],
-    'blocky-mask': [0.619, 1.493, 1.05, 44.4], 'smooth-mask': [0.299, 0.951, -0.13, 16.0],
+    'blocky-image': [0.619, 1.493, 1.05, 44.4], 'smooth-image': [0.178, 1.337, 0.45, 7.7],
+    'blocky-mask': [0.619, 1.493, 1.05, 44.4], 'smooth-mask': [0.216, 1.391, 1.14, 9.4],
   },
   'torus-iso': {
     'blocky-image': [0.320, 0.835, 2.24, 41.3], 'smooth-image': [0.025, 0.083, -1.84, 3.8],

@@ -1,7 +1,7 @@
 // Mesh-extraction + volume-rendering worker, bundled by Vite.
 // Transfer protocol: field buffer in, mesh/RGBA buffers out, zero copies.
 import { extractBoundary, renderVolume } from '@carys/render-cpu';
-import { maskNets, smoothMesh, surfaceNets } from '@carys/render-cpu';
+import { smoothMesh, smoothSurface } from '@carys/render-cpu';
 import type { TF } from '@carys/render-cpu';
 
 const CTORS = {
@@ -16,6 +16,8 @@ interface MeshRequest {
   method: 'blocky' | 'smooth';
   /** 0–1 windowed-sinc strength on a smooth surface (0 = as extracted) */
   smoothing?: number;
+  /** voxel size (mm): thick slices are interpolated before extraction */
+  spacing?: [number, number, number];
   dims: [number, number, number];
   threshold: number;
   dtype: DType;
@@ -67,13 +69,13 @@ onmessage = (e: MessageEvent<Request>) => {
       return;
     }
     const [nx, ny, nz] = req.dims;
-    // A mask arrives as bytes (extractor.ts); its smooth surface is relaxed
-    // in its cells (maskNets), an image's is placed on the field itself.
-    const raw = req.method !== 'smooth'
-      ? extractBoundary(toMask(field, req.threshold), nx, ny, nz)
-      : req.dtype === 'uint8'
-        ? maskNets(toMask(field, req.threshold), nx, ny, nz)
-        : surfaceNets(field, nx, ny, nz, req.threshold + 0.5);
+    // A mask arrives as bytes (extractor.ts). smoothSurface picks the path:
+    // thick slices interpolated, else a mask relaxed in its cells, an image
+    // placed on its own field.
+    const smooth = req.method === 'smooth'
+      ? smoothSurface(field, nx, ny, nz, req.spacing ?? [1, 1, 1], req.threshold, req.dtype === 'uint8')
+      : null;
+    const raw = smooth ? smooth.mesh : extractBoundary(toMask(field, req.threshold), nx, ny, nz);
     // cuberille vertices are per face (unwelded): only smooth surfaces filter
     const strength = req.smoothing ?? 0;
     const mesh = req.method === 'smooth' && strength > 0 ? smoothMesh(raw, { strength }) : raw;
@@ -81,7 +83,7 @@ onmessage = (e: MessageEvent<Request>) => {
     const normals = mesh.normals.buffer as ArrayBuffer;
     const indices = mesh.indices.buffer as ArrayBuffer;
     postMessage(
-      { id: req.id, ok: true, kind: 'mesh', tris: mesh.indices.length / 3, positions, normals, indices },
+      { id: req.id, ok: true, kind: 'mesh', tris: mesh.indices.length / 3, factor: smooth?.factor ?? 1, positions, normals, indices },
       [positions, normals, indices],
     );
   } catch (err) {

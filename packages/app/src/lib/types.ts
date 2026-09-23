@@ -36,6 +36,8 @@ export interface Mesh {
   normals: Float32Array;
   indices: Uint32Array;
   tris: number;
+  /** slices made of each scan slice before extraction (F5); 1 = none */
+  sliceFactor?: number;
 }
 
 /** Pinned streamlines (tractogram import): fence-posted offsets into xyz triplets. */
