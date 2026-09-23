@@ -66,8 +66,11 @@ frame the same physical box.
 - MPR: reslice → `ImageData` → `Canvas2D.putImageData`, window/level LUT.
 - MIP: thick-slab axial/coronal/sagittal (`slab.ts`: mip/minip/mean) +
   rotating oblique MIP (`mip-rotate.ts`: same orbit/tilt as the raycaster).
-- 3D surfaces: cuberille boundary faces (blocky) + naive surface nets (smooth),
-  orthographic + Lambert + z-buffer rasterizer → RGBA.
+- 3D surfaces: surface nets (smooth, the default: vertices on the
+  voxel-centre convention, projected onto each cell's trilinear surface) +
+  cuberille boundary faces (blocky, an option), orthographic + Lambert +
+  z-buffer rasterizer → RGBA. The image and the mask keep separate
+  thresholds (`session.thresholds`).
 - Surface accuracy is measured, not eyeballed: analytic phantoms (sphere,
   ellipsoid, torus; `test/phantoms.ts`) sampled on isotropic and thick-slice
   grids score every extraction path in mm — vertex distance to the true

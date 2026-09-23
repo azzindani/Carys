@@ -1,104 +1,156 @@
-// Naive surface nets — smooth isosurface without lookup tables.
-// Per cell with a sign change: vertex at mean of edge zero-crossings.
-// Per sign-changing grid edge: quad joining the 4 adjacent cell vertices,
-// flipped so the geometric normal points outward (away from foreground).
-// Vertex normals = area-weighted face averages (smooth shading).
+// Surface nets — a smooth isosurface without lookup tables.
+//
+// One vertex per cell (the cube between 8 samples) that the surface crosses;
+// one quad per sign-changing grid edge, joining the vertices of the 4 cells
+// around it, wound so the normal points away from the foreground.
+//
+// Measured against analytic shapes (test/accuracy.test.ts, F2):
+// - Positions follow the viewer's voxel convention: sample i is the centre
+//   of voxel i, at i + 0.5, as the panes and cuberille draw it. Placing it
+//   at i put the whole surface half a voxel off (0.43 mm on a 1 mm sphere).
+// - A vertex starts at the mean of its cell's edge crossings, which sits
+//   inside convex shapes, then moves along the gradient onto the surface of
+//   the cell's trilinear interpolant (a few Newton steps, kept in the cell).
+// - Vertex normals are area-weighted face normals, in voxel space: they
+//   transform by the inverse spacing (app/lib/physical3d.ts) like any normal.
+//
+// Memory is two cell slices of vertex ids, not a map over the grid: a
+// 512×512×58 mask no longer allocates per cell.
 import type { TriMesh } from './surface.js';
+
+/** Newton steps onto the trilinear surface: 3 converge to < 1e-4 voxel. */
+const PROJECT_STEPS = 3;
+
+// The 12 cell edges as corner pairs; corner c has x = c&1, y = (c>>1)&1, z = c>>2.
+const EDGES: [number, number][] = [
+  [0, 1], [2, 3], [4, 5], [6, 7],
+  [0, 2], [1, 3], [4, 6], [5, 7],
+  [0, 4], [1, 5], [2, 6], [3, 7],
+];
 
 export function surfaceNets(
   field: ArrayLike<number>,
   nx: number, ny: number, nz: number,
   iso: number,
 ): TriMesh {
-  const F = (x: number, y: number, z: number): number => field[z * nx * ny + y * nx + x]!;
-  const inside = (x: number, y: number, z: number): boolean => F(x, y, z) > iso;
-
-  // Pass 1: one vertex per sign-changing cell.
-  const cellVert = new Map<number, number>();
-  const positions: number[] = [];
   const cx = nx - 1, cy = ny - 1;
-  const cellId = (x: number, y: number, z: number): number => x + y * cx + z * cx * cy;
+  const sxy = nx * ny;
+  const positions: number[] = [];
+  const quads: number[] = []; // a, b, c, d, then the outward axis (±1..±3)
+  // vertex id per cell, for the current and previous z slice of cells
+  const slice = cx * cy;
+  let prev = new Int32Array(Math.max(0, slice)).fill(-1);
+  let cur = new Int32Array(Math.max(0, slice)).fill(-1);
+  const g = new Float64Array(8);
+
   for (let z = 0; z < nz - 1; z++) {
+    cur.fill(-1);
     for (let y = 0; y < ny - 1; y++) {
       for (let x = 0; x < nx - 1; x++) {
+        const o = z * sxy + y * nx + x;
         let mask = 0;
         for (let c = 0; c < 8; c++) {
-          if (inside(x + (c & 1), y + ((c >> 1) & 1), z + ((c >> 2) & 1))) mask |= 1 << c;
+          const v = field[o + (c & 1) + ((c >> 1) & 1) * nx + (c >> 2) * sxy]! - iso;
+          g[c] = v;
+          if (v > 0) mask |= 1 << c;
         }
         if (mask === 0 || mask === 0xff) continue;
-        // mean of linearly-interpolated zero crossings on the 12 edges
-        const E: [number, number, number, number, number, number][] = [
-          [0, 0, 0, 1, 0, 0], [0, 1, 0, 1, 1, 0], [0, 0, 1, 1, 0, 1], [0, 1, 1, 1, 1, 1],
-          [0, 0, 0, 0, 1, 0], [1, 0, 0, 1, 1, 0], [0, 0, 1, 0, 1, 1], [1, 0, 1, 1, 1, 1],
-          [0, 0, 0, 0, 0, 1], [1, 0, 0, 1, 0, 1], [0, 1, 0, 0, 1, 1], [1, 1, 0, 1, 1, 1],
-        ];
-        let px = 0, py = 0, pz = 0, cnt = 0;
-        for (const [ax, ay, az, bx, by, bz] of E) {
-          const va = F(x + ax, y + ay, z + az) - iso;
-          const vb = F(x + bx, y + by, z + bz) - iso;
-          if ((va < 0) === (vb < 0)) continue;
-          const t = va / (va - vb);
-          px += x + ax + t * (bx - ax);
-          py += y + ay + t * (by - ay);
-          pz += z + az + t * (bz - az);
-          cnt++;
+        // start: mean of the linearly interpolated crossings
+        let u = 0, v = 0, w = 0, n = 0;
+        for (const [a, b] of EDGES) {
+          const ga = g[a]!, gb = g[b]!;
+          if ((ga > 0) === (gb > 0)) continue;
+          const t = ga / (ga - gb);
+          u += (a & 1) + t * ((b & 1) - (a & 1));
+          v += ((a >> 1) & 1) + t * (((b >> 1) & 1) - ((a >> 1) & 1));
+          w += (a >> 2) + t * ((b >> 2) - (a >> 2));
+          n++;
         }
-        if (cnt === 0) continue;
-        cellVert.set(cellId(x, y, z), positions.length / 3);
-        positions.push(px / cnt, py / cnt, pz / cnt);
+        u /= n; v /= n; w /= n;
+        // onto the trilinear surface: p -= f ∇f / |∇f|², clamped to the cell
+        for (let k = 0; k < PROJECT_STEPS; k++) {
+          const u0 = 1 - u, v0 = 1 - v, w0 = 1 - w;
+          const f = g[0]! * u0 * v0 * w0 + g[1]! * u * v0 * w0 + g[2]! * u0 * v * w0 + g[3]! * u * v * w0
+            + g[4]! * u0 * v0 * w + g[5]! * u * v0 * w + g[6]! * u0 * v * w + g[7]! * u * v * w;
+          const fu = (g[1]! - g[0]!) * v0 * w0 + (g[3]! - g[2]!) * v * w0 + (g[5]! - g[4]!) * v0 * w + (g[7]! - g[6]!) * v * w;
+          const fv = (g[2]! - g[0]!) * u0 * w0 + (g[3]! - g[1]!) * u * w0 + (g[6]! - g[4]!) * u0 * w + (g[7]! - g[5]!) * u * w;
+          const fw = (g[4]! - g[0]!) * u0 * v0 + (g[5]! - g[1]!) * u * v0 + (g[6]! - g[2]!) * u0 * v + (g[7]! - g[3]!) * u * v;
+          const gg = fu * fu + fv * fv + fw * fw;
+          if (gg < 1e-24) break;
+          const s = f / gg;
+          u = Math.min(1, Math.max(0, u - s * fu));
+          v = Math.min(1, Math.max(0, v - s * fv));
+          w = Math.min(1, Math.max(0, w - s * fw));
+        }
+        const id = positions.length / 3;
+        cur[y * cx + x] = id;
+        positions.push(x + u + 0.5, y + v + 0.5, z + w + 0.5);
+
+        // Quads for the three grid edges leaving this cell's low corner:
+        // their other three cells have lower y or z, so they are placed.
+        const inside0 = (mask & 1) !== 0;
+        // x edge: cells (y-1,z-1) (y,z-1) (y,z) (y-1,z)
+        if (y > 0 && z > 0 && inside0 !== ((mask & 2) !== 0)) {
+          const a = prev[(y - 1) * cx + x]!, b = prev[y * cx + x]!, d = cur[(y - 1) * cx + x]!;
+          if (a >= 0 && b >= 0 && d >= 0) quads.push(a, b, id, d, inside0 ? 1 : -1);
+        }
+        // y edge: cells (x-1,z-1) (x-1,z) (x,z) (x,z-1)
+        if (x > 0 && z > 0 && inside0 !== ((mask & 4) !== 0)) {
+          const a = prev[y * cx + x - 1]!, b = cur[y * cx + x - 1]!, d = prev[y * cx + x]!;
+          if (a >= 0 && b >= 0 && d >= 0) quads.push(a, b, id, d, inside0 ? 2 : -2);
+        }
+        // z edge: cells (x-1,y-1) (x,y-1) (x,y) (x-1,y)
+        if (x > 0 && y > 0 && inside0 !== ((mask & 16) !== 0)) {
+          const a = cur[(y - 1) * cx + x - 1]!, b = cur[(y - 1) * cx + x]!, d = cur[y * cx + x - 1]!;
+          if (a >= 0 && b >= 0 && d >= 0) quads.push(a, b, id, d, inside0 ? 3 : -3);
+        }
       }
     }
+    const t = prev; prev = cur; cur = t;
   }
 
-  // Pass 2: quads around sign-changing grid edges.
-  const quads: number[][] = [];
-  const edgeDirs: [number, number, number][] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-  for (let z = 0; z < nz; z++) {
-    for (let y = 0; y < ny; y++) {
-      for (let x = 0; x < nx; x++) {
-        for (const [dx, dy, dz] of edgeDirs) {
-          const x2 = x + dx, y2 = y + dy, z2 = z + dz;
-          if (x2 >= nx || y2 >= ny || z2 >= nz) continue;
-          const a = inside(x, y, z), b = inside(x2, y2, z2);
-          if (a === b) continue;
-          // 4 cells sharing this edge (cycle), vertex ids
-          let cells: [number, number, number][];
-          if (dx === 1) cells = [[x, y - 1, z - 1], [x, y, z - 1], [x, y, z], [x, y - 1, z]];
-          else if (dy === 1) cells = [[x - 1, y, z - 1], [x - 1, y, z], [x, y, z], [x, y, z - 1]];
-          else cells = [[x - 1, y - 1, z], [x, y - 1, z], [x, y, z], [x - 1, y, z]];
-          const vs = cells.map(([qx, qy, qz]) =>
-            qx < 0 || qy < 0 || qz < 0 || qx >= nx - 1 || qy >= ny - 1 || qz >= nz - 1
-              ? -1 : (cellVert.get(cellId(qx, qy, qz)) ?? -1),
-          );
-          if (vs.some((v) => v < 0)) continue;
-          // outward hint: from inside endpoint toward outside endpoint
-          const hint: [number, number, number] = a
-            ? [dx, dy, dz] : [-dx, -dy, -dz];
-          quads.push([vs[0]!, vs[1]!, vs[2]!, vs[3]!, hint[0], hint[1], hint[2]]);
-        }
-      }
+  // The field at a mesh position (voxel-centre coordinates), trilinear.
+  const sample = (px: number, py: number, pz: number): number => {
+    const x = Math.min(nx - 1, Math.max(0, px - 0.5));
+    const y = Math.min(ny - 1, Math.max(0, py - 0.5));
+    const z = Math.min(nz - 1, Math.max(0, pz - 0.5));
+    const x0 = Math.min(nx - 2, Math.floor(x)), y0 = Math.min(ny - 2, Math.floor(y)), z0 = Math.min(nz - 2, Math.floor(z));
+    const u = x - x0, v = y - y0, w = z - z0;
+    const o = z0 * sxy + y0 * nx + x0;
+    const f = (dx: number, dy: number, dz: number): number => field[o + dx + dy * nx + dz * sxy]!;
+    return (1 - w) * ((1 - v) * ((1 - u) * f(0, 0, 0) + u * f(1, 0, 0)) + v * ((1 - u) * f(0, 1, 0) + u * f(1, 1, 0)))
+      + w * ((1 - v) * ((1 - u) * f(0, 0, 1) + u * f(1, 0, 1)) + v * ((1 - u) * f(0, 1, 1) + u * f(1, 1, 1)));
+  };
+
+  // Wind each quad outward (from the inside sample toward the outside one),
+  // split it along the diagonal whose midpoint lies nearer the surface (the
+  // other one sags under a curve), and accumulate area-weighted normals.
+  const P = positions;
+  const offIso = (i: number, j: number): number => Math.abs(sample(
+    (P[i * 3]! + P[j * 3]!) / 2, (P[i * 3 + 1]! + P[j * 3 + 1]!) / 2, (P[i * 3 + 2]! + P[j * 3 + 2]!) / 2,
+  ) - iso);
+  const indices = new Uint32Array((quads.length / 5) * 6);
+  const normals = new Float64Array(P.length);
+  let k = 0;
+  for (let q = 0; q < quads.length; q += 5) {
+    const a = quads[q]!, b = quads[q + 1]!, c = quads[q + 2]!, d = quads[q + 3]!, axis = quads[q + 4]!;
+    const ux = P[b * 3]! - P[a * 3]!, uy = P[b * 3 + 1]! - P[a * 3 + 1]!, uz = P[b * 3 + 2]! - P[a * 3 + 2]!;
+    const vx = P[c * 3]! - P[a * 3]!, vy = P[c * 3 + 1]! - P[a * 3 + 1]!, vz = P[c * 3 + 2]! - P[a * 3 + 2]!;
+    let nx0 = uy * vz - uz * vy, ny0 = uz * vx - ux * vz, nz0 = ux * vy - uy * vx;
+    const out = Math.abs(axis) === 1 ? nx0 : Math.abs(axis) === 2 ? ny0 : nz0;
+    const flip = out * Math.sign(axis) < 0;
+    const [i0, i1, i2, i3] = flip ? [a, d, c, b] : [a, b, c, d];
+    if (offIso(i1, i3) < offIso(i0, i2)) {
+      indices[k++] = i1; indices[k++] = i2; indices[k++] = i3;
+      indices[k++] = i1; indices[k++] = i3; indices[k++] = i0;
+    } else {
+      indices[k++] = i0; indices[k++] = i1; indices[k++] = i2;
+      indices[k++] = i0; indices[k++] = i2; indices[k++] = i3;
     }
-  }
-
-  const sub = (a: number[], b: number[]): number[] => [a[0]! - b[0]!, a[1]! - b[1]!, a[2]! - b[2]!];
-  const cross = (a: number[], b: number[]): number[] => [
-    a[1]! * b[2]! - a[2]! * b[1]!, a[2]! * b[0]! - a[0]! * b[2]!, a[0]! * b[1]! - a[1]! * b[0]!,
-  ];
-  const P = (i: number): number[] => [positions[i * 3]!, positions[i * 3 + 1]!, positions[i * 3 + 2]!];
-  const indices: number[] = [];
-  const normals = new Float64Array(positions.length);
-  for (const [a, b, c, d, hx, hy, hz] of quads) {
-    const n = cross(sub(P(b!), P(a!)), sub(P(c!), P(a!)));
-    const dot = n[0]! * hx! + n[1]! * hy! + n[2]! * hz!;
-    const [i0, i1, i2, i3] = dot < 0 ? [a, d, c, b] : [a, b, c, d];
-    indices.push(i0!, i1!, i2!, i0!, i2!, i3!);
-    const area = Math.hypot(n[0]!, n[1]!, n[2]!) / 2;
-    const un = [n[0]! / (area * 2 || 1), n[1]! / (area * 2 || 1), n[2]! / (area * 2 || 1)];
-    const s = dot < 0 ? -1 : 1;
-    for (const v of [i0!, i1!, i2!, i3!]) {
-      normals[v * 3]! += s * un[0]! * area;
-      normals[v * 3 + 1]! += s * un[1]! * area;
-      normals[v * 3 + 2]! += s * un[2]! * area;
+    if (flip) { nx0 = -nx0; ny0 = -ny0; nz0 = -nz0; }
+    // |n| is twice the triangle's area: summing n itself area-weights
+    for (const vi of [i0, i1, i2, i3]) {
+      normals[vi * 3] += nx0; normals[vi * 3 + 1] += ny0; normals[vi * 3 + 2] += nz0;
     }
   }
   const nn = new Float32Array(normals.length);
@@ -106,9 +158,5 @@ export function surfaceNets(
     const l = Math.hypot(normals[i]!, normals[i + 1]!, normals[i + 2]!) || 1;
     nn[i] = normals[i]! / l; nn[i + 1] = normals[i + 1]! / l; nn[i + 2] = normals[i + 2]! / l;
   }
-  return {
-    positions: Float32Array.from(positions),
-    normals: nn,
-    indices: Uint32Array.from(indices),
-  };
+  return { positions: Float32Array.from(P), normals: nn, indices };
 }

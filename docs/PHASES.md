@@ -946,12 +946,32 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   and on 5 mm slices it is worse than blocky because of it. Surface nets
   also reads ~2% low in volume (vertices average the crossings and cut
   convex corners). Both go into F2.
-- OPEN — **F2. Sub-voxel surfaces by default.** Image-source extraction at
-  the threshold on the intensity field (interpolated crossings), `smooth`
-  the default method, blocky kept as an option. Includes F1's findings:
-  surface-net vertices on the voxel-centre convention (the half-voxel
-  shift), and vertex placement that does not shrink convex shapes. Accept:
-  sphere at 1 mm has mean error < 0.1 mm and volume within 1%.
+- DONE — **F2. Sub-voxel surfaces by default.** `render-cpu/surface-nets.ts`
+  rewritten: vertices on the voxel-centre convention (sample i at i + 0.5,
+  where the panes and cuberille put it), each projected along the gradient
+  onto its cell's trilinear surface instead of left at the mean of the edge
+  crossings, and each quad split along the diagonal that stays nearer the
+  surface. Smooth is now the default method (blocky stays an option). The
+  image and the mask each keep their own threshold: one shared value
+  carried a mask's 0 onto a CT (a skin surface) and a CT's cut onto a
+  0/1 mask (nothing). Measured (F1 phantoms, before → after):
+
+  | smooth, image | mean error | volume | normals |
+  |---|---|---|---|
+  | sphere, 1 mm | 0.43 → **0.026 mm** | −1.87 → **−0.92%** | 5.4 → 3.3° |
+  | torus, 1 mm | 0.44 → 0.025 mm | −2.26 → −1.84% | 7.8 → 3.8° |
+  | ellipsoid, 0.8×0.8×2.5 mm | 0.89 → 0.18 mm | −1.82 → −1.47% | 13.9 → 10.8° |
+  | sphere, 5 mm slices | 1.44 → 0.45 mm | −8.6 → −8.1% | 19 → 15° |
+
+  What is left of the volume deficit is measured too: vertices sit 0.018 mm
+  inside on average (linear crossings across an edge half a voxel wide) and
+  triangles sag 0.015 mm between them. Masks improve (sphere 0.44 →
+  0.15 mm) but stay terraced at 16° (F3), thick slices stay terraced (F5).
+  Faster on the real samples with the same triangles, from two slices of
+  typed-array bookkeeping instead of a map over every cell: covid mask
+  512×512×58 1.9 → 0.70 s, BraTS mask 1.7 → 0.56 s, skull CT 0.69 → 0.12 s.
+  The `skull-ct-smooth` surface golden was re-frozen after comparing old
+  and new renders side by side.
 - OPEN — **F3. Anti-aliased masks.** Masks become a signed distance field
   (or a narrow smoothing) before extraction at the midpoint. Accept: a
   binary sphere mask's mesh is within 0.25 voxel of the true surface, with

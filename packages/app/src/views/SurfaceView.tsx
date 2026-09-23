@@ -100,6 +100,15 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     return mn > mx ? [0, 1] : [mn, mx];
   };
 
+  /** Mask ↔ image: each keeps its own cut, and the slider its own range. */
+  const switchSource = (v: Source): void => {
+    const t = session.thresholds;
+    if (!t) { setUi({ src: v }); return; }
+    t[getUi().src].value = getUi().threshold;
+    session.autoThreshold = t[v].hint;
+    setUi({ src: v, threshold: t[v].value });
+  };
+
   const currentTF = (): TF => {
     if (tf) return tf;
     const [mn, mx] = fieldRange();
@@ -551,7 +560,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
             <Seg<Source>
               id="srcseg"
               dataKey="s"
-              ariaLabel="Source" value={ui.src} onChange={(v) => { setUi({ src: v }); session.meshPinned = null; bump(); }}
+              ariaLabel="Source" value={ui.src} onChange={(v) => { switchSource(v); session.meshPinned = null; bump(); }}
             options={[{ value: 'mask', label: 'Mask' }, { value: 'image', label: 'Image' }]}
           />
         </div>
