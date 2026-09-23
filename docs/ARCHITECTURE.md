@@ -93,7 +93,10 @@ frame the same physical box.
   view is still. Empty 8³ bricks are skipped without moving a sample
   (`brickRanges`), and the app splits a frame's rows across a worker pool
   (`lib/extractor.ts`, `rows` + `mergeRows`), each worker holding the
-  field under a key so passes do not copy it again.
+  field under a key so passes do not copy it again. Cinematic lighting
+  (`vr-light.ts`): soft shadows and ambient light propagated through a
+  coarse extinction grid, one jittered light and two sky directions per
+  pass, accumulated by the same refinement.
 - NOT built: WASM marching-cubes (CPU cuberille + surface nets cover it).
 - Proteins: project spheres/sticks on CPU, paint pLDDT / chain (proven to 5.4k atoms; `.pdb` + `.cif` open).
 - Cells: tile pyramid + channel composite on CPU.

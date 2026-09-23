@@ -30,6 +30,9 @@ const ORBIT_SETTLE_MS = 160;
  *  a 2×2 sub-pixel grid; opacity is defined at the full-quality step. */
 const VR_PASSES = 4;
 const VR_ALPHA_STEP = 1.5;
+/** Cinematic lighting (F10) keeps accumulating longer: 4×4 sub-pixel grid,
+ *  32 sky directions. */
+const VR_CINEMATIC_PASSES = 16;
 
 /** 3D viewport of the grid: surface/volume render + orbit tools. Bare mode
  *  skips the title (the file tabs head the combined viewer instead). */
@@ -69,6 +72,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
   const [tf, setTf] = useState<TF | null>(null);
   const [density, setDensity] = useState(1);
   const [quality, setQuality] = useState<'draft' | 'full'>('draft');
+  const [cinematic, setCinematic] = useState(false);
   const [shade, setShade] = useState(true);
   // F7 occlusion + outlines on the surface; a ref so rAF orbit frames see
   // the latest value
@@ -163,17 +167,19 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       // pass 1 shows at once; the rest refine it until anything changes
       const sum = new Float32Array(rw * rh * 4);
       let ms = 0;
-      for (let k = 0; k < VR_PASSES; k++) {
+      const of = cinematic ? VR_CINEMATIC_PASSES : VR_PASSES;
+      for (let k = 0; k < of; k++) {
         const r = await extractor.renderVr(field, img.dims, {
           w: rw, h: rh,
           angleY: angles.current.orbit, tiltX: angles.current.tilt,
           zoom: session.zoom3d, tf: currentTF(),
-          step: full ? 1.5 : 3, alphaStep: VR_ALPHA_STEP, jitter: { pass: k, of: VR_PASSES },
+          step: full ? 1.5 : 3, alphaStep: VR_ALPHA_STEP, jitter: { pass: k, of }, cinematic,
           shade, density, bounds,
           // in mm, like the surface: a 5 mm-slice CT is not a fifth of its height
           spacing: img.spacing ?? [1, 1, 1],
         });
-        if (mine !== vrToken.current || pmine !== session.paintToken || getUi().series !== s0) return;
+        // anything else drawn since (an orbit, a control, the surface) ends it
+        if (mine !== vrToken.current || pmine !== session.paintToken || getUi().series !== s0 || getUi().render3d !== 'volume') return;
         ms += r.ms;
         const frame = new ImageData(new Uint8ClampedArray(addPass(sum, r.rgba, k + 1)), r.w, r.h);
         const ctx = cv.getContext('2d')!;
@@ -188,7 +194,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
           ctx.drawImage(tmp, 0, 0, cv.width, cv.height);
         }
         setEngineFromExtractor();
-        const passes = k > 0 ? ` · ${k + 1}/${VR_PASSES} passes` : '';
+        const passes = `${k > 0 ? ` · ${k + 1}/${of} passes` : ''}${cinematic ? ' · cinematic' : ''}`;
         const ro = document.getElementById('ro-3d');
         if (ro) ro.textContent = `VR ${r.w}×${r.h} · ${(ms / 1000).toFixed(1)}s${passes}`;
         const zchip = document.getElementById('zoom3d');
@@ -345,7 +351,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     const u = getUi();
     const sig = [
       u.series, u.src, u.method, u.smooth3d, u.threshold, u.render3d, tfPreset, density,
-      quality, shade, tf ? JSON.stringify(tf) : '',
+      quality, shade, cinematic, tf ? JSON.stringify(tf) : '',
       session.meshPinned ? 'mp' : '', session.fibersPinned ? 'fp' : '',
     ].join('|');
     if (sig !== sigRef.current) {
@@ -595,6 +601,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
               />
             </div>
             <Switch checked={shade} label="Shade" onChange={(v) => { setShade(v); bump(); }} />
+            <Switch checked={cinematic} label="Cinematic" onChange={(v) => { setCinematic(v); bump(); }} />
           </>
         )}
         <div className="sep" />
