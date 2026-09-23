@@ -14,8 +14,16 @@
 //   tried: it leaves a diagonal hatch without temporal blur), and moves it
 //   to its cell of a g×g grid inside the pixel. The mean of the passes
 //   (`addPass`) is a finer step with anti-aliased edges.
-import { sampleTrilinear, type Vec3 } from './oblique.js';
-import { sampleTF, type TF } from './tf.js';
+//
+// Speed (F9), with every pixel unchanged: the TF is sorted once per frame
+// (it was sorted per sample), sampling allocates nothing, and empty space
+// is skipped by min/max bricks: a brick whose value range cannot reach the
+// opacity the compositor would keep is passed over without sampling. The
+// ray still steps through it one step at a time, so every sample it does
+// take sits where it always did. `rows` renders an interleaved share of
+// the rows, for a pool of workers.
+import type { Vec3 } from './oblique.js';
+import { maxOpacity, sampleSortedTF, sortTF, type TF } from './tf.js';
 
 export interface VrVolume {
   dims: [number, number, number];
@@ -48,6 +56,74 @@ export interface VrOpts {
   alphaStep?: number;
   /** pass `pass` of `of` (a square: 1, 4, 9 …) of a progressive refinement */
   jitter?: { pass: number; of: number };
+  /** skip empty bricks (default on; off exists to prove it changes nothing) */
+  skipEmpty?: boolean;
+  /** render rows from, from + every, …; the rest stay zero */
+  rows?: { from: number; every: number };
+}
+
+/**
+ * One frame from the shares of `rows`-split renders: row y comes from
+ * part y mod parts.length. Throws `vr-merge` on parts of the wrong size.
+ */
+export function mergeRows(parts: Uint8ClampedArray[], width: number, height: number): Uint8ClampedArray {
+  const n = parts.length, rowBytes = width * 4;
+  if (n === 0 || parts.some((p) => p.length !== rowBytes * height)) throw new RangeError(`vr-merge: ${n} parts for ${width}×${height}`);
+  if (n === 1) return parts[0]!;
+  const out = new Uint8ClampedArray(rowBytes * height);
+  for (let y = 0; y < height; y++) out.set(parts[y % n]!.subarray(y * rowBytes, (y + 1) * rowBytes), y * rowBytes);
+  return out;
+}
+
+/** Brick edge for empty-space skipping, as a shift: 8 voxels. */
+const BRICK_SHIFT = 3;
+const BRICK = 1 << BRICK_SHIFT;
+/** Samples at or below this opacity are not composited. */
+const MIN_ALPHA = 0.003;
+
+/** Value range of each brick, over the voxels a trilinear sample inside it
+ *  reads: the brick plus a one-voxel apron on its far faces. */
+export interface BrickRanges {
+  dims: [number, number, number];
+  counts: [number, number, number];
+  lo: Float64Array;
+  hi: Float64Array;
+}
+
+const brickCache = new WeakMap<object, BrickRanges>();
+
+/** Brick ranges of a field, cached per array (fields are not edited in
+ *  place; an edited mask arrives as a new array). NaN anywhere in a brick
+ *  makes its range NaN, which no TF test rules out. */
+export function brickRanges(field: ArrayLike<number>, dims: [number, number, number]): BrickRanges {
+  const hit = brickCache.get(field as object);
+  if (hit && hit.dims[0] === dims[0] && hit.dims[1] === dims[1] && hit.dims[2] === dims[2]) return hit;
+  const [nx, ny, nz] = dims;
+  const bx = Math.ceil(nx / BRICK), by = Math.ceil(ny / BRICK), bz = Math.ceil(nz / BRICK);
+  const lo = new Float64Array(bx * by * bz), hi = new Float64Array(bx * by * bz);
+  for (let k = 0; k < bz; k++) {
+    for (let j = 0; j < by; j++) {
+      for (let i = 0; i < bx; i++) {
+        let mn = Infinity, mx = -Infinity, nan = false;
+        for (let z = k * BRICK; z <= Math.min(nz - 1, (k + 1) * BRICK); z++) {
+          for (let y = j * BRICK; y <= Math.min(ny - 1, (j + 1) * BRICK); y++) {
+            const row = (z * ny + y) * nx;
+            for (let x = i * BRICK; x <= Math.min(nx - 1, (i + 1) * BRICK); x++) {
+              const v = field[row + x]!;
+              if (v < mn) mn = v;
+              if (v > mx) mx = v;
+              if (v !== v) nan = true;
+            }
+          }
+        }
+        const b = (k * by + j) * bx + i;
+        lo[b] = nan ? NaN : mn; hi[b] = nan ? NaN : mx;
+      }
+    }
+  }
+  const r: BrickRanges = { dims: [nx, ny, nz], counts: [bx, by, bz], lo, hi };
+  brickCache.set(field as object, r);
+  return r;
 }
 
 /** Per-pixel scramble in [0, 1): the murmur3 finalizer over the pixel. */
@@ -149,16 +225,49 @@ export function renderVolume(vol: VrVolume, opts: VrOpts): { rgba: Uint8ClampedA
     }
     : null;
 
-  const grad = (x: number, y: number, z: number): Vec3 => {
-    // central differences in voxel space, per mm (the gradient scales by the
-    // inverse spacing, or shading tilts on anisotropic grids)
-    const gx = (sampleTrilinear(field, dims, [x + 1, y, z]) ?? 0) - (sampleTrilinear(field, dims, [x - 1, y, z]) ?? 0);
-    const gy = (sampleTrilinear(field, dims, [x, y + 1, z]) ?? 0) - (sampleTrilinear(field, dims, [x, y - 1, z]) ?? 0);
-    const gz = (sampleTrilinear(field, dims, [x, y, z + 1]) ?? 0) - (sampleTrilinear(field, dims, [x, y, z - 1]) ?? 0);
-    return [gx * toVox[0], gy * toVox[1], gz * toVox[2]];
+  // the frame's TF, sorted once, and which bricks it leaves empty
+  const stops = sortTF(opts.tf);
+  const opacityOf = (a0: number): number => {
+    let al = Math.min(1, a0 * density);
+    if (alphaK !== 1) al = 1 - (1 - al) ** alphaK;
+    return al;
   };
+  let empty: Uint8Array | null = null;
+  let bnx = 0, bnxy = 0;
+  if (opts.skipEmpty ?? true) {
+    const br = brickRanges(field, dims);
+    bnx = br.counts[0]; bnxy = br.counts[0] * br.counts[1];
+    empty = new Uint8Array(br.lo.length);
+    // a hair under the cut, so rounding at a stop never skips a kept sample
+    for (let i = 0; i < empty.length; i++) empty[i] = opacityOf(maxOpacity(stops, br.lo[i]!, br.hi[i]!)) <= MIN_ALPHA - 1e-9 ? 1 : 0;
+  }
+  const nxy = nx * ny, nx1 = nx - 1, ny1 = ny - 1, nz1 = nz - 1;
+  /** Trilinear sample of a point inside the grid (sampleTrilinear's
+   *  arithmetic, without the allocation). */
+  const tri = (x: number, y: number, z: number, x0: number, y0: number, z0: number): number => {
+    const x1 = Math.min(nx1, x0 + 1), y1 = Math.min(ny1, y0 + 1), z1 = Math.min(nz1, z0 + 1);
+    const fx = x - x0, fy = y - y0, fz = z - z0;
+    const r00 = z0 * nxy + y0 * nx, r10 = z0 * nxy + y1 * nx, r01 = z1 * nxy + y0 * nx, r11 = z1 * nxy + y1 * nx;
+    const c00 = field[r00 + x0]! * (1 - fx) + field[r00 + x1]! * fx;
+    const c10 = field[r10 + x0]! * (1 - fx) + field[r10 + x1]! * fx;
+    const c01 = field[r01 + x0]! * (1 - fx) + field[r01 + x1]! * fx;
+    const c11 = field[r11 + x0]! * (1 - fx) + field[r11 + x1]! * fx;
+    const c0 = c00 * (1 - fy) + c10 * fy;
+    const c1 = c01 * (1 - fy) + c11 * fy;
+    return c0 * (1 - fz) + c1 * fz;
+  };
+  /** Outside the grid reads 0, as the gradient always has. */
+  const tri0 = (x: number, y: number, z: number): number =>
+    x < 0 || y < 0 || z < 0 || x > nx1 || y > ny1 || z > nz1 ? 0 : tri(x, y, z, Math.floor(x), Math.floor(y), Math.floor(z));
+  // view rotation for gradients
+  const cyv = Math.cos(opts.angleY), syv = Math.sin(opts.angleY);
+  const cxv = Math.cos(opts.tiltX), sxv = Math.sin(opts.tiltX);
 
-  for (let py = 0; py < H; py++) {
+  const rows = opts.rows ?? { from: 0, every: 1 };
+  if (!(Number.isInteger(rows.from) && Number.isInteger(rows.every) && rows.every >= 1 && rows.from >= 0 && rows.from < rows.every)) {
+    throw new RangeError(`vr-rows: from ${rows.from} every ${rows.every}`);
+  }
+  for (let py = rows.from; py < H; py += rows.every) {
     for (let px = 0; px < W; px++) {
       const vx = (px + subX - W / 2) / scale;
       const vy = -(py + subY - H / 2) / scale;
@@ -190,24 +299,25 @@ export function renderVolume(vol: VrVolume, opts: VrOpts): { rgba: Uint8ClampedA
         const x = (org[0] + marchDir[0] * t) * toVox[0];
         const y = (org[1] + marchDir[1] * t) * toVox[1];
         const z = (org[2] + marchDir[2] * t) * toVox[2];
-        const v = sampleTrilinear(field, dims, [x, y, z]);
-        if (v == null) continue;
-        const s = sampleTF(opts.tf, v);
-        let alpha = Math.min(1, s.a * density);
-        if (alphaK !== 1) alpha = 1 - (1 - alpha) ** alphaK;
-        if (alpha <= 0.003) continue;
+        if (x < 0 || y < 0 || z < 0 || x > nx1 || y > ny1 || z > nz1) continue;
+        const x0 = Math.floor(x), y0 = Math.floor(y), z0 = Math.floor(z);
+        if (empty && empty[(z0 >> BRICK_SHIFT) * bnxy + (y0 >> BRICK_SHIFT) * bnx + (x0 >> BRICK_SHIFT)]) continue;
+        const s = sampleSortedTF(stops, tri(x, y, z, x0, y0, z0));
+        const alpha = opacityOf(s.a);
+        if (alpha <= MIN_ALPHA) continue;
         let sh = 1;
         if (shade) {
-          const gr = grad(x, y, z);
-          const l = Math.hypot(gr[0], gr[1], gr[2]);
+          // central differences in voxel space, per mm (the gradient scales
+          // by the inverse spacing, or shading tilts on anisotropic grids)
+          const gx = (tri0(x + 1, y, z) - tri0(x - 1, y, z)) * toVox[0];
+          const gy = (tri0(x, y + 1, z) - tri0(x, y - 1, z)) * toVox[1];
+          const gz = (tri0(x, y, z + 1) - tri0(x, y, z - 1)) * toVox[2];
+          const l = Math.hypot(gx, gy, gz);
           if (l > 1e-9) {
-            // gradient to view space (rotation only): reuse forward rotation
-            const cy = Math.cos(opts.angleY), sy = Math.sin(opts.angleY);
-            const cxx = Math.cos(opts.tiltX), sxx = Math.sin(opts.tiltX);
-            const x1 = gr[0] * cy + gr[2] * sy;
-            const z1 = -gr[0] * sy + gr[2] * cy;
-            const gv: Vec3 = [x1, gr[1] * cxx - z1 * sxx, gr[1] * sxx + z1 * cxx];
-            const d = (gv[0] * light[0] + gv[1] * light[1] + gv[2] * light[2]) / l;
+            // gradient to view space (rotation only)
+            const x1 = gx * cyv + gz * syv;
+            const z1 = -gx * syv + gz * cyv;
+            const d = (x1 * light[0] + (gy * cxv - z1 * sxv) * light[1] + (gy * sxv + z1 * cxv) * light[2]) / l;
             sh = 0.35 + 0.65 * Math.max(0, -d);
           }
         }

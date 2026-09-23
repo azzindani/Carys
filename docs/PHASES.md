@@ -1129,9 +1129,31 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   defined at the full step, 1.5, so full renders keep their look and the
   draft (step 3) now matches it instead of rendering at about half the
   opacity. BraTS FLAIR draft in the app: 2.8 s first pass, 7.4 s for 4.
-- OPEN — **F9. Volume render speed.** Empty-space skipping (min/max bricks)
+- DONE — **F9. Volume render speed.** Empty-space skipping (min/max bricks)
   and the image split across workers. Accept: identical pixels to the
   unskipped render; full quality on the chest CT at least 2× faster.
+  The largest cost was not the empty space: `sampleTF` copied and sorted
+  the stops on every sample, and every trilinear read allocated. The
+  raycaster now sorts once per frame (`sampleSortedTF`, the same
+  arithmetic) and samples in place. Bricks of 8³ voxels (plus the apron a
+  sample reads) keep a value range; a brick whose range cannot reach the
+  0.003 opacity the compositor keeps (`maxOpacity`, a hair under the cut)
+  is passed over, the ray still stepping through it by the same additions,
+  so no sample moves. The app splits a frame's rows, interleaved, across
+  one worker per spare core (at most 4, and no more than 768 MB of held
+  copies); each worker keeps the field under a key, so refinement passes
+  copy it once. Chest CT 512×512×58, full quality (560², step 1.5,
+  shaded), one thread, best of 3, pixels hash-identical to the old
+  renderer: bone 23.5 → 4.3 s (5.5×), soft 15.9 → 1.9 s (8.4×), lung
+  9.2 → 2.9 s (3.2×; no empty bricks there, and skipping costs nothing).
+  Skipping alone is worth 5.3 → 4.3 s (bone) and 3.1 → 1.9 s (soft). In
+  the app, first full pass: 13.3 s on one worker → 3.0 s on three
+  (4.4×, load average 10 on 4 cores); the two screenshots are
+  byte-identical. `vr-speed.test.ts`: skip on/off identical over 4 TFs ×
+  4 views (steps, jitter, anisotropic spacing, bounds) and random fields
+  with NaN; three row shares merge to the whole frame. Fixed on the way:
+  a failed volume render in the worker replied without a kind, was read
+  as a mesh reply, and never settled.
 - OPEN — **F10. Cinematic lighting, progressive.** Soft shadows and ambient
   light accumulating while idle, cancelled by any interaction.
 - OPEN — **F11. Level of detail.** Quadric-error decimation into an LOD

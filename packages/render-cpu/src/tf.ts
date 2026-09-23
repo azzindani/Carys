@@ -20,7 +20,12 @@ function clamp01(x: number): number {
 
 /** Sample color+opacity at a data value (clamped ends, linear segments). */
 export function sampleTF(tf: TF, v: number): { r: number; g: number; b: number; a: number } {
-  const stops = sortTF(tf);
+  return sampleSortedTF(sortTF(tf), v);
+}
+
+/** `sampleTF` over stops already sorted by value (`sortTF`): the per-sample
+ *  path of a renderer, which sorts once per frame. */
+export function sampleSortedTF(stops: TF, v: number): { r: number; g: number; b: number; a: number } {
   if (stops.length === 0) return { r: 0, g: 0, b: 0, a: 0 };
   if (v <= stops[0]!.value) {
     const s = stops[0]!;
@@ -41,6 +46,16 @@ export function sampleTF(tf: TF, v: number): { r: number; g: number; b: number; 
     }
   }
   return { r: 0, g: 0, b: 0, a: 0 };
+}
+
+/** Largest opacity sorted stops take anywhere in [lo, hi]: the function is
+ *  piecewise linear, so the ends and the stops between them. NaN bounds
+ *  answer 1 (nothing can be ruled out). */
+export function maxOpacity(stops: TF, lo: number, hi: number): number {
+  if (!(lo <= hi)) return 1;
+  let m = Math.max(sampleSortedTF(stops, lo).a, sampleSortedTF(stops, hi).a);
+  for (const s of stops) if (s.value >= lo && s.value <= hi) m = Math.max(m, clamp01(s.opacity));
+  return m;
 }
 
 export type TFPresetName = 'bone' | 'soft' | 'lung' | 'brain' | 'xray';

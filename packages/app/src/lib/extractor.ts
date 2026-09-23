@@ -1,4 +1,4 @@
-import { extractBoundary, renderVolume, smoothMesh, smoothSurface } from '@carys/render-cpu';
+import { extractBoundary, mergeRows, renderVolume, smoothMesh, smoothSurface } from '@carys/render-cpu';
 import type { TF } from '@carys/render-cpu';
 import { toMask } from './loaders';
 import type { Mesh } from './types';
@@ -36,6 +36,14 @@ export interface VrResult {
 
 // Worker-first mesh extraction with main-thread fallback.
 // Loader fns are injected so pages don't hardcode dist paths.
+//
+// Volume renders (F9) are split across a pool, rows interleaved so the
+// dense middle of a body is shared out evenly. Each worker keeps its copy
+// of the field under a key, so a refinement's passes copy it once. The
+// pool is one worker per spare core, at most VR_MAX_WORKERS, and no more
+// than VR_MEMORY_BUDGET of held copies.
+const VR_MAX_WORKERS = 4;
+const VR_MEMORY_BUDGET = 768 * 2 ** 20;
 
 interface Pending {
   resolve: (m: Mesh) => void;
@@ -54,40 +62,72 @@ export function createExtractor() {
   let usedWorker = false;
   const pending = new Map<number, Pending>();
   const pendingVr = new Map<number, PendingVr>();
+  // the volume pool: [the shared worker, extra render workers…], the key
+  // each one holds, and a key per field array
+  const pool: Worker[] = [];
+  const holds = new Map<Worker, number>();
+  const keys = new WeakMap<Float64Array, number>();
+  let nextKey = 1;
+  let vrWorkers = 0;
+
+  const spawn = (): Worker => {
+    const w = new Worker(new URL('../workers/extract.ts', import.meta.url), { type: 'module' });
+    // Single router: mesh and volume replies share the channel.
+    w.onmessage = (e: MessageEvent) => {
+      if (e.data.kind === 'volume') {
+        const pv = pendingVr.get(e.data.id);
+        if (!pv) return;
+        pendingVr.delete(e.data.id);
+        if (e.data.ok) {
+          pv.resolve({ rgba: new Uint8ClampedArray(e.data.rgba), w: e.data.w, h: e.data.h, ms: e.data.ms });
+        } else pv.reject(new Error(e.data.error));
+        return;
+      }
+      const p = pending.get(e.data.id);
+      if (!p) return;
+      pending.delete(e.data.id);
+      if (e.data.ok) {
+        p.resolve({
+          positions: new Float32Array(e.data.positions),
+          normals: new Float32Array(e.data.normals),
+          indices: new Uint32Array(e.data.indices),
+          tris: e.data.tris,
+          sliceFactor: e.data.factor,
+        });
+      } else p.reject(new Error(e.data.error));
+    };
+    return w;
+  };
 
   const getWorker = (): Worker | null => {
     if (worker || workerDead) return worker;
     try {
-      worker = new Worker(new URL('../workers/extract.ts', import.meta.url), { type: 'module' });
-      // Single router: mesh and volume replies share the channel.
-      worker.onmessage = (e: MessageEvent) => {
-        if (e.data.kind === 'volume') {
-          const pv = pendingVr.get(e.data.id);
-          if (!pv) return;
-          pendingVr.delete(e.data.id);
-          if (e.data.ok) {
-            pv.resolve({ rgba: new Uint8ClampedArray(e.data.rgba), w: e.data.w, h: e.data.h, ms: e.data.ms });
-          } else pv.reject(new Error(e.data.error));
-          return;
-        }
-        const p = pending.get(e.data.id);
-        if (!p) return;
-        pending.delete(e.data.id);
-        if (e.data.ok) {
-          p.resolve({
-            positions: new Float32Array(e.data.positions),
-            normals: new Float32Array(e.data.normals),
-            indices: new Uint32Array(e.data.indices),
-            tris: e.data.tris,
-            sliceFactor: e.data.factor,
-          });
-        } else p.reject(new Error(e.data.error));
-      };
+      worker = spawn();
       worker.onerror = () => { workerDead = true; worker = null; };
     } catch {
       workerDead = true;
     }
     return worker;
+  };
+
+  /** Workers for a render of `bytes`: the shared one first. */
+  const poolFor = (bytes: number): Worker[] => {
+    const first = getWorker();
+    if (!first) return [];
+    if (pool.length === 0) pool.push(first);
+    const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 2;
+    const want = Math.max(1, Math.min(VR_MAX_WORKERS, cores - 1, Math.floor(VR_MEMORY_BUDGET / Math.max(1, bytes))));
+    try {
+      while (pool.length < want) {
+        const w = spawn();
+        // a render worker that fails leaves the pool; the shared one stays
+        w.onerror = () => { const i = pool.indexOf(w); if (i >= 0) pool.splice(i, 1); holds.delete(w); };
+        pool.push(w);
+      }
+    } catch {
+      // no more workers: render with those there are
+    }
+    return pool.slice(0, want);
   };
 
   /**
@@ -126,22 +166,51 @@ export function createExtractor() {
     return { ...mesh, tris: mesh.indices.length / 3, sliceFactor: s?.factor ?? 1 };
   }
 
-  async function renderVr(data: Float64Array, dims: [number, number, number], vr: VrParams): Promise<VrResult> {
-    const w = getWorker();
-    if (w) {
-      try {
-        const id = nextId++;
+  /** One worker's share of a volume render, sending the field only when
+   *  that worker does not hold it. */
+  const renderShare = async (
+    w: Worker, data: Float64Array, key: number, dims: [number, number, number], vr: VrParams,
+    rows: { from: number; every: number },
+  ): Promise<VrResult> => {
+    const send = (withField: boolean): Promise<VrResult> => {
+      const id = nextId++;
+      const p = new Promise<VrResult>((resolve, reject) => pendingVr.set(id, { resolve, reject }));
+      const msg = {
+        id, method: 'volume', key, dims, dtype: 'float64', rows,
+        w: vr.w, h: vr.h, angleY: vr.angleY, tiltX: vr.tiltX, zoom: vr.zoom,
+        tf: vr.tf, step: vr.step, shade: vr.shade, density: vr.density,
+        bounds: vr.bounds, spacing: vr.spacing, alphaStep: vr.alphaStep, jitter: vr.jitter,
+      };
+      if (withField) {
         const copy = data.slice().buffer as ArrayBuffer;
-        const p = new Promise<VrResult>((resolve, reject) => pendingVr.set(id, { resolve, reject }));
-        w.postMessage({
-          id, method: 'volume', dims, dtype: 'float64', buffer: copy,
-          w: vr.w, h: vr.h, angleY: vr.angleY, tiltX: vr.tiltX, zoom: vr.zoom,
-          tf: vr.tf, step: vr.step, shade: vr.shade, density: vr.density,
-          bounds: vr.bounds, spacing: vr.spacing, alphaStep: vr.alphaStep, jitter: vr.jitter,
-        }, [copy]);
-        const r = await p;
+        holds.set(w, key);
+        w.postMessage({ ...msg, buffer: copy }, [copy]);
+      } else {
+        w.postMessage(msg);
+      }
+      return p;
+    };
+    if (holds.get(w) === key) {
+      try {
+        return await send(false);
+      } catch (e) {
+        if (!/vr-volume-missing/.test((e as Error).message)) throw e;
+      }
+    }
+    return send(true);
+  };
+
+  async function renderVr(data: Float64Array, dims: [number, number, number], vr: VrParams): Promise<VrResult> {
+    const workers = workerDead ? [] : poolFor(data.byteLength);
+    if (workers.length > 0) {
+      try {
+        let key = keys.get(data);
+        if (key === undefined) { key = nextKey++; keys.set(data, key); }
+        const t0 = performance.now();
+        const parts = await Promise.all(workers.map((w, k) => renderShare(w, data, key!, dims, vr, { from: k, every: workers.length })));
         usedWorker = true;
-        return r;
+        vrWorkers = workers.length;
+        return { rgba: mergeRows(parts.map((p) => p.rgba), vr.w, vr.h), w: vr.w, h: vr.h, ms: Math.round(performance.now() - t0) };
       } catch {
         workerDead = true;
       }
@@ -152,10 +221,17 @@ export function createExtractor() {
       bounds: vr.bounds, spacing: vr.spacing, alphaStep: vr.alphaStep, jitter: vr.jitter,
     });
     usedWorker = false;
+    vrWorkers = 0;
     return r;
   }
 
-  return { extract, renderVr, get usedWorker() { return usedWorker; } };
+  /** Let the workers free their copies of the volume. */
+  const dropVolumes = (): void => {
+    for (const w of pool) w.postMessage({ method: 'drop' });
+    holds.clear();
+  };
+
+  return { extract, renderVr, dropVolumes, get usedWorker() { return usedWorker; }, get vrWorkers() { return vrWorkers; } };
 }
 
 export type Extractor = ReturnType<typeof createExtractor>;
