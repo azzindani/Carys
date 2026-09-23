@@ -70,8 +70,11 @@ frame the same physical box.
   voxel-centre convention, projected onto each cell's trilinear surface; a
   binary mask's relaxed inside its cells instead, `maskNets`; thick-sliced
   grids interpolated between slices first, `thick-slices.ts`) +
-  cuberille boundary faces (blocky, an option), orthographic + Lambert +
-  z-buffer rasterizer → RGBA. The image and the mask keep separate
+  cuberille boundary faces (blocky, an option), orthographic z-buffer
+  rasterizer → RGBA, lit per pixel (interpolated normals, Blinn-Phong) and
+  2× supersampled; SurfaceView orbits at 1× and repaints at 2× once the
+  view settles (`views/orbitOverlay.ts` draws tracts and the cursor on
+  both). The image and the mask keep separate
   thresholds (`session.thresholds`). Optional smoothing (`mesh-smooth.ts`):
   windowed-sinc filtering, then each closed piece restored to its volume.
 - Surface accuracy is measured, not eyeballed: analytic phantoms (sphere,

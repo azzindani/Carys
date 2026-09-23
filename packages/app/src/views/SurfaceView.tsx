@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { JSX } from 'react';
-import { cursorAxes, cursorOnCanvas, filterTracts, presetTF, projectCursor, projectFibers, renderMesh, TF_PRESETS, type TF, type TFPresetName } from '@carys/render-cpu';
-import { ACCENT } from '../lib/palette';
+import { filterTracts, presetTF, renderMesh, TF_PRESETS, type TF, type TFPresetName } from '@carys/render-cpu';
 import {
   presetRois, tractPresetById, TRACT_PRESETS,
 } from '@carys/volume-core';
@@ -11,7 +10,7 @@ import { SERIES } from '../lib/catalog';
 import type { Extractor } from '../lib/extractor';
 import { paintBus } from '../lib/paintBus';
 import { FIBER_BG } from '../lib/palette';
-import { maskBox, physicalMesh, physicalPoints, toMm } from '../lib/physical3d';
+import { maskBox, physicalMesh, toMm } from '../lib/physical3d';
 import { session } from '../lib/session';
 import { setEngineFromExtractor } from '../lib/sessionOps';
 import { setAmbientStatus, setStatus } from '../lib/status';
@@ -23,6 +22,10 @@ import { AxisGizmo } from '../ui/Icons';
 import { ViewportOverlay } from '../ui/ViewportOverlay';
 import type { Method, Render3D, Source } from '../lib/types';
 import { TfEditor } from './TfEditor';
+import { drawCursor3d, drawFibers } from './orbitOverlay';
+
+/** Quiet time after the last orbit frame before the anti-aliased repaint. */
+const ORBIT_SETTLE_MS = 160;
 
 /** 3D viewport of the grid: surface/volume render + orbit tools. Bare mode
  *  skips the title (the file tabs head the combined viewer instead). */
@@ -36,6 +39,9 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
   const angles = useRef({ orbit: 0.7, tilt: 0.3 });
   angles.current = { orbit, tilt };
   const rafQueued = useRef(false);
+  // orbit frames draw at 1× supersampling; this repaints at 2× once still
+  const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (settleRef.current) clearTimeout(settleRef.current); }, []);
   const vrToken = useRef(0);
   // Mask-bbox center for 3D framing (keyed by series+src+mask version so a
   // stale center never follows a series switch or edit).
@@ -183,7 +189,9 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     else void paint3d();
   };
 
-  const paintOrbit = (): void => {
+  /** Surface + overlays at the current orbit. `ss` 1 while the view is
+   *  moving (a quarter of the fill), 2 once it settles (anti-aliased). */
+  const paintOrbit = (ss: 1 | 2 = 2): void => {
     const cv = canvasRef.current;
     if (!cv || !session.img || (!session.mesh && !session.fibers)) return;
     // The canvas belongs to the raycaster in volume mode: a surface drawn
@@ -195,74 +203,23 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     const sp = session.img.spacing ?? [1, 1, 1];
     const box = toMm(session.img.dims, sp);
     const mc0 = maskCenter();
-    const mc = mc0 ? toMm(mc0, sp) : null;
+    const view = {
+      width: cv.width, height: cv.height, angleY: angles.current.orbit, tiltX: angles.current.tilt,
+      zoom: session.zoom3d, center: mc0 ? toMm(mc0, sp) : undefined,
+    };
     if (session.mesh) {
       const out = renderMesh(physicalMesh(session.mesh, sp), box, {
-        width: cv.width, height: cv.height,
-        angleY: angles.current.orbit, tiltX: angles.current.tilt,
-        color: SERIES[getUi().series]?.color ?? [225, 215, 200],
-        zoom: session.zoom3d, center: mc ?? undefined,
+        ...view, color: SERIES[getUi().series]?.color ?? [225, 215, 200], supersample: ss,
       });
       ctx.putImageData(new ImageData(new Uint8ClampedArray(out), cv.width, cv.height), 0, 0);
     } else {
       ctx.fillStyle = FIBER_BG;
       ctx.fillRect(0, 0, cv.width, cv.height);
     }
-    if (session.fibers) {
-      // Direction-colored polylines (tractography convention), far to near.
-      // Same rotation center as the mesh above, or fibers drift off it.
-      const lines = projectFibers(physicalPoints(session.fibers.pts, sp), session.fibers.offsetPt0, box, {
-        width: cv.width, height: cv.height,
-        angleY: angles.current.orbit, tiltX: angles.current.tilt, zoom: session.zoom3d,
-        center: mc ?? undefined,
-      }).filter((l) => l.length > 1).sort((a, b) => a[0]!.z - b[0]!.z);
-      ctx.lineWidth = 1.5;
-      for (const line of lines) {
-        for (let i = 1; i < line.length; i++) {
-          const a = line[i - 1]!, b = line[i]!;
-          const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
-          const l = Math.hypot(dx, dy, dz) || 1;
-          ctx.strokeStyle = `rgb(${Math.round(255 * Math.abs(dx) / l)},${Math.round(255 * Math.abs(dy) / l)},${Math.round(255 * Math.abs(dz) / l)})`;
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
-        }
-      }
-    }
-    // V2 3D cursor: the synced 2D tap (session.crosshair) drawn in 3D —
-    // NiiVue's "crosshair visible in 3D", same orbit/tilt/framing as the
-    // mesh above so the dot lands on the pixel it names. Short axis nubs
-    // (not full-span lines): a marker, never a measurement claim.
+    // same rotation centre as the mesh, or fibres and cursor drift off it
+    if (session.fibers) drawFibers(ctx, session.fibers, sp, box, view);
     const ch = session.crosshair;
-    if (ch && getUi().sync && session.img) {
-      try {
-        const copts = {
-          width: cv.width, height: cv.height,
-          angleY: angles.current.orbit, tiltX: angles.current.tilt, zoom: session.zoom3d,
-          center: mc ?? undefined,
-        };
-        const at = toMm([ch[0], ch[1], ch[2]], sp);
-        const dot = projectCursor(at, box, copts);
-        if (cursorOnCanvas(dot, copts)) {
-          ctx.strokeStyle = ACCENT;
-          ctx.lineWidth = 1;
-          for (const seg of cursorAxes(at, box, copts, 6)) {
-            ctx.beginPath();
-            ctx.moveTo(seg.a.x, seg.a.y);
-            ctx.lineTo(seg.b.x, seg.b.y);
-            ctx.stroke();
-          }
-          ctx.fillStyle = ACCENT;
-          ctx.beginPath();
-          ctx.arc(dot.x, dot.y, 3, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      } catch {
-        // out-of-volume crosshair (stale series switch): 3D stays clean,
-        // the 2D panes already clamp. Never a loud 3D failure.
-      }
-    }
+    if (ch && getUi().sync) drawCursor3d(ctx, [ch[0], ch[1], ch[2]], sp, box, view);
     const z = document.getElementById('zoom3d');
     if (z) z.textContent = `${Math.round(session.zoom3d * 100)}%`;
     const ro = document.getElementById('ro-3d');
@@ -455,7 +412,9 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     }
     if (!session.mesh || rafQueued.current) return;
     rafQueued.current = true;
-    requestAnimationFrame(() => { rafQueued.current = false; paintOrbit(); });
+    requestAnimationFrame(() => { rafQueued.current = false; paintOrbit(1); });
+    if (settleRef.current) clearTimeout(settleRef.current);
+    settleRef.current = setTimeout(() => { settleRef.current = null; paintOrbit(2); }, ORBIT_SETTLE_MS);
   };
 
   /** Zoom and repaint whichever renderer owns the canvas. */
