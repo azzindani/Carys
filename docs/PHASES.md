@@ -1086,9 +1086,28 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   transformed once, the highlight skipped where it adds under ¼ grey level).
   Surface and atlas goldens re-frozen after old/new side by side; the
   atlas skull's dotted seam cracks are gone.
-- OPEN — **F7. Ambient occlusion and outlines.** Screen-space AO from the
+- DONE — **F7. Ambient occlusion and outlines.** Screen-space AO from the
   z-buffer and silhouette edges, as a post-pass. Accept: a deterministic
   golden, and a crevice phantom darker than its rim.
+  `render-cpu/screen-space.ts`, opt-in through `renderMesh({ ao, outline })`
+  so every existing render stays bit-identical (goldens unchanged).
+  Occlusion is McGuire et al.'s Alchemy estimator: 12 samples on a 5-turn
+  spiral in a disc of 10% of the frame, each read back from the depth
+  buffer; points above the tangent plane occlude by their cosine, fading
+  to nothing at the radius (so a surface far in front casts no halo). The
+  spiral turns over a 4×4 tile and a depth-aware blur averages the tile
+  out: deterministic, no noise. Estimated once per 2×2 samples. Outlines
+  darken the near side of any depth step deeper than 10 pixel widths to
+  0.6. Measured (`depth-cues.test.ts`, 160 px): a slot 4 voxels wide and
+  3 deep in a slab renders its floor at 134 against a rim of 149 (148 vs
+  149 without occlusion), the floor at the wall at 123; a convex sphere
+  moves by at most 1 grey level; the crevice golden runs in CI, the skull
+  CT one (`skull-ct-cues`) with samples. Screen-space limit, measured: a
+  slot deeper than the radius (6×12 voxels) gets no occlusion at its floor
+  centre, because its rim is out of reach and its walls face away from the
+  view. The app's 3D dock has a Depth cues switch, on by default: BraTS
+  tumour mean 131.9 off → 120.8 on. Skull CT 117,602 triangles, 560²:
+  32 → 46 ms at 1× (orbit), 95 → 149 ms at 2× (settled).
 - OPEN — **F8. Volume render quality.** Jittered ray starts refined while
   the view is still (no wood-grain rings), opacity corrected for step size,
   smoother sampling. Accept: a slab phantom rendered at two step sizes has

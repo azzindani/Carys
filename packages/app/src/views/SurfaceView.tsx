@@ -66,6 +66,10 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
   const [density, setDensity] = useState(1);
   const [quality, setQuality] = useState<'draft' | 'full'>('draft');
   const [shade, setShade] = useState(true);
+  // F7 occlusion + outlines on the surface; a ref so rAF orbit frames see
+  // the latest value
+  const [cues, setCues] = useState(true);
+  const cuesRef = useRef(true);
   // N2 tract preset: picker id + last kept count (module-ephemeral like
   // cine flags — the filtered view is derived, never persisted chrome).
   const [presetId, setPresetId] = useState('');
@@ -210,6 +214,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     if (session.mesh) {
       const out = renderMesh(physicalMesh(session.mesh, sp), box, {
         ...view, color: SERIES[getUi().series]?.color ?? [225, 215, 200], supersample: ss,
+        ao: cuesRef.current, outline: cuesRef.current,
       });
       ctx.putImageData(new ImageData(new Uint8ClampedArray(out), cv.width, cv.height), 0, 0);
     } else {
@@ -546,6 +551,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
                 onInput={(v) => setUi({ smooth3d: v })} onCommit={() => { session.meshPinned = null; bump(); }}
               />
             )}
+            <Switch checked={cues} label="Depth cues" onChange={(v) => { setCues(v); cuesRef.current = v; paintOrbit(); }} />
           </>
         ) : (
           <>

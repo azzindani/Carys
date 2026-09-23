@@ -202,3 +202,26 @@ export function scoreMesh(
     tris: I.length / 3,
   };
 }
+
+/** A latitude/longitude sphere mesh with exact unit normals, wound outward:
+ *  a renderer test subject whose shading is known everywhere. */
+export function uvSphere(c: V3, r: number, lat: number, lon: number): {
+  positions: Float32Array; normals: Float32Array; indices: Uint32Array;
+} {
+  const pos: number[] = [], nrm: number[] = [];
+  for (let i = 0; i <= lat; i++) {
+    const th = (Math.PI * i) / lat;
+    for (let j = 0; j < lon; j++) {
+      const ph = (2 * Math.PI * j) / lon;
+      const n = [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), Math.cos(th)] as const;
+      nrm.push(...n);
+      pos.push(c[0] + r * n[0], c[1] + r * n[1], c[2] + r * n[2]);
+    }
+  }
+  const idx: number[] = [];
+  const v = (i: number, j: number): number => i * lon + (j % lon);
+  for (let i = 0; i < lat; i++) {
+    for (let j = 0; j < lon; j++) idx.push(v(i, j), v(i + 1, j), v(i + 1, j + 1), v(i, j), v(i + 1, j + 1), v(i, j + 1));
+  }
+  return { positions: Float32Array.from(pos), normals: Float32Array.from(nrm), indices: Uint32Array.from(idx) };
+}
