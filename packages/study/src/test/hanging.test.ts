@@ -10,8 +10,8 @@ describe('hanging protocols', () => {
       ['CT', 'skull fracture', 'ct-bone', 'tri', 'CT_Bone'],
       ['CT', 'cardiac angio', 'ct-angio', 'coronal', 'CT_AAA'],
       ['CT', 'abdomen routine', 'ct-default', 'tri', 'CT_SoftTissue'],
-      ['MR', 'brats flair tumor', 'mr-brain', 'tri', 'MR_T2Brain'],
-      ['MR', 'knee', 'mr-default', 'tri', 'MR_Default'],
+      ['MR', 'brats flair tumor', 'mr-brain', 'tri', 'auto'],
+      ['MR', 'knee', 'mr-default', 'tri', 'auto'],
       ['MG', 'tomo CC', 'mg-tomo', 'coronal', 'auto'],
     ];
     for (const [mod, desc, protocol, layout, preset] of cases) {

@@ -11,9 +11,10 @@ import { SERIES } from '../lib/catalog';
 import type { Extractor } from '../lib/extractor';
 import { paintBus } from '../lib/paintBus';
 import { FIBER_BG } from '../lib/palette';
+import { maskBox, physicalMesh, physicalPoints, toMm } from '../lib/physical3d';
 import { session } from '../lib/session';
-import { handleOpenFiles, setEngineFromExtractor } from '../lib/sessionOps';
-import { setStatus } from '../lib/status';
+import { setEngineFromExtractor } from '../lib/sessionOps';
+import { setAmbientStatus, setStatus } from '../lib/status';
 import { getUi, setUi, useUi, useUiPick } from '../lib/store';
 import { useIsMobile } from '../lib/isMobile';
 import { bump, useVersion } from '../lib/version';
@@ -46,17 +47,10 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     if (!img || !m || u.src !== 'mask') return null;
     const key = `${u.series}|${u.src}|${session.maskVer}`;
     if (centerCache.current.key === key) return centerCache.current.c;
-    const [nx, ny, nz] = img.dims;
-    let x0 = nx, x1 = -1, y0 = ny, y1 = -1, z0 = nz, z1 = -1;
-    for (let i = 0; i < m.length; i += 7) {
-      if (!m[i]) continue;
-      const x = i % nx, y = Math.floor(i / nx) % ny, z = Math.floor(i / (nx * ny));
-      if (x < x0) x0 = x; if (x > x1) x1 = x;
-      if (y < y0) y0 = y; if (y > y1) y1 = y;
-      if (z < z0) z0 = z; if (z > z1) z1 = z;
-    }
-    const c: [number, number, number] | null = x1 < 0 ? null
-      : [(x0 + x1 + 1) / 2, (y0 + y1 + 1) / 2, (z0 + z1 + 1) / 2];
+    const box = maskBox(m, img.dims, 7);
+    const c: [number, number, number] | null = box
+      ? [(box.min[0] + box.max[0] + 1) / 2, (box.min[1] + box.max[1] + 1) / 2, (box.min[2] + box.max[2] + 1) / 2]
+      : null;
     centerCache.current = { key, c };
     return c;
   };
@@ -121,36 +115,26 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     const pmine = session.paintToken;
     if (u.src === 'mask' && (!session.editMask || !session.editMask.some((v) => v > 0))) {
       cv.getContext('2d')!.clearRect(0, 0, cv.width, cv.height);
-      setStatus('mask empty — paint in MPR or switch source to image');
+      setAmbientStatus('mask empty — paint in MPR or switch source to image');
       return;
     }
     const useMask = u.src === 'mask';
     const field = useMask ? Float64Array.from(session.editMask!) : img.data;
     // Tight padded bounds for mask fields: rays skip the empty 95%+.
     let bounds: { min: [number, number, number]; max: [number, number, number] } | null = null;
-    if (useMask && session.editMask) {
+    const box = useMask && session.editMask ? maskBox(session.editMask, img.dims, 2) : null;
+    if (box) {
       const [nx, ny, nz] = img.dims;
-      const m = session.editMask;
-      let x0 = nx, x1 = -1, y0 = ny, y1 = -1, z0 = nz, z1 = -1;
-      for (let i = 0; i < m.length; i += 2) {
-        if (!m[i]) continue;
-        const x = i % nx, y = Math.floor(i / nx) % ny, z = Math.floor(i / (nx * ny));
-        if (x < x0) x0 = x; if (x > x1) x1 = x;
-        if (y < y0) y0 = y; if (y > y1) y1 = y;
-        if (z < z0) z0 = z; if (z > z1) z1 = z;
-      }
-      if (x1 >= 0) {
-        bounds = {
-          min: [Math.max(0, x0 - 2), Math.max(0, y0 - 2), Math.max(0, z0 - 2)],
-          max: [Math.min(nx, x1 + 3), Math.min(ny, y1 + 3), Math.min(nz, z1 + 3)],
-        };
-      }
+      bounds = {
+        min: [Math.max(0, box.min[0] - 2), Math.max(0, box.min[1] - 2), Math.max(0, box.min[2] - 2)],
+        max: [Math.min(nx, box.max[0] + 3), Math.min(ny, box.max[1] + 3), Math.min(nz, box.max[2] + 3)],
+      };
     }
     const full = quality === 'full';
     const rw = full ? cv.width : Math.min(cv.width, 300);
     const rh = full ? cv.height : Math.round(cv.height * (rw / cv.width));
     const mine = ++vrToken.current;
-    setStatus('raycasting…');
+    setAmbientStatus('raycasting…');
     await new Promise((r) => setTimeout(r, 10));
     try {
       const r = await extractor.renderVr(field, img.dims, {
@@ -158,6 +142,8 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
         angleY: angles.current.orbit, tiltX: angles.current.tilt,
         zoom: session.zoom3d, tf: currentTF(),
         step: full ? 1.5 : 3, shade, density, bounds,
+        // in mm, like the surface: a 5 mm-slice CT is not a fifth of its height
+        spacing: img.spacing ?? [1, 1, 1],
       });
       if (mine !== vrToken.current || pmine !== session.paintToken || getUi().series !== s0) return;
       const ctx = cv.getContext('2d')!;
@@ -176,7 +162,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       if (ro) ro.textContent = `VR ${r.w}×${r.h} · ${(r.ms / 1000).toFixed(1)}s`;
       const zchip = document.getElementById('zoom3d');
       if (zchip) zchip.textContent = `${Math.round(session.zoom3d * 100)}%`;
-      setStatus(`VR ${r.w}×${r.h} · ${(r.ms / 1000).toFixed(1)}s via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
+      setAmbientStatus(`VR ${r.w}×${r.h} · ${(r.ms / 1000).toFixed(1)}s via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
     } catch (e) {
       if (mine !== vrToken.current) return;
       setStatus(`VR failed: ${(e as Error).message}`, 'error');
@@ -191,13 +177,22 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
   const paintOrbit = (): void => {
     const cv = canvasRef.current;
     if (!cv || !session.img || (!session.mesh && !session.fibers)) return;
+    // The canvas belongs to the raycaster in volume mode: a surface drawn
+    // here (a late extraction, a zoom reset) used to replace the render.
+    if (getUi().render3d === 'volume') return;
     const ctx = cv.getContext('2d')!;
+    // Everything below is drawn in mm (lib/physical3d.ts): the box, the
+    // mesh, the fibres, the cursor and the orbit centre share one scale.
+    const sp = session.img.spacing ?? [1, 1, 1];
+    const box = toMm(session.img.dims, sp);
+    const mc0 = maskCenter();
+    const mc = mc0 ? toMm(mc0, sp) : null;
     if (session.mesh) {
-      const out = renderMesh(session.mesh, session.img.dims, {
+      const out = renderMesh(physicalMesh(session.mesh, sp), box, {
         width: cv.width, height: cv.height,
         angleY: angles.current.orbit, tiltX: angles.current.tilt,
         color: SERIES[getUi().series]?.color ?? [225, 215, 200],
-        zoom: session.zoom3d, center: maskCenter() ?? undefined,
+        zoom: session.zoom3d, center: mc ?? undefined,
       });
       ctx.putImageData(new ImageData(new Uint8ClampedArray(out), cv.width, cv.height), 0, 0);
     } else {
@@ -207,8 +202,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     if (session.fibers) {
       // Direction-colored polylines (tractography convention), far to near.
       // Same rotation center as the mesh above, or fibers drift off it.
-      const mc = maskCenter();
-      const lines = projectFibers(session.fibers.pts, session.fibers.offsetPt0, session.img.dims, {
+      const lines = projectFibers(physicalPoints(session.fibers.pts, sp), session.fibers.offsetPt0, box, {
         width: cv.width, height: cv.height,
         angleY: angles.current.orbit, tiltX: angles.current.tilt, zoom: session.zoom3d,
         center: mc ?? undefined,
@@ -234,18 +228,17 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     const ch = session.crosshair;
     if (ch && getUi().sync && session.img) {
       try {
-        const dims = session.img.dims;
-        const mc = maskCenter();
         const copts = {
           width: cv.width, height: cv.height,
           angleY: angles.current.orbit, tiltX: angles.current.tilt, zoom: session.zoom3d,
           center: mc ?? undefined,
         };
-        const dot = projectCursor([ch[0], ch[1], ch[2]], dims, copts);
+        const at = toMm([ch[0], ch[1], ch[2]], sp);
+        const dot = projectCursor(at, box, copts);
         if (cursorOnCanvas(dot, copts)) {
           ctx.strokeStyle = ACCENT;
           ctx.lineWidth = 1;
-          for (const seg of cursorAxes([ch[0], ch[1], ch[2]], dims, copts, 6)) {
+          for (const seg of cursorAxes(at, box, copts, 6)) {
             ctx.beginPath();
             ctx.moveTo(seg.a.x, seg.a.y);
             ctx.lineTo(seg.b.x, seg.b.y);
@@ -280,7 +273,9 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     // Any new 3D paint invalidates in-flight extraction/VR before it.
     session.paintToken++;
     if (session.meshPinned || session.fibersPinned) {
-      if (session.meshPinned) session.mesh = session.meshPinned;
+      // Pinned imports are the whole scene: a tract-only import shows the
+      // tracts, not whatever surface the idle pre-extraction left behind.
+      session.mesh = session.meshPinned;
       if (session.fibersPinned) session.fibers = session.fibersPinned;
       paintOrbit();
       const parts: string[] = [];
@@ -289,7 +284,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
         const n = session.fibersPinned.count;
         parts.push(`${n.toLocaleString()} tract${n === 1 ? '' : 's'} (imported TCK)`);
       }
-      setStatus(`${parts.join(' + ')} · ${getUi().series}`);
+      setAmbientStatus(`${parts.join(' + ')} · ${getUi().series}`);
       return;
     }
     const u = getUi();
@@ -297,48 +292,54 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     if (u.src === 'mask' && (!session.editMask || !session.editMask.some((v) => v > 0))) {
       session.mesh = null;
       cv.getContext('2d')!.clearRect(0, 0, cv.width, cv.height);
-      setStatus('mask empty — paint in MPR or switch source to image');
+      setAmbientStatus('mask empty — paint in MPR or switch source to image');
       const ro = document.getElementById('ro-3d');
       if (ro) ro.textContent = 'empty mask';
       return;
     }
-    const field = u.src === 'mask' ? Float64Array.from(session.editMask!) : img.data;
+    const field = u.src === 'mask' ? session.editMask! : img.data;
     const key = session.meshKey(u.series, u.src, u.threshold, u.method);
     const hit = session.getMesh(key);
     if (hit) {
       session.mesh = hit;
-      setStatus(`${hit.tris.toLocaleString()} tris (cached) · ${u.series}`);
+      setAmbientStatus(`${hit.tris.toLocaleString()} tris (cached) · ${u.series}`);
     } else {
-      setStatus('extracting…');
+      setAmbientStatus('extracting…');
+      if (!session.mesh) {
+        // A new series has no surface yet: say so on the pane rather than
+        // leave the previous series' surface standing under this one's name.
+        cv.getContext('2d')!.clearRect(0, 0, cv.width, cv.height);
+        const ro = document.getElementById('ro-3d');
+        if (ro) ro.textContent = 'extracting…';
+      }
       await new Promise((r) => setTimeout(r, 10));
       const mine = ++session.paintToken;
-      const mesh = await extractor.extract(field, img.dims, u.threshold, u.method === 'smooth');
+      const mesh = await session.meshOnce(key, () => extractor.extract(field, img.dims, u.threshold, u.method === 'smooth'));
       if (mine !== session.paintToken || getUi().series !== s0) return;
       session.mesh = mesh;
       session.cacheMesh(key, mesh);
-      setStatus(`${mesh.tris.toLocaleString()} tris via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
+      setAmbientStatus(`${mesh.tris.toLocaleString()} tris via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
     }
     if (!session.mesh) return;
-    if (u.src === 'mask' && session.editMask) {
+    // Switched to volume rendering while extracting: the surface is cached
+    // for the way back, but neither frames the zoom nor paints over the VR.
+    if (getUi().render3d === 'volume') return;
+    const box = u.src === 'mask' && session.editMask ? maskBox(session.editMask, img.dims, 3) : null;
+    if (box) {
+      // framing in mm, like the render: the mask's longest side vs the box's
       const [nx, ny, nz] = img.dims;
-      const m = session.editMask;
-      let x0 = nx, x1 = 0, y0 = ny, y1 = 0, z0 = nz, z1 = 0;
-      for (let i = 0; i < m.length; i += 3) {
-        if (!m[i]) continue;
-        const x = i % nx, y = Math.floor(i / nx) % ny, z = Math.floor(i / (nx * ny));
-        if (x < x0) x0 = x; if (x > x1) x1 = x;
-        if (y < y0) y0 = y; if (y > y1) y1 = y;
-        if (z < z0) z0 = z; if (z > z1) z1 = z;
-      }
-      const span = Math.max(x1 - x0 + 1, y1 - y0 + 1, z1 - z0 + 1, 1);
-      session.zoom3d = Math.min(8, Math.max(0.5, (Math.max(nx, ny, nz) / span) * 0.85));
+      const sp = img.spacing ?? [1, 1, 1];
+      const span = Math.max(
+        (box.max[0] - box.min[0] + 1) * sp[0], (box.max[1] - box.min[1] + 1) * sp[1], (box.max[2] - box.min[2] + 1) * sp[2],
+      );
+      session.zoom3d = Math.min(8, Math.max(0.5, (Math.max(nx * sp[0], ny * sp[1], nz * sp[2]) / span) * 0.85));
     } else {
       session.zoom3d = 1;
     }
     paintOrbit();
     setEngineFromExtractor();
     const mesh = session.mesh;
-    setStatus(`${mesh.tris.toLocaleString()} tris via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
+    setAmbientStatus(`${mesh.tris.toLocaleString()} tris via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
     // No bump(): nothing reactive changed — bumping here would loop the ver effect.
   };
 
@@ -447,11 +448,13 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     requestAnimationFrame(() => { rafQueued.current = false; paintOrbit(); });
   };
 
-  const zoomStep3d = (f: number): void => {
-    session.zoom3d = Math.min(8, Math.max(0.5, session.zoom3d * f));
+  /** Zoom and repaint whichever renderer owns the canvas. */
+  const setZoom3d = (z: number): void => {
+    session.zoom3d = z;
     if (getUi().render3d === 'volume') void paintVr();
     else if (session.mesh) paintOrbit();
   };
+  const zoomStep3d = (f: number): void => setZoom3d(Math.min(8, Math.max(0.5, session.zoom3d * f)));
 
   const wheelZoom = (e: React.WheelEvent): void => {
     e.preventDefault();
@@ -609,14 +612,8 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
         </div>
         <div className="sep" />
         <div className="grp">
-            <label className="iconbtn" htmlFor="upload" title="Open a .nii/.nii.gz mask, SEG, RTSTRUCT, .nrrd/.nhdr(+data)/.tif volume, .stl/.mz3/.gii mesh or .tck tracts">Open file</label>
-            <input
-              type="file" id="upload" accept=".nii,.gz,.dcm,.stl,.mz3,.gii,.nrrd,.nhdr,.raw,.tif,.tiff,.tck" multiple hidden
-              onChange={(e) => {
-                handleOpenFiles([...((e.target as HTMLInputElement).files ?? [])]);
-                (e.target as HTMLInputElement).value = '';
-              }}
-            />
+            {/* the input itself is the viewer's (ViewerView), always mounted */}
+            <label className="iconbtn" htmlFor="upload" title="Open a .nii/.nii.gz mask, SEG, RTSTRUCT, DICOM files, .nrrd/.nhdr(+data)/.tif volume, .stl/.mz3/.gii mesh or .tck tracts">Open file</label>
         </div>
       </div>
       )}
@@ -635,7 +632,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
             <Chip><span id="ro-3d">—</span></Chip>
             <div className="vptools">
               <IconBtn title="Zoom out 3D" onClick={() => zoomStep3d(1 / 1.25)}>−</IconBtn>
-              <Chip className="zoom" title="Double-click canvas also resets" onClick={() => { session.zoom3d = 1; paintOrbit(); }}>
+              <Chip className="zoom" title="Double-click canvas also resets" onClick={() => setZoom3d(1)}>
                 <span id="zoom3d">100%</span>
               </Chip>
               <IconBtn title="Zoom in 3D" onClick={() => zoomStep3d(1.25)}>+</IconBtn>
@@ -657,7 +654,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
                 id="view3d" ref={canvasRef} width={560} height={560}
                 role="img" aria-label="3D surface. Drag to orbit, wheel to zoom."
                 onWheel={wheelZoom}
-                onDoubleClick={() => { session.zoom3d = 1; if (session.mesh) paintOrbit(); }}
+                onDoubleClick={() => setZoom3d(1)}
                 onPointerDown={onOrbitDown}
                 onPointerMove={onOrbitMove}
                 onPointerUp={onOrbitUp}

@@ -5,6 +5,7 @@ import type { Extractor } from '../lib/extractor';
 import { useIsMobile } from '../lib/isMobile';
 import { fmtDims, session } from '../lib/session';
 import { handleOpenFiles } from '../lib/sessionOps';
+import { filesFromDrop } from '../lib/dropFiles';
 import type { SliceInit } from '../lib/sessionOps';
 import { setUi, useUiPick } from '../lib/store';
 import { toast } from '../lib/toasts';
@@ -146,11 +147,39 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
   const docksOpen = useUiPick('docksOpen');
   const insOpen = useUiPick('insOpen');
 
+  // One file input for the whole viewer, always mounted: it lived inside the
+  // 3D pane's dock, so any fullscreen 2D view (and every single-image series,
+  // which opens as one) had no way to open a file at all. No `accept` list:
+  // DICOM from PACS exports and CDs is usually extensionless ("IM0001"), and
+  // the router tells formats apart by content.
+  const fileInput = (
+    <input
+      type="file" id="upload" multiple hidden
+      onChange={(e) => {
+        handleOpenFiles([...((e.target as HTMLInputElement).files ?? [])]);
+        (e.target as HTMLInputElement).value = '';
+      }}
+    />
+  );
+  // Drop a file, several, or a whole study folder anywhere on the viewer.
+  const drop = {
+    onDragOver: (e: React.DragEvent): void => {
+      if ([...e.dataTransfer.types].includes('Files')) e.preventDefault();
+    },
+    onDrop: (e: React.DragEvent): void => {
+      if (![...e.dataTransfer.types].includes('Files')) return;
+      e.preventDefault();
+      void filesFromDrop(e.dataTransfer).then(handleOpenFiles);
+    },
+  };
+
   if (!mobile) {
     return (
       <>
+        {fileInput}
         <div className="ftop">
           <FileTabs onOpen={onOpenSeries} />
+          <label className="iconbtn" htmlFor="upload" title="Open files or a study — or drop a folder onto the viewer">Open</label>
           <button
             className={`iconbtn docktoggle${docksOpen ? ' on' : ''}`} id="docktoggle"
             title={docksOpen ? 'Hide toolbar (more viewport)' : 'Show toolbar'}
@@ -171,7 +200,7 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
         {/* Chrome lives inside the work area and floats over the image — the
             way a site's nav floats over its hero — so the viewport keeps the
             full area and tools reveal on demand. */}
-        <div className="workarea">
+        <div className="workarea" {...drop}>
           {docksOpen && (
             <div className="dockrow" id="dockrow-2d">
               <MprTuneDock axialCanvasRef={axialCanvasRef} />
@@ -212,6 +241,7 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
 
   return (
     <>
+      {fileInput}
       <div className="ftop"><FileTabs onOpen={onOpenSeries} /></div>
       <ViewGrid
         sliceInit={sliceInit} axialCanvasRef={axialCanvasRef}
@@ -256,7 +286,7 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
             <FileTabs onOpen={onOpenSeries} id="filetabs-m" hidePlus />
             <label className="btn-ghost" htmlFor="upload-m" title="Open a volume, mesh, or tract file">Open file</label>
             <input
-              type="file" id="upload-m" accept=".nii,.gz,.dcm,.stl,.mz3,.gii,.nrrd,.nhdr,.raw,.tif,.tiff,.tck" multiple hidden
+              type="file" id="upload-m" multiple hidden
               onChange={(e) => {
                 handleOpenFiles([...((e.target as HTMLInputElement).files ?? [])]);
                 (e.target as HTMLInputElement).value = '';

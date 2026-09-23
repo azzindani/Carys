@@ -2,20 +2,22 @@ import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { measureClick, paintDown, paintMove, planePoint } from './PanePaint';
 import type { PaintHost, StrokeState } from './PanePaint';
-import { ColorTable, iopEdgeLabels } from '@carys/volume-core';
+import { ColorTable } from '@carys/volume-core';
 import { fuseSlices, mipRotate, obliqueBasis, reslice, resliceOblique, slabMask, slabProject, voxelSlices } from '@carys/render-cpu';
 import { paintBus } from '../lib/paintBus';
-import { ACCENT, ACCENT_DIM, ACCENT_DIM_FILL, ACCENT_HI, CHROME_TEXT, MASK_TINT, MONO_STACK, ON_ACCENT } from '../lib/palette';
+import { MASK_TINT } from '../lib/palette';
 import { fmtDims, session } from '../lib/session';
+import { drawChrome, drawMeasures, fmtVal } from './paneChrome';
+import { fitPane, planeSpacing, toBitmap, type PaneView } from './paneView';
 
 import { doUndo } from '../lib/sessionOps';
-import { setStatus } from '../lib/status';
+import { setAmbientStatus, setStatus } from '../lib/status';
 import { getUi, setUi, useUiPick } from '../lib/store';
 import { bump, useVersion } from '../lib/version';
 import { Chip, IconBtn } from '../ui/primitives';
 import { ViewportOverlay } from '../ui/ViewportOverlay';
 import { undoBus } from '../lib/undoBus';
-import type { FullVp, MeasureKind, Plane } from '../lib/types';
+import type { FullVp, Plane } from '../lib/types';
 import type { SliceInit } from '../lib/sessionOps';
 import { PLANES } from '../lib/types';
 
@@ -61,13 +63,15 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
   const strokeState = useRef<StrokeState>({ stroke: null, oblStroke: null });
   const hostRef = useRef<PaintHost>(null as unknown as PaintHost);
   const planeVoxelRef = useRef<(plane: Plane, clientX: number, clientY: number) => [number, number]>(null as unknown as (plane: Plane, clientX: number, clientY: number) => [number, number]);
+  /** The last reslice per plane, at voxel resolution (offscreen). */
+  const sliceRef = useRef<Record<Plane, { cv: HTMLCanvasElement; W: number; H: number; idx: number } | null>>({
+    axial: null, coronal: null, sagittal: null,
+  });
+  /** The screen mapping the last compose used — taps invert through it. */
+  const viewRef = useRef<Record<Plane, PaneView | null>>({ axial: null, coronal: null, sagittal: null });
 
-  const applyPanZoom = (plane: Plane): void => {
-    const cv = canvasRefs.current[plane];
-    if (!cv) return;
-    const p = panRef.current[plane];
-    cv.style.transform = `translate(${p.x}px, ${p.y}px) scale(${zoomRef.current[plane]})`;
-  };
+  /** Pan/zoom only moves the reslice on screen: recompose, no reslice. */
+  const applyPanZoom = (plane: Plane): void => { compose(plane); };
 
   /** Inverted grayscale (post-window, pre-overlay so the mask tint stays red). */
   const maybeInvert = (out: Uint8ClampedArray): void => {
@@ -188,85 +192,56 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
         }
       }
     }
-    cv.width = W; cv.height = H;
-    applyPanZoom(plane);
-    cv.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(out), W, H), 0, 0);
-    // Measurement overlay lives in voxel space: unaffected by zoom transform.
-    if (getUi().tool === 'measure' || session.measurements.some((m) => m.plane === plane)) {
-      drawMeasures(cv, plane, W, idx);
-    }
-    drawChrome(cv, plane, W);
+    const off = sliceRef.current[plane]?.cv ?? document.createElement('canvas');
+    if (off.width !== W) off.width = W;
+    if (off.height !== H) off.height = H;
+    off.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(out), W, H), 0, 0);
+    sliceRef.current[plane] = { cv: off, W, H, idx };
+    compose(plane);
     const ro = document.getElementById(`ro-${plane}`);
     if (ro) ro.textContent = tag;
-    const zchip = document.querySelector(`[data-zoom="${plane}"]`);
-    if (zchip) zchip.textContent = `${Math.round(zoomRef.current[plane] * 100)}%`;
     document.getElementById(`pane-${plane}`)?.classList.remove('loading');
-    setStatus(`${fmtDims(dims)} · ${plane} ${idx} · ${session.img ? u.series : ''}`);
+    setAmbientStatus(`${fmtDims(dims)} · ${plane} ${idx} · ${session.img ? u.series : ''}`);
   };
 
-  /** Viewport chrome: anatomy edge letters (DICOM IOP only, hidden when
-   *  unknown or oblique) + physical scale bar. Canvas-space like measures. */
-  const drawChrome = (cv: HTMLCanvasElement, plane: Plane, W: number): void => {
-    const ctx = cv.getContext('2d')!;
+  /**
+   * Put the plane's last reslice on screen: size the canvas to its box at
+   * device resolution, draw the slice through the pane mapping (true
+   * aspect, zoom, pan, superior-up flip), then the overlays in screen px —
+   * so text and line weights stay the same on a 64² and a 512² grid.
+   */
+  const compose = (plane: Plane): void => {
+    const cv = canvasRefs.current[plane];
+    const sl = sliceRef.current[plane];
     const img = session.img;
-    if (!img) return;
-    const H = cv.height;
-    const fs = Math.max(11, Math.round(W / 26));
-    ctx.font = `${fs}px ${MONO_STACK}`;
-    ctx.fillStyle = CHROME_TEXT;
-    // crosshair reference lines (OHIF Reference Lines): the synced voxel
-    // drawn on every pane, same axis convention as planePoint.
-    const ch = session.crosshair;
-    if (ch && getUi().sync) {
-      const [cu, cvv] = plane === 'axial' ? [ch[0], ch[1]] : plane === 'coronal' ? [ch[0], ch[2]] : [ch[1], ch[2]];
-      ctx.strokeStyle = ACCENT_DIM;
-      ctx.lineWidth = 1;
-      ctx.setLineDash([6, 4]);
-      ctx.beginPath();
-      ctx.moveTo(cu + 0.5, 0);
-      ctx.lineTo(cu + 0.5, H);
-      ctx.moveTo(0, cvv + 0.5);
-      ctx.lineTo(W, cvv + 0.5);
-      ctx.stroke();
-      ctx.setLineDash([]);
+    if (!cv || !sl || !img) return;
+    const bw = cv.clientWidth, bh = cv.clientHeight;
+    // A hidden pane (fullscreen sibling, mobile single view) has no box;
+    // the resize observer composes it when it gets one.
+    if (bw < 2 || bh < 2) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const pw = Math.round(bw * dpr), ph = Math.round(bh * dpr);
+    if (cv.width !== pw) cv.width = pw;
+    if (cv.height !== ph) cv.height = ph;
+    const [su, sv] = planeSpacing(plane, img.spacing ?? [1, 1, 1]);
+    const v = fitPane(sl.W, sl.H, su, sv, bw, bh, zoomRef.current[plane], panRef.current[plane],
+      plane !== 'axial' && !!img.geometry);
+    viewRef.current[plane] = v;
+    const ctx = cv.getContext('2d')!;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, pw, ph);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.save();
+    ctx.translate(v.ox, v.flipV ? v.oy + sl.H * v.sy : v.oy);
+    ctx.scale(v.sx, v.flipV ? -v.sy : v.sy);
+    ctx.drawImage(sl.cv, 0, 0);
+    ctx.restore();
+    if (getUi().tool === 'measure' || session.measurements.some((m) => m.plane === plane)) {
+      drawMeasures(ctx, plane, v, sl.idx);
     }
-    const iop = session.dcmMeta?.iop ?? null;
-    const oblique = plane === getUi().oblPlane && (getUi().oblA !== 0 || getUi().oblB !== 0);
-    if (iop && !oblique) {      const lab = iopEdgeLabels(iop, plane);
-      if (lab) {
-        ctx.textAlign = 'left';
-        ctx.fillText(lab.left, 6, H / 2);
-        ctx.textAlign = 'right';
-        ctx.fillText(lab.right, W - 6, H / 2);
-        ctx.textAlign = 'center';
-        ctx.fillText(lab.top, W / 2, fs + 2);
-        ctx.fillText(lab.bottom, W / 2, H - 6);
-        ctx.textAlign = 'left';
-      }
-    }
-    // scale bar: nicest 1/2/5×10^n mm under ~1/6 of the pane width
-    const sp = img.spacing ?? [1, 1, 1];
-    const mmPerPx = (plane === 'sagittal' ? sp[1] : sp[0]) || 1;
-    const target = (W / 6) * mmPerPx;
-    const pow = 10 ** Math.floor(Math.log10(Math.max(target, 1e-9)));
-    const mm = [5 * pow, 2 * pow, pow].find((c) => c <= target) ?? pow / 2;
-    const px = mm / mmPerPx;
-    if (px > 12) {
-      const x0 = W - px - 10, y0 = H - 10;
-      ctx.strokeStyle = CHROME_TEXT;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(x0 + px, y0);
-      ctx.moveTo(x0, y0 - 4);
-      ctx.lineTo(x0, y0 + 4);
-      ctx.moveTo(x0 + px, y0 - 4);
-      ctx.lineTo(x0 + px, y0 + 4);
-      ctx.stroke();
-      ctx.textAlign = 'right';
-      ctx.fillText(`${mm >= 10 ? Math.round(mm) : mm} mm`, W - 10, y0 - 8);
-      ctx.textAlign = 'left';
-    }
+    drawChrome(ctx, cv, plane, v, dpr);
+    const zchip = document.querySelector(`[data-zoom="${plane}"]`);
+    if (zchip) zchip.textContent = `${Math.round(zoomRef.current[plane] * 100)}%`;
   };
 
   const paintAll = (): void => { PLANES.forEach(paint); };
@@ -313,6 +288,29 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     // guarded inside paint() itself (missing cv/slider returns early).
   });
 
+  // The canvas is the pane's own pixels now, so a box that changes size
+  // (layout switch, fullscreen, window resize, the details panel opening)
+  // must recompose — the browser no longer stretches a fixed bitmap for us.
+  const composeRef = useRef(compose);
+  composeRef.current = compose;
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') return;
+    let queued = false;
+    const ro = new ResizeObserver(() => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        for (const p of PLANES) composeRef.current(p);
+      });
+    });
+    for (const p of PLANES) {
+      const cv = canvasRefs.current[p];
+      if (cv) ro.observe(cv);
+    }
+    return () => ro.disconnect();
+  }, []);
+
   // Apply slider ranges after load, then paint when visible.
   const ver = useVersion();
   useEffect(() => {
@@ -357,52 +355,30 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ver, sliceInit]);
 
-  /** Client point → canvas pixels through object-fit:contain letterboxing.
-   *  getBoundingClientRect already includes the pan/zoom transform, which
-   *  cancels out (translate + uniform scale about the center) — what remains
-   *  is layout-space letterbox, removed here. Keeps paint/measure/sync exact
-   *  at any pane size. */
-  const contentXY = (
-    cv: HTMLCanvasElement, W: number, H: number, clientX: number, clientY: number,
-  ): [number, number] => {
+  /** Client point → reslice coords through the mapping the pane was last
+   *  composed with (exact at any size, zoom, pan or flip). Continuous; floor
+   *  for the voxel. Off-image points fall outside [0, W) × [0, H). */
+  const contentXY = (plane: Plane, clientX: number, clientY: number): [number, number] => {
+    const cv = canvasRefs.current[plane];
+    const v = viewRef.current[plane];
+    if (!cv || !v) return [-1, -1];
     const r = cv.getBoundingClientRect();
-    const lw = cv.offsetWidth || 1, lh = cv.offsetHeight || 1;
-    const s0 = Math.min(lw / W, lh / H) || 1;
-    const ox = (lw - W * s0) / 2, oy = (lh - H * s0) / 2;
-    const u = ((clientX - r.left) / (r.width || 1)) * lw;
-    const v = ((clientY - r.top) / (r.height || 1)) * lh;
-    return [(u - ox) / s0, (v - oy) / s0];
+    // r is the canvas box; a transformed ancestor can scale it from bw×bh
+    const x = (clientX - r.left) * (v.bw / (r.width || 1));
+    const y = (clientY - r.top) * (v.bh / (r.height || 1));
+    return toBitmap(v, x, y);
   };
 
-  /** Orthogonal lattice tap on any plane (floored canvas pixels). */
+  /** Orthogonal lattice tap on any plane (floored reslice coords). */
   const planeVoxel = (plane: Plane, e: React.PointerEvent): [number, number] => {
-    const cv = canvasRefs.current[plane]!;
-    const [nx, ny, nz] = session.img!.dims;
-    const W = plane === 'axial' ? nx : plane === 'coronal' ? nx : ny;
-    const H = plane === 'axial' ? ny : nz;
-    const [i, j] = contentXY(cv, W, H, e.clientX, e.clientY);
+    const [i, j] = contentXY(plane, e.clientX, e.clientY);
     return [Math.floor(i), Math.floor(j)];
   };
-
-  /** The exact tilted sampling frame the tilt-plane paint used (null =
-   *  orthogonal). Rebuilt here from the same basis + center so taps
-   *  invert through the same frame: { key, frame, W, H }. Double-oblique:
-   *  the tilt rides oblPlane; the other two planes stay orthogonal. */
-
-  const fmtVal = (kind: MeasureKind, v: number): string =>
-    kind === 'length' ? `${v.toFixed(1)} mm` : kind === 'angle' || kind === 'cobb' ? `${v.toFixed(0)}°`
-      : kind === 'ellipse' || kind === 'roi' ? `${v.toFixed(1)} mm²` : `${Math.round(v)}`;
 
   // Host interface for the extracted tap/measure/paint module: closures
   // over this render's refs + paint pipeline, refreshed every render.
   hostRef.current = {
-    contentXY: (plane, clientX, clientY) => {
-      const cv = canvasRefs.current[plane]!;
-      const [nx, ny, nz] = session.img!.dims;
-      const W = plane === 'axial' ? nx : plane === 'coronal' ? nx : ny;
-      const H = plane === 'axial' ? ny : nz;
-      return contentXY(cv, W, H, clientX, clientY);
-    },
+    contentXY,
     planeDims: (plane) => {
       const [nx, ny, nz] = session.img!.dims;
       return [plane === 'axial' ? nx : plane === 'coronal' ? nx : ny, plane === 'axial' ? ny : nz];
@@ -413,103 +389,6 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
   planeVoxelRef.current = (plane, clientX, clientY) => {
     const e = { clientX, clientY } as React.PointerEvent;
     return planeVoxel(plane, e);
-  };
-
-  /** Overlay tracked measurements for this plane+slice on the 2D context. */
-  const drawMeasures = (cv: HTMLCanvasElement, plane: Plane, W: number, idx: number): void => {
-    const ctx = cv.getContext('2d')!;
-    const rows = session.measurements.filter((m) => m.plane === plane && m.slice === idx);
-    const pend = session.pendingPlane === plane ? session.pendingMeasure : [];
-    const fs = Math.max(11, Math.round(W / 26));
-    ctx.font = `${fs}px ${MONO_STACK}`;
-    ctx.lineWidth = Math.max(1.5, W / 220);
-    /** Label box top-left, shifted inside the canvas when past an edge. */
-    const labelBox = (x: number, y: number, tw: number): [number, number] => {
-      const bw = tw + 10, bh = fs + 8;
-      return [Math.max(2, Math.min(x, W - bw - 2)), Math.max(2, Math.min(y, cv.height - bh - 2))];
-    };
-    const drawLabel = (x: number, y: number, label: string): void => {
-      const tw = ctx.measureText(label).width;
-      const [bx, by] = labelBox(x, y, tw);
-      ctx.fillStyle = ON_ACCENT;
-      ctx.fillRect(bx, by, tw + 10, fs + 8);
-      ctx.fillStyle = ACCENT_HI;
-      ctx.fillText(label, bx + 5, by + fs + 1);
-    };
-    const drawSet = (pts: [number, number][], label: string | null, dim: boolean): void => {
-      if (pts.length === 0) return;
-      ctx.strokeStyle = dim ? ACCENT_DIM : ACCENT;
-      ctx.fillStyle = dim ? ACCENT_DIM_FILL : ACCENT_HI;
-      ctx.beginPath();
-      ctx.moveTo(pts[0]![0], pts[0]![1]);
-      for (const [x, y] of pts.slice(1)) ctx.lineTo(x, y);
-      ctx.stroke();
-      for (const [x, y] of pts) {
-        ctx.beginPath();
-        ctx.arc(x, y, Math.max(2.5, W / 110), 0, Math.PI * 2);
-        ctx.fill();
-      }
-      if (label) {
-        const [lx, ly] = pts[pts.length - 1]!;
-        drawLabel(lx + 6, ly - fs - 8, label);
-      }
-    };
-    /** Ellipse ROI: two corner taps → stroked ellipse + area label. */
-    const drawEllipse = (pts: [number, number][], label: string | null, dim: boolean): void => {
-      if (pts.length < 2) { drawSet(pts, label, dim); return; }
-      const cu = (pts[0]![0] + pts[1]![0]) / 2, cv = (pts[0]![1] + pts[1]![1]) / 2;
-      const ru = Math.abs(pts[1]![0] - pts[0]![0]) / 2, rv = Math.abs(pts[1]![1] - pts[0]![1]) / 2;
-      ctx.strokeStyle = dim ? ACCENT_DIM : ACCENT;
-      ctx.fillStyle = dim ? ACCENT_DIM_FILL : ACCENT_HI;
-      ctx.beginPath();
-      ctx.ellipse(cu, cv, Math.max(0.5, ru), Math.max(0.5, rv), 0, 0, Math.PI * 2);
-      ctx.stroke();
-      if (label) drawLabel(cu + ru + 6, cv - fs - 8, label);
-    };
-    /** Rectangle ROI: two corner taps → stroked rect + area label. */
-    const drawRect = (pts: [number, number][], label: string | null, dim: boolean): void => {
-      if (pts.length < 2) { drawSet(pts, label, dim); return; }
-      const x = Math.min(pts[0]![0], pts[1]![0]), y = Math.min(pts[0]![1], pts[1]![1]);
-      const w = Math.abs(pts[1]![0] - pts[0]![0]), h = Math.abs(pts[1]![1] - pts[0]![1]);
-      ctx.strokeStyle = dim ? ACCENT_DIM : ACCENT;
-      ctx.beginPath();
-      ctx.strokeRect(x, y, Math.max(1, w), Math.max(1, h));
-      if (label) drawLabel(x + w + 6, y - 8, label);
-    };
-    /** Cobb angle: four taps = two lines + angle label at the second line. */
-    const drawCobb = (pts: [number, number][], label: string | null, dim: boolean): void => {
-      if (pts.length < 4) { drawSet(pts, label, dim); return; }
-      ctx.strokeStyle = dim ? ACCENT_DIM : ACCENT;
-      ctx.fillStyle = dim ? ACCENT_DIM_FILL : ACCENT_HI;
-      ctx.beginPath();
-      ctx.moveTo(pts[0]![0], pts[0]![1]);
-      ctx.lineTo(pts[1]![0], pts[1]![1]);
-      ctx.moveTo(pts[2]![0], pts[2]![1]);
-      ctx.lineTo(pts[3]![0], pts[3]![1]);
-      ctx.stroke();
-      for (const [x, y] of pts) {
-        ctx.beginPath();
-        ctx.arc(x, y, Math.max(2.5, W / 110), 0, Math.PI * 2);
-        ctx.fill();
-      }
-      if (label) {
-        const [lx, ly] = pts[3]!;
-        drawLabel(lx + 6, ly - fs - 8, label);
-      }
-    };
-    for (const m of rows) {
-      const label = m.kind === 'probe' ? `${Math.round(m.value)}` : fmtVal(m.kind as MeasureKind, m.value);
-      if (m.kind === 'ellipse') drawEllipse(m.points, label, false);
-      else if (m.kind === 'roi') drawRect(m.points, label, false);
-      else if (m.kind === 'cobb') drawCobb(m.points, label, false);
-      else drawSet(m.points, label, false);
-    }
-    if (pend.length > 0) {
-      const pk = getUi().measureKind;
-      if (pk === 'ellipse' && pend.length === 2) drawEllipse(pend, null, true);
-      else if (pk === 'roi' && pend.length === 2) drawRect(pend, null, true);
-      else drawSet(pend, null, true);
-    }
   };
 
   /** Crosshair sync: a Select-tap jumps every plane to the clicked voxel. */
@@ -674,7 +553,7 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     if (e.ctrlKey || e.metaKey) {
       zoomRef.current[plane] = Math.min(8, Math.max(0.5, zoomRef.current[plane] * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
       setZoomTick((t) => t + 1);
-      paint(plane);
+      compose(plane);
       return;
     }
     const s = sliderRefs.current[plane];

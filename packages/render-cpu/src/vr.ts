@@ -17,8 +17,11 @@ export interface VrOpts {
   zoom?: number;
   bg?: [number, number, number];
   tf: TF;
-  /** ray step in voxels (draft 3, full ~1.5) */
+  /** ray step in voxels of the finest axis (draft 3, full ~1.5) */
   step?: number;
+  /** voxel size in mm (x, y, z). Rays march and the frame fits in mm, so a
+   *  5 mm-slice CT is not drawn a fifth of its height. Default: 1 mm cubes. */
+  spacing?: Vec3;
   /** gradient shading on/off */
   shade?: boolean;
   /** global opacity multiplier */
@@ -63,39 +66,54 @@ export function renderVolume(vol: VrVolume, opts: VrOpts): { rgba: Uint8ClampedA
   const [nx, ny, nz] = dims;
   const W = opts.width, H = opts.height;
   const bg = opts.bg ?? [17, 17, 17];
-  const step = opts.step ?? 2;
+  const sp = opts.spacing ?? [1, 1, 1];
+  if (!(sp[0] > 0 && sp[1] > 0 && sp[2] > 0)) throw new RangeError(`vr-spacing: ${sp.join(',')}`);
+  // Rays live in mm and go back to voxel coordinates only to sample (and the
+  // gradient comes out per mm). With the default spacing every conversion is
+  // a multiply by exactly 1, so the voxel-space renders stay bit-identical.
+  const toVox: Vec3 = [1 / sp[0], 1 / sp[1], 1 / sp[2]];
+  const minSp = Math.min(sp[0], sp[1], sp[2]);
+  const ext: Vec3 = [nx * sp[0], ny * sp[1], nz * sp[2]];
+  const step = (opts.step ?? 2) * minSp;
   const shade = opts.shade ?? true;
   const density = opts.density ?? 1;
   const field = opts.field ?? data;
-  const maxDim = Math.max(nx, ny, nz);
+  const maxDim = Math.max(ext[0], ext[1], ext[2]);
   const scale = (Math.min(W, H) / maxDim) * 0.92 * (opts.zoom ?? 1);
-  const R = Math.hypot(nx, ny, nz) / 2 + 1;
+  const R = Math.hypot(ext[0], ext[1], ext[2]) / 2 + minSp;
   // view-space headlight, fixed (matches raster.ts)
   const inv = 1 / Math.hypot(0.35, 0.7, 0.62);
   const light: Vec3 = [0.35 * inv, 0.7 * inv, 0.62 * inv];
 
   const out = new Uint8ClampedArray(W * H * 4);
-  // Orthographic march direction in voxel space (constant for the frame):
-  // view (0,0,-1) pushed through the inverse view rotation, normalized.
+  // Orthographic march direction in mm (constant for the frame): view
+  // (0,0,-1) pushed through the inverse view rotation, normalized.
   const rawDir = invRot(opts.angleY, opts.tiltX, 0, 0, -1);
   const dl = Math.hypot(rawDir[0], rawDir[1], rawDir[2]) || 1;
   const marchDir: Vec3 = [rawDir[0] / dl, rawDir[1] / dl, rawDir[2] / dl];
-  const center: Vec3 = [nx / 2, ny / 2, nz / 2];
-  const bounds = opts.bounds ?? null;
+  const center: Vec3 = [ext[0] / 2, ext[1] / 2, ext[2] / 2];
+  // callers pass bounds in voxels; the rays clip against them in mm
+  const bounds = opts.bounds
+    ? {
+      min: [opts.bounds.min[0] * sp[0], opts.bounds.min[1] * sp[1], opts.bounds.min[2] * sp[2]] as Vec3,
+      max: [opts.bounds.max[0] * sp[0], opts.bounds.max[1] * sp[1], opts.bounds.max[2] * sp[2]] as Vec3,
+    }
+    : null;
 
   const grad = (x: number, y: number, z: number): Vec3 => {
-    // central differences in voxel space, transformed to view space below
+    // central differences in voxel space, per mm (the gradient scales by the
+    // inverse spacing, or shading tilts on anisotropic grids)
     const gx = (sampleTrilinear(field, dims, [x + 1, y, z]) ?? 0) - (sampleTrilinear(field, dims, [x - 1, y, z]) ?? 0);
     const gy = (sampleTrilinear(field, dims, [x, y + 1, z]) ?? 0) - (sampleTrilinear(field, dims, [x, y - 1, z]) ?? 0);
     const gz = (sampleTrilinear(field, dims, [x, y, z + 1]) ?? 0) - (sampleTrilinear(field, dims, [x, y, z - 1]) ?? 0);
-    return [gx, gy, gz];
+    return [gx * toVox[0], gy * toVox[1], gz * toVox[2]];
   };
 
   for (let py = 0; py < H; py++) {
     for (let px = 0; px < W; px++) {
       const vx = (px - W / 2) / scale;
       const vy = -(py - H / 2) / scale;
-      // ray origin on the view plane, pushed into voxel space
+      // ray origin on the view plane, in mm about the volume centre
       const vc = invRot(opts.angleY, opts.tiltX, vx, vy, 0);
       const org: Vec3 = [vc[0] + center[0], vc[1] + center[1], vc[2] + center[2]];
       let t0 = -R, t1 = R;
@@ -115,9 +133,9 @@ export function renderVolume(vol: VrVolume, opts: VrOpts): { rgba: Uint8ClampedA
       }
       let r = 0, g = 0, b = 0, a = 0;
       for (let t = t0; t <= t1 && a < 0.995; t += step) {
-        const x = org[0] + marchDir[0] * t;
-        const y = org[1] + marchDir[1] * t;
-        const z = org[2] + marchDir[2] * t;
+        const x = (org[0] + marchDir[0] * t) * toVox[0];
+        const y = (org[1] + marchDir[1] * t) * toVox[1];
+        const z = (org[2] + marchDir[2] * t) * toVox[2];
         const v = sampleTrilinear(field, dims, [x, y, z]);
         if (v == null) continue;
         const s = sampleTF(opts.tf, v);

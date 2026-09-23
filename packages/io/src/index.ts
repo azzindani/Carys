@@ -16,6 +16,7 @@ export * from './seg.js';
 export * from './rtstruct.js';
 export * from './dicom-tags.js';
 export * from './dicom-series.js';
+export * from './dicom-stack.js';
 export * from './nifti.js';
 export * from './nifti1.js';
 export * from './nifti-gzip.js';

@@ -36,4 +36,40 @@ describe('nifti-write round-trip', () => {
       assert.deepEqual([...back].slice(0, 4), vals.map((x) => dtype.startsWith('float') ? x : Math.round(x)), dtype);
     }
   });
+
+  // Oblique, left-handed (RAS +i → Left) grid with an offset: exercises the
+  // qfac sign and a non-trivial quaternion, the cases a diagonal would hide.
+  const c = Math.cos(0.4), sn = Math.sin(0.4);
+  const rot = [
+    [-0.9 * c, -1.1 * sn, 0, 12.5],
+    [-0.9 * sn, 1.1 * c, 0, -30],
+    [0, 0, 2.5, 7],
+    [0, 0, 0, 1],
+  ];
+  const near = (a: number[][], b: number[][]): void => {
+    for (let r = 0; r < 3; r++) {
+      for (let k = 0; k < 4; k++) assert.ok(Math.abs(a[r]![k]! - b[r]![k]!) < 1e-4, `[${r}][${k}] ${a[r]![k]} vs ${b[r]![k]}`);
+    }
+  };
+
+  it('writes the affine as the sform a reader recovers', () => {
+    const h = readHeader(writeNifti1(vol([2, 2, 2], 'uint8', new Uint8Array(8)), { affine: rot }));
+    assert.equal(h.sform_code, 1);
+    near(h.affine, rot);
+    assert.deepEqual(h.pixDims.slice(1, 4).map((v) => Math.round(v * 1000) / 1000), [0.9, 1.1, 2.5]);
+  });
+
+  it('writes the same affine as a qform quaternion (qfac included)', () => {
+    const h = readHeader(writeNifti1(vol([2, 2, 2], 'uint8', new Uint8Array(8)), { affine: rot, sformCode: 0 }));
+    assert.equal(h.qform_code, 1);
+    assert.equal(h.sform_code, 0);
+    assert.equal(h.pixDims[0], -1);
+    near(h.affine, rot);
+  });
+
+  it('stays METHOD 0 when no affine is given', () => {
+    const h = readHeader(writeNifti1(vol([2, 2, 2], 'uint8', new Uint8Array(8))));
+    assert.equal(h.qform_code, 0);
+    assert.equal(h.sform_code, 0);
+  });
 });

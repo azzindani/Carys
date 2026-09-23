@@ -25,8 +25,13 @@ export const HANGING_RULES: HangingRule[] = [
   { id: 'ct-bone', modality: 'CT', body: /bone|skull|spine|pelvis|fracture/i, choice: { layout: 'tri', preset: 'CT_Bone', proj: 'slice' } },
   { id: 'ct-angio', modality: 'CT', body: /angio|aaa|vessel|cardiac/i, choice: { layout: 'coronal', preset: 'CT_AAA', proj: 'mip' } },
   { id: 'ct-default', modality: 'CT', body: null, choice: { layout: 'tri', preset: 'CT_SoftTissue', proj: 'slice' } },
-  { id: 'mr-brain', modality: 'MR', body: /brain|brats|tumor|flair|t1|t2/i, choice: { layout: 'tri', preset: 'MR_T2Brain', proj: 'slice' } },
-  { id: 'mr-default', modality: 'MR', body: null, choice: { layout: 'tri', preset: 'MR_Default', proj: 'slice' } },
+  // MR opens on 'auto' — the file's own VOI window, else the data's
+  // percentiles. MR signal has no physical unit: the same FLAIR sequence
+  // reads 0–800 on one scanner and 0–21000 on another, so a fixed preset
+  // (these were W200/C100 and W256/C128) fits one site's data by accident and
+  // paints the rest solid white. The MR_* presets stay selectable by hand.
+  { id: 'mr-brain', modality: 'MR', body: /brain|brats|tumor|flair|t1|t2/i, choice: { layout: 'tri', preset: 'auto', proj: 'slice' } },
+  { id: 'mr-default', modality: 'MR', body: null, choice: { layout: 'tri', preset: 'auto', proj: 'slice' } },
   // Mammo/tomo opens coronal (the stack plane) on auto window — MG has no
   // dedicated preset; BI-RADS assessment stays a reporting call, not a LUT.
   { id: 'mg-tomo', modality: 'MG', body: null, choice: { layout: 'coronal', preset: 'auto', proj: 'slice' } },

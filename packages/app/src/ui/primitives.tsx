@@ -201,7 +201,7 @@ export function Popover({ open, onOpenChange, trigger, children, align = 'end', 
       <RxPopover.Trigger asChild>{trigger}</RxPopover.Trigger>
       {anchorRef ? <RxPopover.Anchor virtualRef={anchorRef as RefObject<HTMLElement>} /> : null}
       <RxPopover.Portal>
-        <RxPopover.Content className={className} align={align} sideOffset={8} collisionPadding={10}>
+        <RxPopover.Content className={`pop-layer${className ? ` ${className}` : ''}`} align={align} sideOffset={8} collisionPadding={10}>
           {children}
         </RxPopover.Content>
       </RxPopover.Portal>

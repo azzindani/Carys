@@ -68,6 +68,11 @@ try {
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
   );
+  // The voxel count lives in the details panel, which starts closed (it
+  // overlays the image); read it the way a user would — open the panel.
+  const t = await page.waitForSelector('#instoggle', { timeout: 5000 });
+  if ((await t.getAttribute('aria-pressed')) !== 'true') await t.click();
+  await page.waitForSelector('#maskinfo dd', { timeout: 10000 });
   const vox = () => page.evaluate(() => {
     const dd = [...document.querySelectorAll('#maskinfo dd')];
     const v = dd.find((d) => /^\d[\d,]*$/.test(d.textContent.trim()));

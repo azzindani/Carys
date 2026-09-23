@@ -8,13 +8,16 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@carys/dicomweb": "0.1.0",
     "@carys/editor-seg": "0.1.0",
     "@carys/io": "0.1.0",
     "@carys/measure": "0.1.0",
     "@carys/render-cpu": "0.1.0",
-    "@carys/dicomweb": "0.1.0",
     "@carys/study": "0.1.0",
     "@carys/volume-core": "0.1.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/space-grotesk": "^5.3.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   }

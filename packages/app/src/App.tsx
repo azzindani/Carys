@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { SERIES } from './lib/catalog';
 import { createExtractor, type Extractor } from './lib/extractor';
@@ -13,21 +13,26 @@ import { getUi, saveAppearance, setUi, useUiPick } from './lib/store';
 import { useIsMobile } from './lib/isMobile';
 import { bump } from './lib/version';
 import type { View } from './lib/types';
-import { AtlasView } from './views/AtlasView';
-import { CellsView } from './views/CellsView';
 import { Inspector } from './views/Inspector';
-import { ProteinView } from './views/ProteinView';
-import { LearnView } from './views/LearnView';
-import { ReportView } from './views/ReportView';
-import { TracksView } from './views/TracksView';
 import { ViewerView } from './views/ViewerView';
-import { WorklistView } from './views/WorklistView';
 import { Palette, buildCommands } from './ui/Palette';
 import { Rail } from './ui/Rail';
+import { RouteSuspense } from './ui/RouteSuspense';
 import { StatusBar } from './ui/StatusBar';
 import { TipProvider } from './ui/primitives';
 import { Toasts } from './ui/Toasts';
 import { TopBar } from './ui/TopBar';
+
+// The viewer is the boot route, so it ships in the entry chunk. The other
+// seven load on first visit: bundled together they made one 722KB entry
+// chunk that every page view paid for, mostly for routes it never opened.
+const AtlasView = lazy(() => import('./views/AtlasView').then((m) => ({ default: m.AtlasView })));
+const CellsView = lazy(() => import('./views/CellsView').then((m) => ({ default: m.CellsView })));
+const LearnView = lazy(() => import('./views/LearnView').then((m) => ({ default: m.LearnView })));
+const ProteinView = lazy(() => import('./views/ProteinView').then((m) => ({ default: m.ProteinView })));
+const ReportView = lazy(() => import('./views/ReportView').then((m) => ({ default: m.ReportView })));
+const TracksView = lazy(() => import('./views/TracksView').then((m) => ({ default: m.TracksView })));
+const WorklistView = lazy(() => import('./views/WorklistView').then((m) => ({ default: m.WorklistView })));
 
 export function App(): JSX.Element {
   const [route, go] = useRoute();
@@ -187,7 +192,9 @@ export function App(): JSX.Element {
         <div className="frame">
           <TopBar route={route} go={go} onOpenPalette={() => setPalOpen(true)} onSelectSeries={(s) => { go('viewer'); openSeries(s); }} />
           <div className="main main-full">
-            <section className="viewport">{content}</section>
+            <section className="viewport">
+              {isViewer ? content : <RouteSuspense route={route}>{content}</RouteSuspense>}
+            </section>
             {isViewer && insOpen && <Inspector />}
           </div>
           {!isMobile && <StatusBar />}

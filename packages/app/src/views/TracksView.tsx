@@ -72,8 +72,16 @@ export function TracksView(): JSX.Element {
       setRows(parsed);
       setName(cfg.name);
       if (parsed.length > 0) {
+        // Open on everything the file has on its first chromosome. The locus
+        // used to be the first feature's own extent, so a freshly loaded
+        // file listed one feature and hid the rest ("2 features · 1 in locus").
         const first = parsed[0]!;
-        const loc: Locus = { chr: first.chr, start: first.start, end: first.end };
+        const same = parsed.filter((r) => r.chr === first.chr);
+        const loc: Locus = {
+          chr: first.chr,
+          start: Math.min(...same.map((r) => r.start)),
+          end: Math.max(...same.map((r) => r.end)),
+        };
         setLocus(loc);
         setLocusText(locusString(loc));
       } else {

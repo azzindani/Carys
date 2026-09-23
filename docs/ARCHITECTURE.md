@@ -18,10 +18,11 @@ One undo stack owns `Annotation[]`. Views never own state — they project core.
 
 | Adapter | In | Out | Source pattern | Status |
 |---|---|---|---|---|
+| `dicom-stack.ts` | parsed `.dcm` slices/frames | `DicomStack[]` (+ `stackVoxels`) | group by series + matrix + IOP + spacing; IPP·normal order and spacing; even repeats → phases; warns on gaps, tilt, dropped repeats | proven on the vendored picks (5 exams → 5 stacks) + synthetic geometry |
 | `dicom.ts` | `.dcm` slices | `Volume` (sort+stack) | `readImageDicomFileSeries` blocks-of-8, scan-normal sort | proven, 5 series |
 | `dicom-parse.ts` | single `.dcm` bytes | `DicomSlice` + meta | Daikon Parser/Series/Image + RLE + JPEG-baseline + JPEG-lossless + deflated-TS + multi-frame split + Enhanced functional groups (52009229/52009230 → per-frame IPP/IOP/DIV) | proven, 27 files + codec/enhanced tests |
 | `nifti1.ts` | plain `.nii` | header + image bytes | NIFTI-Reader-JS, all 8 dtypes | proven, 30 files |
-| `nifti-write.ts` | `Volume` | `.nii` bytes | inverse of reader, METHOD 0 affine | proven, round-trip |
+| `nifti-write.ts` | `Volume` (+ optional affine) | `.nii` bytes | inverse of reader; METHOD 0, or the affine as sform + qform (qfac) | proven, round-trip incl. oblique left-handed affine |
 | `nrrd.ts` | `.nrrd` (NRRD0001-0005 header) | `Volume` | NRRD spec: raw/ascii/gzip, all 8 dtypes, spacings, both endians | proven, synthetic round-trips |
 | `ome-tiff.ts` | `.tif`/`.ome.tif` (TIFF 6.0 + OME-XML) | planes | strips/tiles, raw/deflate/LZW/JPEG, 8/16-bit, LE/BE | proven (PIL-validated LZW), `samples/tiny.ome.tif` |
 | `ome-plate.ts` | NGFF plate/well `.zattrs` | well URLs | OME-NGFF 0.4 plates: lookup + resolve | proven, `samples/plate_demo.zarr` |
@@ -40,6 +41,26 @@ Heavy paths (surface extraction) run in a real Web Worker with transferables
 (`ui/extract.worker.js`) and main-thread fallback; parsers are pure functions
 usable in workers but currently called on the main thread in tests.
 
+## Patient geometry (`volume-core/geometry.ts`, `app/lib/orient.ts`)
+
+A volume whose file says where it is (NIfTI qform/sform, DICOM IOP/IPP)
+carries `geometry` (LPS origin, spacing, direction) and is re-laid out once
+at load into LPS storage: +i patient Left, +j Posterior, +k Superior. The
+render and editor code maps voxel axes to the screen without knowing
+anatomy, and in LPS storage that mapping is radiological (axial: patient
+right on screen left, anterior up; coronal/sagittal drawn superior-up). The
+re-layout is a permutation + flips, so `source` keeps the file's own grid and
+exports invert it exactly. No geometry → stored as-is, no edge letters, an
+"orientation unknown" caution on the image.
+
+Panes draw through `views/paneView.ts`: the canvas is the pane's pixels, the
+slice is fitted in millimetres (true aspect for anisotropic voxels), and the
+same mapping inverts every tap; what a pane draws over the image (crosshair,
+edge letters, scale bar, measurements) is `views/paneChrome.ts`. The 3D
+surface, fibres and cursor are drawn in mm (`app/lib/physical3d.ts`), and the
+volume raycaster marches in mm (`renderVolume`'s `spacing`), so both 3D modes
+frame the same physical box.
+
 ## Render (`packages/render-cpu`)
 
 - MPR: reslice → `ImageData` → `Canvas2D.putImageData`, window/level LUT.
@@ -48,7 +69,9 @@ usable in workers but currently called on the main thread in tests.
 - 3D surfaces: cuberille boundary faces (blocky) + naive surface nets (smooth),
   orthographic + Lambert + z-buffer rasterizer → RGBA.
 - Export: binary STL from any TriMesh (re-parse verified).
-- Volume raycast: orthographic front-to-back CPU compositing (`vr.ts`).
+- Volume raycast: orthographic front-to-back CPU compositing (`vr.ts`). Rays
+  march in mm and sample in voxels; the step is in voxels of the finest axis,
+  and unit spacing is bit-identical to the old voxel-space renderer.
 - NOT built: WASM marching-cubes (CPU cuberille + surface nets cover it).
 - Proteins: project spheres/sticks on CPU, paint pLDDT / chain (proven to 5.4k atoms; `.pdb` + `.cif` open).
 - Cells: tile pyramid + channel composite on CPU.
@@ -110,8 +133,9 @@ of imagery is still CPU-rasterised into a 2D canvas. The gizmo is SVG chrome
 that reflects orbit/tilt and is operable (clicking an axis snaps the camera),
 but it renders no imagery. No WebGL context is created and no `three` import
 exists, and `verify.test.ts` enforces both. Anatomical edge letters stay on
-the canvas via `iopEdgeLabels` — the DOM HUD draws framing only, so there is
-one implementation, not two (§4).
+the canvas (`lib/orient.ts edgeLabels`, drawn by `views/paneChrome.ts`) — the DOM HUD draws
+framing only, so there is one implementation, not two (§4). They come from
+the volume's patient geometry, not a DICOM tag, so NIfTI gets them too.
 
 ## UI (`packages/ui`, static, serve repo root)
 
@@ -123,3 +147,23 @@ one implementation, not two (§4).
 - `slice.html` / `surface.html` — kept as focused single-purpose pages AND a
   duplication canary: logic must live in `viewer-lib.js`, pages stay thin.
   If a fix lands in one page but not the others, that is the debt signal.
+
+## Serving (`Dockerfile` + `deploy/nginx.conf`)
+
+- The production image is nginx serving three trees: the Vite bundle
+  (`/packages/app/dist/`), `digests/` (fetched at runtime by Atlas, Learn and
+  the pathogen structures) and the read-only `samples/` mount. `/` is a 302
+  to the app; `/healthz` answers from nginx itself. The per-package tsc builds
+  and the legacy `packages/ui` shell are dev-only.
+- Only the viewer is in the entry chunk. The other seven routes are
+  `React.lazy` chunks behind `ui/RouteSuspense`, whose error boundary turns a
+  chunk that 404s after a redeploy into a "reload" card instead of a blank
+  shell. React and Radix sit in their own chunks so their hashes survive app
+  releases.
+- Cache policy follows naming: hashed `assets/` are immutable for a year,
+  everything unhashed revalidates, `samples/` is private and short-lived.
+- The CSP is `'self'` for script, style, font and worker — no inline, no
+  eval, no blob workers — and fonts are bundled, so no request leaves the
+  origin except the stores a user types in (`connect-src https:`). A change
+  that needs more than that must change `deploy/nginx.conf` in the same
+  commit; `npm run test:image` (CI, image job) fails on any CSP violation.

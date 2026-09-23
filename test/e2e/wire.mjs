@@ -26,11 +26,18 @@ let failed = 0;
  * readouts inside it (#maskinfo, #dcm-meta, #volinfo, #measureinfo, …) open
  * it first. No-op on routes that have no drawer.
  */
+// Waits for the route to mount, then decides. It used to give #instoggle
+// 1.5 s and read a slow mount as "this route has no drawer" — on a loaded
+// machine the drawer then never opened and a later assertion timed out.
 const openDetails = async (pg) => {
-  try {
-    const t = await pg.waitForSelector('#instoggle', { timeout: 1500 });
-    if ((await t.getAttribute('aria-pressed')) !== 'true') await t.click();
-  } catch { /* route has no details drawer (report, cells, tracks, …) */ }
+  await pg.waitForFunction(
+    () => document.querySelector('#root .main') && !document.querySelector('.route-stub'),
+    null, { timeout: 60000 },
+  );
+  const t = await pg.$('#instoggle');
+  if (!t) return; // route has no details drawer (report, cells, tracks, …)
+  if ((await t.getAttribute('aria-pressed')) !== 'true') await t.click();
+  await pg.waitForSelector('#instoggle[aria-pressed="true"]', { timeout: 10000 });
 };
 
 const fail = (msg) => {
@@ -1090,11 +1097,14 @@ try {
     null, { timeout: 60000 },
   );
   console.log('rtdose opens:', await page.locator('#status-text').textContent());
+  // Two frames stack into a 2-slice grid: the readout's max index is 1.
+  // Which slice it opens on is the start-slice rule's business, not RT's
+  // (this leg pinned '0 / 1' while the NRRD leg pins floor(nz/2) = '2 / 3').
   await page.waitForFunction(
-    () => document.getElementById('ro-axial')?.textContent === '0 / 1',
+    () => /^\d+ \/ 1$/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 30000 },
   );
-  console.log('rtdose grid stacks 2 frames (axial 0 / 1)');
+  console.log(`rtdose grid stacks 2 frames (axial ${await page.locator('#ro-axial').textContent()})`);
   await page.waitForSelector('#dcm-meta', { timeout: 30000 });
   const doseMeta = await page.locator('#dcm-meta').textContent();
   if (!doseMeta || !doseMeta.includes('RT Dose') || !doseMeta.includes('max 31.00 Gy')
@@ -1244,7 +1254,9 @@ try {
   );
   await page.waitForSelector('#dcm-meta', { timeout: 30000 });
   const wsiEmpty = await page.locator('#dcm-meta').textContent();
-  if (wsiEmpty.includes('teaching regions')) fail('real upload should start with no teaching regions');
+  // The teaching-regions row is always there on a VL tile (it holds the
+  // Demo button this leg clicks next); "annotation-free" means no regions in it.
+  if (wsiEmpty.includes('Gradient field') || wsiEmpty.includes('shown')) fail('real upload should start with no teaching regions');
   else console.log('real VL upload starts annotation-free');
   await page.click('#wsi-demo');
   await page.waitForFunction(
@@ -1337,23 +1349,28 @@ try {
   await page.click('#appearance');
   await page.waitForSelector('#appear-text', { timeout: 30000 });
   const bodyPx = () => page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize));
-  const dockPadTop = () => page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.dock')).paddingTop));
-  const textLevels = [['xs', 10.4], ['s', 11.375], ['m', 13], ['l', 14.625], ['xl', 16.25]];
+  // Expectations follow tokens.css: body text is --fs-md (13.5px) × the --ts
+  // ramp, and rhythm is --sp-2 (6px) × the --sp ramp, read off the file-tab
+  // row's bottom padding. (The dock this leg used to measure lost its
+  // padding in the UI rebuild, and the ramp's base moved from 13px to 13.5px;
+  // the leg sat unreached behind earlier failures while both drifted.)
+  const dockPadTop = () => page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.ftop')).paddingBottom));
+  const textLevels = [['xs', 11.07], ['s', 12.285], ['m', 13.5], ['l', 14.985], ['xl', 16.74]];
   for (const [lv, px] of textLevels) {
     await page.click(`#appear-text button[data-tsize="${lv}"]`);
     await page.waitForFunction((v) => document.documentElement.dataset.text === v, lv, { timeout: 30000 });
     const got = await bodyPx();
     if (Math.abs(got - px) > 0.01) fail(`text ${lv}: body ${got}px, want ${px}px`);
   }
-  console.log('text scale hits all 5 levels (10.4/11.375/13/14.625/16.25px)');
-  const layoutLevels = [['xs', 4], ['s', 5], ['m', 7], ['l', 9], ['xl', 11]];
+  console.log('text scale hits all 5 levels (11.07/12.285/13.5/14.985/16.74px)');
+  const layoutLevels = [['xs', 4.08], ['s', 5.04], ['m', 6], ['l', 7.2], ['xl', 8.4]];
   for (const [lv, pad] of layoutLevels) {
     await page.click(`#appear-density button[data-density="${lv}"]`);
     await page.waitForFunction((v) => document.documentElement.dataset.density === v, lv, { timeout: 30000 });
     const got = await dockPadTop();
-    if (Math.abs(got - pad) > 0.01) fail(`layout ${lv}: dock pad-top ${got}px, want ${pad}px`);
+    if (Math.abs(got - pad) > 0.01) fail(`layout ${lv}: rhythm ${got}px, want ${pad}px`);
   }
-  console.log('layout size hits all 5 levels (dock pad 4/5/7/9/11px)');
+  console.log('layout size hits all 5 levels (rhythm 4.08/5.04/6/7.2/8.4px)');
   // Reload: chrome prefs survive via localStorage (parked at the extremes).
   await page.click('#appear-text button[data-tsize="xl"]');
   await page.click('#appear-density button[data-density="xs"]');
@@ -1367,7 +1384,7 @@ try {
     null, { timeout: 30000 },
   );
   const persisted = await bodyPx();
-  if (Math.abs(persisted - 16.25) > 0.01) fail(`text scale not persisted: ${persisted} vs 16.25`);
+  if (Math.abs(persisted - 16.74) > 0.01) fail(`text scale not persisted: ${persisted} vs 16.74`);
   else console.log('appearance persists across reload');
   // Restore defaults so later runs start balanced/medium.
   await page.click('#appearance');
@@ -1805,7 +1822,10 @@ try {
   const shname = shdl.suggestedFilename();
   if (!shname.startsWith('sheet-') || !shname.endsWith('.html')) fail(`sheet filename wrong: ${shname}`);
   const shtext = readFileSync(await shdl.path(), 'utf8');
-  for (const needle of ['Teaching sheet', '☐', 'education overlay']) {
+  // The quiz is built from the session's measurements; this page opened
+  // straight on the report, so it has none and the sheet has no boxes.
+  const sheetNeedles = ['Teaching sheet', 'education overlay', ...(sidecar.measurements.length > 0 ? ['☐'] : [])];
+  for (const needle of sheetNeedles) {
     if (!shtext.includes(needle)) fail(`sheet HTML missing ${needle}`);
   }
   if (shtext.includes('Correct.')) fail('sheet HTML leaks answers');
@@ -1978,7 +1998,8 @@ try {
     null, { timeout: 30000 },
   );
   console.log('gtf translates:', await page16b.locator('#ro-codonmap').textContent());
-  await page16b.waitForSelector('#dock-tracks select[aria-label="Transcript"] option[value="T"]', { timeout: 30000 });
+  // A native <option> is never "visible" to Playwright: wait for it to exist.
+  await page16b.waitForSelector('#dock-tracks select[aria-label="Transcript"] option[value="T"]', { state: 'attached', timeout: 30000 });
   console.log('transcript picker lists T');
   await page16b.waitForSelector('#track-list button[data-res="T:1"]', { timeout: 30000 });
   console.log('translated codons drive the residue chip');
@@ -2248,7 +2269,12 @@ try {
   else console.log(`presentation restores WL ${roWl}`);
   // Wrong-series file is a loud reject on the visible status, never silent.
   const wrongPath = join(dir, 'wire-present-wrong.json');
-  writeFileSync(wrongPath, JSON.stringify({ ...present, series: 'not-this-series' }));
+  // A file really saved on another series: its annotations name that series
+  // too (a file whose two disagree is rejected earlier, as malformed).
+  const otherSeries = 'not-this-series';
+  writeFileSync(wrongPath, JSON.stringify({
+    ...present, series: otherSeries, annotations: present.annotations.map((a) => ({ ...a, series: otherSeries })),
+  }));
   await page19.setInputFiles('#present-upload', wrongPath);
   await page19.waitForFunction(
     () => (document.getElementById('status-text')?.textContent ?? '').includes('open the matching series'),
@@ -2347,7 +2373,13 @@ try {
   if (!ribWalk.includes('FMA20224')) fail(`rib neighbourhood missing: ${ribWalk}`);
   else console.log(`atlas rib walk ${ribWalk.slice(0, 140)}`);
   // K2 glossary: tap the term chip -> card opens with parent/children/source;
-  // re-tap closes (rule 23: Esc/✕/re-tap exits).
+  // re-tap closes (rule 23: Esc/✕/re-tap exits). The card is the open
+  // structure's, and the skull steps above moved off the scapula.
+  await page20.selectOption('#dock-atlas select[aria-label="Atlas structure"]', 'scapula-l');
+  await page20.waitForFunction(
+    () => /left scapula/i.test(document.getElementById('ro-atlas-term')?.textContent ?? ''),
+    null, { timeout: 60000 },
+  );
   await page20.click('#ro-atlas-term');
   await page20.waitForSelector('#gloss', { timeout: 30000 });
   const glossParent = await page20.locator('#gloss-parent').textContent();
@@ -2420,7 +2452,7 @@ try {
     () => /spike/i.test(document.getElementById('learn-pathway')?.textContent ?? ''),
     null, { timeout: 90000 },
   );
-  const story = await page21.locator('#pane-learn-story .hint').textContent();
+  const story = await page21.locator('#pane-learn-story p.hint').textContent();
   if (!story.includes('6M0J') || !story.includes('chain E')) fail(`bundle story wrong: ${story}`);
   else console.log('bundle story pins 6M0J chain E');
   const src = await page21.locator('#learn-src').textContent();
@@ -2450,7 +2482,7 @@ try {
   // bundle switch resets the score; capsid bundle carries 3 questions
   await page21.locator('#dock-learn select[aria-label="Disease bundle"]').selectOption('capsid-assembly');
   await page21.waitForFunction(
-    () => /HBV|hepatitis/i.test(document.getElementById('learn-pathway')?.textContent ?? ''),
+    () => /HBcAg/.test(document.getElementById('learn-pathway')?.textContent ?? ''),
     null, { timeout: 30000 },
   );
   const reset = await page21.locator('#ro-learn-score').textContent();

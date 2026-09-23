@@ -9,10 +9,16 @@ const BASE = `http://localhost:${PORT}/packages/app/dist/index.html`;
 /** The details drawer starts closed (it overlays the image); journeys that
  *  read #maskinfo open it first. */
 const openDetails = async (pg) => {
-  try {
-    const t = await pg.waitForSelector('#instoggle', { timeout: 1500 });
-    if ((await t.getAttribute('aria-pressed')) !== 'true') await t.click();
-  } catch { /* no drawer on this route */ }
+  // wait for the route to mount: a fixed 1.5 s window read a slow mount on a
+  // loaded machine as "no drawer here" and the journey then timed out later
+  await pg.waitForFunction(
+    () => document.querySelector('#root .main') && !document.querySelector('.route-stub'),
+    null, { timeout: 60000 },
+  );
+  const t = await pg.$('#instoggle');
+  if (!t) return; // no drawer on this route
+  if ((await t.getAttribute('aria-pressed')) !== 'true') await t.click();
+  await pg.waitForSelector('#instoggle[aria-pressed="true"]', { timeout: 10000 });
 };
 
 const server = spawn('python3', ['-m', 'http.server', String(PORT), '--directory', '.'], { stdio: 'ignore' });

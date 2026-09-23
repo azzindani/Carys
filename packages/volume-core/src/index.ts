@@ -51,3 +51,4 @@ export * from './selftest.js';
 export * from './brain-regions.js';
 export * from './plane-atlas.js';
 export * from './plane-trainer.js';
+export * from './geometry.js';

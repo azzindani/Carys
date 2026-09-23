@@ -19,10 +19,12 @@ export const SERIES: Record<string, SeriesSpec> = {
     seg: ['/samples/volume-covid19-A-0329_seg.nii'], color: [230, 80, 80],
     modality: 'CT', bodyPart: 'chest covid',
   },
-  'cardiac-frame01': { img: ['/samples/cardiac_patient021_frame01.nii'], color: [225, 215, 200], modality: 'CT', bodyPart: 'cardiac' },
+  // ACDC patient021 is cine MR (SSFP, 10 short-axis slices at 10 mm), not
+  // CT: as 'CT' it opened on a Hounsfield angio window with MIP on.
+  'cardiac-frame01': { img: ['/samples/cardiac_patient021_frame01.nii'], color: [225, 215, 200], modality: 'MR', bodyPart: 'cardiac short axis' },
   'cardiac-4d-cine': {
     img: ['/samples/cardiac_patient021_4d.nii'], color: [225, 215, 200],
-    modality: 'CT', bodyPart: 'cardiac cine', time: true,
+    modality: 'MR', bodyPart: 'cardiac cine short axis', time: true,
   },
   'skull-seg': {
     img: ['/samples/skull_case_0001_img.nii'],
@@ -52,9 +54,47 @@ export const SERIES: Record<string, SeriesSpec> = {
     dicom: Array.from({ length: 120 }, (_, i) => `/samples/ct-head-series/ct-head-${String(i).padStart(3, '0')}.dcm`),
     color: [225, 215, 200], modality: 'CT', bodyPart: 'head (synthetic phantom)', axialFrac: 0.5,
   },
+  // The DICOM sample sets are picks, not whole series: single images lifted
+  // from several exams. They load through the same grouping as a user's
+  // folder (lib/dicomSets.ts), so a set that is really five exams opens as
+  // five series, and a sparse pick says its reformats are approximate.
   'lung-ct-dicom': { dicom: [1, 2, 3, 4, 5].map((i) => `/samples/lung_ct_0${i}.dcm`), color: [225, 215, 200], modality: 'CT', bodyPart: 'lung' },
   'cardiac-dicom': { dicom: [1, 2, 4, 5].map((i) => `/samples/cardiac_0${i}.dcm`), color: [225, 215, 200], modality: 'CT', bodyPart: 'cardiac' },
   'prostate-dicom': { dicom: [1, 2, 3, 4, 5].map((i) => `/samples/prostate_mri_0${i}.dcm`), color: [225, 215, 200], modality: 'MR', bodyPart: 'prostate' },
+  'abdomen-ct-dicom': { dicom: [3, 4, 5].map((i) => `/samples/abdomen_ct_0${i}.dcm`), color: [225, 215, 200], modality: 'CT', bodyPart: 'abdomen' },
+  'brain-mri-dicom': { dicom: [1, 2, 3, 4, 5].map((i) => `/samples/brain_mri_2_0${i}.dcm`), color: [225, 215, 200], modality: 'MR', bodyPart: 'brain' },
+  'brain-flair-dicom': { dicom: [1, 2, 3, 4, 5].map((i) => `/samples/brain_mri_3_0${i}.dcm`), color: [225, 215, 200], modality: 'MR', bodyPart: 'brain flair' },
+  // Volumes with labels that were vendored but never listed.
+  'hepatic-vessel-ct-seg': {
+    img: ['/samples/hepatic_vessel_tumor_227_img.nii'],
+    seg: ['/samples/hepatic_vessel_tumor_227_seg.nii'], color: [230, 80, 80],
+    modality: 'CT', bodyPart: 'abdomen liver portal venous',
+  },
+  'spine-ct-seg': {
+    img: ['/samples/spine_ct_case_0010_img.nii'],
+    seg: ['/samples/spine_ct_case_0010_seg.nii'], color: [225, 215, 200],
+    modality: 'CT', bodyPart: 'spine',
+  },
+  // Lumbar spine stored sagittally (19 slices of 3.3 mm across the patient,
+  // 0.59 mm in-plane — a sagittal MR protocol; the intensities have no soft
+  // tissue peak near 0 and a third of the voxels above bone, so it is not
+  // HU). The orientation path turns it back into the right three panes.
+  'spine-sagittal-mr-seg': {
+    img: ['/samples/spine_11_0000_img.nii'],
+    seg: ['/samples/spine_11_seg.nii'], color: [225, 215, 200],
+    modality: 'MR', bodyPart: 'lumbar spine sagittal',
+  },
+  'brain-lesion-flair-seg': {
+    img: ['/samples/brain_lession_16_rr_mni_flair.nii'],
+    seg: ['/samples/brain_lession_16_rr_mni_lesion.nii'], color: [230, 80, 80],
+    modality: 'MR', bodyPart: 'brain flair lesion',
+  },
+  // A probability map, not a label: voxels count as grey matter above p = 0.5.
+  'brain-t1-grey-matter': {
+    img: ['/samples/brain_fluid_dlbs_0028337_img.nii'],
+    seg: ['/samples/brain_fluid_dlbs_0028337_probmask_graymatter.nii'], segThreshold: 0.5,
+    color: [90, 200, 120], modality: 'MR', bodyPart: 'brain t1',
+  },
 };
 
 export function addUploadedSeries(
