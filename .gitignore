@@ -25,3 +25,4 @@ samples/*
 test/e2e/demos/
 verify-app.tmp.mjs
 probe*.tmp.mjs
+.cache/

@@ -20,6 +20,16 @@
    "source_url": "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html"
   },
   {
+   "id": "bodyparts3d-body",
+   "kind": "digest",
+   "license_spdx": "CC-BY-4.0",
+   "license_note": "licence page dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html (read 2026-09-23) grants CC BY 4.0; the 4.0 OBJ files still carry the older CC BY-SA 2.1 Japan header text; the licensor's current grant is followed, attribution as the page requires",
+   "mode": "digest",
+   "lane": "H1",
+   "status": "shipped",
+   "source_url": "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html"
+  },
+  {
    "id": "rcsb-pathogens",
    "kind": "digest",
    "license_spdx": "CC0-1.0",

@@ -109,6 +109,13 @@ frame the same physical box.
   renderer's own frame (nearest drawn triangle; where a volume ray turns
   half opaque). A tap on the 3D view (`views/orbitPointer.ts`,
   `views/pick3d.ts`) moves the panes there through `paintBus.jumpTo`.
+- Whole-body atlas package (`body-pack.ts`, H1): BodyParts3D's 2,234
+  element meshes, one `carys-body/1` file per body system in
+  `digests/bodyparts3d-body/` (u16 positions on the body's grid, u16/u32
+  indices, a JSON header of parts with FMA id, name, system and the error
+  the build measured), built by `scripts/build-body-atlas.mjs` (system from
+  the IS-A and PART-OF trees, F11 decimation to 0.5 mm of the source,
+  measured with `mesh-distance.ts`).
 - Curved reformat (`cpr.ts`): the Curve tool's clicks (voxels) become a
   centripetal Catmull-Rom spline in mm; the straightened view samples
   across it, perpendicular to the curve and to the pane it was drawn on

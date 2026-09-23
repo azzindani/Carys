@@ -1360,15 +1360,38 @@ and its attribution shown where it is used. One item per delivery, in
 order, each with its tests, docs and measured numbers, pushed on
 `claude/body-atlas` with CI green before the next.
 
-- OPEN — **H1. Whole-body data package.** `scripts/build-body-atlas.mjs`
-  fetches BodyParts3D 4.0 (PART-OF meshes, obj_99, CC BY 4.0), assigns
-  every element mesh to a body system through the PART-OF tree, decimates
-  each (F11 QEM) and packs one compact binary per system (quantized
-  positions, indices, a part table with FMA id, name and system) into
-  `digests/bodyparts3d-body/`, read by a pure loader. Accept: every source
-  element present; each decimated part within 0.5 mm of its source (both
-  ways); the whole body at most 2 M triangles and 25 MB; the format
-  round-trips; SOURCES.json, DIGESTS.json row and attribution in place.
+- DONE — **H1. Whole-body data package.** `scripts/build-body-atlas.mjs`
+  fetches BodyParts3D 4.0 (the IS-A mesh set, obj_99: 2,234 element
+  meshes, a superset of the PART-OF set's 1,258 that adds the muscles,
+  their heads, the tendons and the teeth; CC BY 4.0), assigns every
+  element to a body system, decimates each (F11 QEM) and packs one compact
+  binary per system (`render-cpu/body-pack.ts`, `carys-body/1`: u16
+  positions on the body's grid, padded 5 mm, u16/u32 indices, a header of
+  parts with FMA id, name, system and measured error) into
+  `digests/bodyparts3d-body/`, read by the pure `unpackBody`.
+  The system comes from the element's own concepts: its IS-A ancestry
+  says what tissue it is (bone organ, muscle organ, a segment of an
+  arterial tree), its PART-OF ancestry which organ system holds it
+  (PART-OF alone leaves 198 bones and muscles in no system and has no
+  muscular system); name rules place what the trees do not (the male
+  genitalia, the larynx membranes, sets of small muscles, plural "veins").
+  Nothing is left unassigned. Each part is decimated as far as a 0.5 mm
+  distance to its source allows, both ways, measured on the quantized
+  mesh (`render-cpu/mesh-distance.ts`, the decimation tests' measure,
+  moved out of the test helpers), trying looser bounds first.
+  Measured: 6.44 M source triangles → **1,943,916** (skeletal 373 parts,
+  346,960 · muscular 383, 869,402 · nervous 147, 123,078 · cardiovascular
+  1,081, 386,049 · respiratory 105 · digestive 86 · sensory 31 ·
+  reproductive 12 · urinary 6 · integumentary 4 · lymphatic 3 · endocrine
+  3), **22.39 MB**, worst part **0.500 mm** from its source (per system
+  0.29–0.50). Every one of the 2,234 elements present once; the format
+  round-trips, moves no coordinate more than half a step (at most
+  0.013 mm: the body is 1.74 m tall over 65,535 steps), fails loud on bad
+  bytes. The whole body
+  draws in 418 ms at 360×900 on one CPU thread (skeleton 69 ms). The
+  licence page grants CC BY 4.0; the OBJ files still carry the older CC
+  BY-SA 2.1 JP header, recorded in the DIGESTS.json row's licence note.
+  Build: 6.5 min, the same bytes every run.
 - OPEN — **H2. The body by system in the Atlas.** The whole body in the
   Atlas route with system toggles (skeletal, muscular, nervous,
   cardiovascular, respiratory, digestive, urinary, reproductive,
