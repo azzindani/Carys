@@ -19,3 +19,4 @@ export * from './trk.js';
 export * from './trx.js';
 export * from './fibers.js';
 export * from './cursor3d.js';
+export * from './mesh-smooth.js';

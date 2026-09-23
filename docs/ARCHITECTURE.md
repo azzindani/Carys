@@ -71,7 +71,8 @@ frame the same physical box.
   binary mask's relaxed inside its cells instead, `maskNets`) +
   cuberille boundary faces (blocky, an option), orthographic + Lambert +
   z-buffer rasterizer → RGBA. The image and the mask keep separate
-  thresholds (`session.thresholds`).
+  thresholds (`session.thresholds`). Optional smoothing (`mesh-smooth.ts`):
+  windowed-sinc filtering, then each closed piece restored to its volume.
 - Surface accuracy is measured, not eyeballed: analytic phantoms (sphere,
   ellipsoid, torus; `test/phantoms.ts`) sampled on isotropic and thick-slice
   grids score every extraction path in mm — vertex distance to the true

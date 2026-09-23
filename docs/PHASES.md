@@ -999,10 +999,36 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   the segmentation itself steps 2–23 voxels between neighbouring columns
   (only 44% of its steps are one voxel). Removing those means overriding the
   mask's own voxels, which is F4's user-controlled smoothing, not this.
-- OPEN — **F4. Volume-preserving mesh smoothing.** Taubin λ/μ or
-  windowed-sinc, a strength control in the 3D dock. Accept: volume change
-  < 1% on the phantoms, staircase score better than F3 alone, and the
-  BraTS tumour's multi-voxel terraces (measured in F3) visibly reduced.
+- DONE — **F4. Volume-preserving mesh smoothing.** `render-cpu/mesh-smooth.ts`:
+  the windowed-sinc filter of Taubin, Zhang & Golub (1996) — VTK's
+  vtkWindowedSincPolyDataFilter, which 3D Slicer runs on segmentations —
+  as a 20-term Chebyshev polynomial in the umbrella operator, strength s
+  giving a pass band of 10^(−4s) (Slicer's mapping). Its gain is 1.00 below
+  the pass band and ~0 at terrace frequencies, but a mesh low-pass cannot
+  tell a terrace from a thin vessel: the filter alone took 15% of a 2.4 mm
+  tube's volume at s 0.35. So each closed piece then moves along its normals
+  until it has its volume back (Newton on ΔV/area, 4 steps; pieces with an
+  odd-shared edge are open and left alone; slivers under 10⁻³ voxel³ and
+  steps over a voxel are refused — the BraTS mask has 213 four-way edges
+  and four zero-volume slivers, and without those guards its "volume" went
+  to 10¹¹). A **Smoothing** slider (0–1, default 0 = as extracted) sits in
+  the 3D dock for smooth surfaces; its value is part of the mesh cache key
+  and of the report's meshKey. At s 0.5 (mask surfaces, F3 → F4):
+
+  | phantom | staircase | mean error | volume change |
+  |---|---|---|---|
+  | sphere, 1 mm | 5.4 → **2.1°** | 0.076 → 0.044 mm | 0.000% |
+  | torus | 5.5 → 3.3° | 0.082 → 0.063 mm | 0.000% |
+  | ellipsoid, 0.8×0.8×2.5 mm | 16.0 → 8.4° | 0.30 → 0.24 mm | 0.000% |
+  | sphere, 5 mm slices | 17.4 → 12.3° | 0.59 → 0.41 mm | 0.000% |
+  | tube r 1.2 mm | 7.7 → 7.5° | 0.057 → 0.108 mm | 0.002% |
+
+  A box's real edges round off (its staircase score 5.1 → 10°): a smoother
+  cannot tell a true corner from a terrace, which is why the default is 0.
+  On the BraTS tumour s 0.5 takes the mean angle between neighbouring faces
+  from 19.7° to 13.5° with the volume unchanged (26,449 voxel³) — the
+  terraces F3 could not touch are gone in the render. Cost: 0.13 s on that
+  23.7k-triangle mask, 1.2 s on the 529k-triangle FLAIR surface (worker).
 - OPEN — **F5. Thick slices.** Shape-based (distance-field) interpolation
   between slices for masks, cubic along z for intensity, before extraction.
   Accept: the ellipsoid on a 1×1×5 mm grid meets the F2/F3 bounds; the

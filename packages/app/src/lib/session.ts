@@ -113,8 +113,11 @@ class Session {
     }
   }
 
-  meshKey(series: string, src: string, threshold: number, method: string): string {
-    return `${series}|m${this.maskVer}|${src}|${threshold}|${method}`;
+  /** Cache key of a surface — also the report's record of how it was
+   *  made. Smoothing is appended only when on, so unsmoothed keys read as
+   *  they always have. */
+  meshKey(series: string, src: string, threshold: number, method: string, smoothing = 0): string {
+    return `${series}|m${this.maskVer}|${src}|${threshold}|${method}${smoothing > 0 ? `|s${smoothing}` : ''}`;
   }
 
   getMesh(key: string): Mesh | undefined {

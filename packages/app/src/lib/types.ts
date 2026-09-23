@@ -97,6 +97,8 @@ export interface UiState {
   tool: Tool;
   src: Source;
   method: Method;
+  /** 3D surface smoothing, 0 (as extracted) … 1; volume-preserving (F4) */
+  smooth3d: number;
   preset: string;
   overlay: boolean;
   brush: number;

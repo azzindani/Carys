@@ -82,7 +82,7 @@ export function ReportView(): JSX.Element {
       threshold: ui.threshold,
       method: ui.method,
       maskVer: session.maskVer,
-      meshKey: session.meshKey(ui.series || 'series', ui.src, ui.threshold, ui.method),
+      meshKey: session.meshKey(ui.series || 'series', ui.src, ui.threshold, ui.method, ui.smooth3d),
       // No digest contributes pixels to this figure today (A1 lands the
       // first pins); the field rides the call so the contract can't drift.
       digestPins: { ...session.digestPins },
