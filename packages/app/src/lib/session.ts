@@ -4,7 +4,7 @@ import type {
 } from '@carys/io';
 import type { ThresholdSuggestion } from '@carys/volume-core';
 import type { Measurement } from '@carys/measure';
-import type { FiberSet, Mesh, Volume } from './types';
+import type { FiberSet, Mesh, Source, Volume } from './types';
 
 // JIT caches: fetch once, extract once, pre-build when idle.
 // Non-reactive on purpose — canvases paint imperatively; React only
@@ -24,9 +24,14 @@ class Session {
   fibersPinned: FiberSet | null = null;
   wl: { width: number; center: number } | null = null;
   autoWl: { width: number; center: number } | null = null;
-  /** Isosurface range + suggested cut for the loaded volume (see autoThreshold).
-   *  Null until a series loads; the 3D slider falls back to [0, 1000]. */
+  /** Isosurface range + suggested cut for the 3D source on screen (see
+   *  autoThreshold). Null until a series loads; the slider falls back to
+   *  [0, 1000]. */
   autoThreshold: ThresholdSuggestion | null = null;
+  /** Each 3D source's suggestion and the cut last used on it. One shared
+   *  threshold carried a 0/1 mask's cut onto a CT (a skin surface at 0 HU)
+   *  and a CT's 300 onto a mask (nothing at all). */
+  thresholds: Record<Source, { hint: ThresholdSuggestion; value: number }> | null = null;
   /** compare overlay window (resolved when the overlay volume loads) */
   compareWl: { width: number; center: number } | null = null;
   axialFrac = 0.5;

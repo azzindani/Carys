@@ -8,10 +8,9 @@ import {
 } from './phantoms.js';
 
 // F1 (docs/PHASES.md): surface accuracy measured against analytic shapes,
-// in mm, on the grids a scanner produces. The baseline table records where
-// today's extraction paths stand; every later 3D-fidelity item has to beat
-// it with its own acceptance test, and a change that moves these numbers
-// has to say why.
+// in mm, on the grids a scanner produces. The table records where each
+// extraction path stands; every 3D-fidelity item beats it with its own
+// acceptance test, and a change that moves these numbers has to say why.
 
 interface Case { id: string; ph: Phantom; dims: V3; sp: V3 }
 
@@ -41,23 +40,26 @@ function paths(c: Case): Record<string, { positions: Float32Array; indices: Uint
 
 type Row = [meanErr: number, maxErr: number, volErrPct: number, normalDevDeg: number];
 
-/** Measured 2026-09-23 (F1). mm, mm, %, degrees. */
-const BASELINE: Record<string, Record<string, Row>> = {
+/** mm, mm, %, degrees. Blocky rows: the F1 baseline (2026-09-23). Smooth
+ *  rows: after F2 — on the 1 mm sphere F1 measured 0.430 mm / −1.87% /
+ *  5.4° for the image and 0.444 mm / −0.19% / 12.6° for the mask, half a
+ *  voxel off the voxel-centre convention. */
+const MEASURED: Record<string, Record<string, Row>> = {
   'sphere-iso': {
-    'blocky-image': [0.342, 0.770, 0.84, 45.0], 'smooth-image': [0.430, 0.907, -1.87, 5.4],
-    'blocky-mask': [0.342, 0.770, 0.84, 45.0], 'smooth-mask': [0.444, 1.051, -0.19, 12.6],
+    'blocky-image': [0.342, 0.770, 0.84, 45.0], 'smooth-image': [0.026, 0.067, -0.92, 3.3],
+    'blocky-mask': [0.342, 0.770, 0.84, 45.0], 'smooth-mask': [0.145, 0.338, -0.04, 16.1],
   },
   'sphere-thick': {
-    'blocky-image': [0.927, 2.500, -4.98, 43.3], 'smooth-image': [1.436, 3.938, -8.55, 19.0],
-    'blocky-mask': [0.927, 2.500, -4.98, 43.3], 'smooth-mask': [1.453, 4.950, -8.56, 25.2],
+    'blocky-image': [0.927, 2.500, -4.98, 43.3], 'smooth-image': [0.452, 1.409, -8.06, 14.9],
+    'blocky-mask': [0.927, 2.500, -4.98, 43.3], 'smooth-mask': [0.672, 2.500, -7.99, 23.5],
   },
   'ellipsoid-aniso': {
-    'blocky-image': [0.619, 1.493, 1.05, 44.4], 'smooth-image': [0.888, 2.069, -1.82, 13.9],
-    'blocky-mask': [0.619, 1.493, 1.05, 44.4], 'smooth-mask': [0.895, 2.953, -1.19, 24.2],
+    'blocky-image': [0.619, 1.493, 1.05, 44.4], 'smooth-image': [0.180, 0.486, -1.47, 10.8],
+    'blocky-mask': [0.619, 1.493, 1.05, 44.4], 'smooth-mask': [0.396, 1.083, -0.81, 24.3],
   },
   'torus-iso': {
-    'blocky-image': [0.320, 0.835, 2.24, 41.3], 'smooth-image': [0.436, 0.923, -2.26, 7.8],
-    'blocky-mask': [0.320, 0.835, 2.24, 41.3], 'smooth-mask': [0.446, 1.140, 0.11, 13.1],
+    'blocky-image': [0.320, 0.835, 2.24, 41.3], 'smooth-image': [0.025, 0.083, -1.84, 3.8],
+    'blocky-mask': [0.320, 0.835, 2.24, 41.3], 'smooth-mask': [0.138, 0.407, 0.53, 14.7],
   },
 };
 
@@ -119,12 +121,12 @@ describe('F1 accuracy harness', () => {
     assert.equal(m[10], 0);
   });
 
-  it("today's extraction paths match the recorded baseline", () => {
+  it('the extraction paths match their recorded measurements', () => {
     for (const c of CASES) {
       const got = paths(c);
       for (const [path, mesh] of Object.entries(got)) {
         const s: SurfaceScore = scoreMesh(mesh, c.sp, c.ph);
-        const [mean, max, vol, dev] = BASELINE[c.id]![path]!;
+        const [mean, max, vol, dev] = MEASURED[c.id]![path]!;
         const what = `${c.id} ${path}`;
         assert.ok(mesh.indices.length > 0, `${what}: empty mesh`);
         near(s.meanErr, mean, 0.005, `${what} mean error`);
@@ -135,15 +137,17 @@ describe('F1 accuracy harness', () => {
     }
   });
 
-  it('finds the smooth path half a voxel off the voxel-centre convention (F2 fixes it)', () => {
-    // Surface nets puts sample i at i; the panes and cuberille put voxel i's
-    // centre at i + 0.5. Shifting the mesh by that half voxel takes the
-    // sphere from 0.43 mm mean error to 0.02.
+  it('F2: the smooth image surface is sub-voxel accurate on the voxel-centre convention', () => {
+    // Acceptance: the 1 mm sphere within 0.1 mm mean error and 1% volume.
     const c = CASES[0]!;
     const mesh = paths(c)['smooth-image']!;
-    const moved = { positions: mesh.positions.map((x) => x + 0.5), indices: mesh.indices };
-    const before = scoreMesh(mesh, c.sp, c.ph).meanErr;
-    const after = scoreMesh(moved, c.sp, c.ph).meanErr;
-    assert.ok(before > 0.4 && after < 0.03, `before ${before.toFixed(3)} mm, after ${after.toFixed(3)} mm`);
+    const s = scoreMesh(mesh, c.sp, c.ph);
+    assert.ok(s.meanErr < 0.1, `mean error ${s.meanErr.toFixed(3)} mm`);
+    assert.ok(Math.abs(s.volErrPct) < 1, `volume ${s.volErrPct.toFixed(2)}%`);
+    // On the convention, not near it: half a voxel either way is worse.
+    for (const d of [-0.5, 0.5]) {
+      const moved = { positions: mesh.positions.map((x) => x + d), indices: mesh.indices };
+      assert.ok(scoreMesh(moved, c.sp, c.ph).meanErr > 0.3, `a ${d} voxel shift should be worse`);
+    }
   });
 });

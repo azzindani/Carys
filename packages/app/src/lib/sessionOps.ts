@@ -166,11 +166,15 @@ export async function loadSeries(name: string, uploadedVol?: Volume): Promise<Sl
     // Hounsfield volume, and a fixed ceiling of 1000 could not reach cortical
     // bone at ~1100 HU. A catalog entry may still pin its own.
     const haveMask = session.editMask.some((v) => v > 0);
-    session.autoThreshold = haveMask ? autoThreshold(session.editMask) : autoThreshold(img.data, 256, imgHist);
-    setUi({
-      src: haveMask ? 'mask' : 'image',
-      threshold: spec.threshold3d ?? session.autoThreshold.value,
-    });
+    const imageHint = autoThreshold(img.data, 256, imgHist);
+    const maskHint = autoThreshold(session.editMask);
+    session.thresholds = {
+      image: { hint: imageHint, value: spec.threshold3d ?? imageHint.value },
+      mask: { hint: maskHint, value: maskHint.value },
+    };
+    const src3d = haveMask ? 'mask' : 'image';
+    session.autoThreshold = session.thresholds[src3d].hint;
+    setUi({ src: src3d, threshold: session.thresholds[src3d].value });
 
     const [nx, ny, nz] = img.dims;
     // The catalog may name where the anatomy is (BraTS opens on the tumour,
