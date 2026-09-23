@@ -1,0 +1,117 @@
+{
+ "format": "carys-body-index/1",
+ "pin": "BP3D-4.0-isa-obj99",
+ "attribution": "BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International",
+ "min": [
+  -339.1189880371094,
+  -251.7830047607422,
+  -83.11119842529297
+ ],
+ "max": [
+  337.82501220703125,
+  50.24760055541992,
+  1656.6300048828125
+ ],
+ "elements": 2234,
+ "systems": {
+  "skeletal": {
+   "file": "skeletal.cbdy",
+   "parts": 373,
+   "tris": 346960,
+   "sourceTris": 1061864,
+   "bytes": 4005624,
+   "worstErrorMm": 0.499
+  },
+  "muscular": {
+   "file": "muscular.cbdy",
+   "parts": 383,
+   "tris": 869402,
+   "sourceTris": 2214980,
+   "bytes": 10348836,
+   "worstErrorMm": 0.5
+  },
+  "nervous": {
+   "file": "nervous.cbdy",
+   "parts": 147,
+   "tris": 123078,
+   "sourceTris": 534406,
+   "bytes": 1269544,
+   "worstErrorMm": 0.495
+  },
+  "cardiovascular": {
+   "file": "cardiovascular.cbdy",
+   "parts": 1081,
+   "tris": 386049,
+   "sourceTris": 2180722,
+   "bytes": 4122868,
+   "worstErrorMm": 0.496
+  },
+  "lymphatic": {
+   "file": "lymphatic.cbdy",
+   "parts": 3,
+   "tris": 1442,
+   "sourceTris": 3410,
+   "bytes": 14524,
+   "worstErrorMm": 0.429
+  },
+  "respiratory": {
+   "file": "respiratory.cbdy",
+   "parts": 105,
+   "tris": 23976,
+   "sourceTris": 84906,
+   "bytes": 287024,
+   "worstErrorMm": 0.437
+  },
+  "digestive": {
+   "file": "digestive.cbdy",
+   "parts": 86,
+   "tris": 76485,
+   "sourceTris": 123044,
+   "bytes": 1009012,
+   "worstErrorMm": 0.47
+  },
+  "urinary": {
+   "file": "urinary.cbdy",
+   "parts": 6,
+   "tris": 3928,
+   "sourceTris": 9944,
+   "bytes": 38592,
+   "worstErrorMm": 0.422
+  },
+  "reproductive": {
+   "file": "reproductive.cbdy",
+   "parts": 12,
+   "tris": 4164,
+   "sourceTris": 7184,
+   "bytes": 47148,
+   "worstErrorMm": 0.442
+  },
+  "endocrine": {
+   "file": "endocrine.cbdy",
+   "parts": 3,
+   "tris": 1142,
+   "sourceTris": 7454,
+   "bytes": 11124,
+   "worstErrorMm": 0.287
+  },
+  "sensory": {
+   "file": "sensory.cbdy",
+   "parts": 31,
+   "tris": 36325,
+   "sourceTris": 220856,
+   "bytes": 470992,
+   "worstErrorMm": 0.418
+  },
+  "integumentary": {
+   "file": "integumentary.cbdy",
+   "parts": 4,
+   "tris": 70965,
+   "sourceTris": 232260,
+   "bytes": 765744,
+   "worstErrorMm": 0.49
+  }
+ },
+ "tris": 1943916,
+ "bytes": 22391032,
+ "worstErrorMm": 0.5
+}

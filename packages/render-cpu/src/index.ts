@@ -26,4 +26,6 @@ export * from './pick.js';
 export * from './clip.js';
 export * from './labels.js';
 export * from './slice-fill.js';
+export * from './mesh-distance.js';
+export * from './body-pack.js';
 export * from './thick-slices.js';
