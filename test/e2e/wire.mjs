@@ -2853,6 +2853,49 @@ try {
   else console.log(`level of detail: ${lodText}`);
   await page25b.close();
 
+  // ---- 41e. F12 3D → 2D picking: a tap on the BraTS tumour, surface and
+  // volume render, lands the crosshair on a voxel the tumour mask labels,
+  // and the axial pane moves to its slice.
+  const page25c = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page25c.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
+  await page25c.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await page25c.waitForFunction(() => /tris/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 90000 });
+  /** Tap the drawn pixel nearest the centre of everything drawn. */
+  const tapStructure = async (mode) => {
+    const at = await page25c.evaluate(() => {
+      const cv = document.getElementById('view3d');
+      const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      const drawn = (i) => Math.abs(d[i] - 17) + Math.abs(d[i + 1] - 17) + Math.abs(d[i + 2] - 17) > 12;
+      let sx = 0, sy = 0, n = 0;
+      for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) if (drawn((y * cv.width + x) * 4)) { sx += x; sy += y; n++; }
+      const cx = sx / n, cy = sy / n;
+      let best = null, bd = Infinity;
+      for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) {
+        const dd = (x - cx) ** 2 + (y - cy) ** 2;
+        if (dd < bd && drawn((y * cv.width + x) * 4)) { bd = dd; best = [x + 0.5, y + 0.5]; }
+      }
+      const r = cv.getBoundingClientRect();
+      return { x: r.left + best[0] * (r.width / cv.width), y: r.top + best[1] * (r.height / cv.height) };
+    });
+    await page25c.mouse.click(at.x, at.y);
+    const on = mode === 'volume' ? 'volume render' : 'surface';
+    await page25c.waitForFunction((w) => (document.getElementById('status-text')?.textContent ?? '').includes(`3D pick on the ${w}`), on, { timeout: 30000 });
+    return page25c.locator('#status-text').textContent();
+  };
+  for (const mode of ['surface', 'volume']) {
+    if (mode === 'volume') {
+      await page25c.click('#renderseg button[data-r="volume"]');
+      await page25c.waitForFunction(() => /^VR \d+×\d+/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 120000 });
+    }
+    const said = await tapStructure(mode);
+    const m = said?.match(/voxel \((\d+), (\d+), (\d+)\).*label (\d+)/);
+    const axial = await page25c.locator('#ro-axial').textContent();
+    if (!m || Number(m[4]) < 1) fail(`${mode} pick missed the tumour: ${said}`);
+    else if (!axial?.startsWith(`${m[3]} /`)) fail(`${mode} pick: axial pane at ${axial}, voxel z ${m[3]}`);
+    else console.log(`3D pick (${mode}): ${said} · axial ${axial}`);
+  }
+  await page25c.close();
+
   // ---- 42. G3 radiomics CSV import: hand-rolled pyradiomics-shaped CSV
   // lands tagged rows in the measurement table (offline features shown,
   // never computed in-viewer — same provenance contract as leg 29b).

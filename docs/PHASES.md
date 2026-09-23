@@ -1204,9 +1204,26 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   `117,602 tris (orbit 66,835)`. Orbit frames at 560² with depth cues:
   skull 90 → 71 ms, chest bone 158 → 90 ms — the rasterizer is mostly
   fill-bound, so fewer triangles buy less than their count suggests.
-- OPEN — **F12. 3D → 2D picking.** Click the surface or the volume render
+- DONE — **F12. 3D → 2D picking.** Click the surface or the volume render
   and the panes jump to that point. Accept: e2e on a real sample lands the
   crosshair inside the clicked structure.
+  `render-cpu/pick.ts`: `pickSurface` finds the nearest drawn triangle
+  under the pointer with the rasterizer's own projection and cull (on a
+  48×40 frame it hits exactly the pixels `renderMesh` drew, 0 differ; the
+  hit on a rotated, zoomed, re-centred sphere is within 0.15 mm of the
+  analytic point); `pickVolume` walks the raycaster's ray to where it turns
+  half opaque, or its most visible sample (on a ball: the surface to
+  0.75 voxel, anisotropic spacing and bounds kept). 7 ms on the skull
+  surface, 40 ms on the 1.46 M-triangle chest bone. A tap (under 3 px of
+  movement) on the 3D view picks (`views/orbitPointer.ts`, split out of
+  SurfaceView with the orbit and pinch handling: 686 → 635 lines;
+  `views/pick3d.ts`); a surface is hit on its boundary, so the voxel taken
+  is the first of the structure within 2 voxels along the ray (a mask
+  label, or above the surface threshold). The panes jump through
+  `paintBus.jumpTo`, the one path a 2D tap already took, and the status
+  names what was hit: `3D pick on the surface → voxel (123, 134, 133) ·
+  value 241 · label 1`. Wire leg 41e on the BraTS tumour: surface and
+  volume render both land on label 1, axial pane at the voxel's slice.
 - OPEN — **F13. Clip planes and crop box** for both 3D modes.
 - OPEN — **F14. Segmentation outlines** in the 2D panes, a colour per label.
 - OPEN — **F15. Slice interpolation for editing.** Paint every few slices,

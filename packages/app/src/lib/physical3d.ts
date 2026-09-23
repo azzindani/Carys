@@ -73,3 +73,15 @@ export function maskBox(mask: ArrayLike<number>, dims: V3, stride = 1): { min: V
   }
   return x1 < 0 ? null : { min: [x0, y0, z0], max: [x1, y1, z1] };
 }
+
+/** The volume render's ray bounds for a mask, voxels: its box (sampled
+ *  every other voxel) padded so no sample near the edge is cut. Shared by
+ *  the render and the pick, so both march the same rays. */
+export function vrBounds(mask: ArrayLike<number>, dims: V3): { min: V3; max: V3 } | null {
+  const box = maskBox(mask, dims, 2);
+  if (!box) return null;
+  return {
+    min: [Math.max(0, box.min[0] - 2), Math.max(0, box.min[1] - 2), Math.max(0, box.min[2] - 2)],
+    max: [Math.min(dims[0], box.max[0] + 3), Math.min(dims[1], box.max[1] + 3), Math.min(dims[2], box.max[2] + 3)],
+  };
+}

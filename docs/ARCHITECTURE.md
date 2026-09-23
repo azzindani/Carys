@@ -100,6 +100,10 @@ frame the same physical box.
   (`vr-light.ts`): soft shadows and ambient light propagated through a
   coarse extinction grid, one jittered light and two sky directions per
   pass, accumulated by the same refinement.
+- Picking (`pick.ts`): the point under a pixel of either 3D mode, from the
+  renderer's own frame (nearest drawn triangle; where a volume ray turns
+  half opaque). A tap on the 3D view (`views/orbitPointer.ts`,
+  `views/pick3d.ts`) moves the panes there through `paintBus.jumpTo`.
 - NOT built: WASM marching-cubes (CPU cuberille + surface nets cover it).
 - Proteins: project spheres/sticks on CPU, paint pLDDT / chain (proven to 5.4k atoms; `.pdb` + `.cif` open).
 - Cells: tile pyramid + channel composite on CPU.
