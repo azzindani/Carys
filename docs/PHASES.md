@@ -1275,7 +1275,45 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   leg 41g on BraTS axial 120, fullscreen and zoomed: 553 / 1,140 / 1,526
   px near the label 1 / 2 / 4 colours in Outline, 4,881 / 2,727 / 3,149
   solid in Fill; the table lists L1, L2, L4.
-- OPEN — **F15. Slice interpolation for editing.** Paint every few slices,
+- DONE — **F15. Slice interpolation for editing.** Paint every few slices,
   fill between with the F5 distance-field interpolation, one undo step.
+  `render-cpu/slice-fill.ts` replaces the old Interp Z (`editor-seg`
+  interp.ts, removed: chamfer distances, the edge on pixel centres, two
+  slices at a time, z only, every label flattened to 1). Each painted
+  slice is a 2D signed distance map in mm (F5's exact EDT, the edge at the
+  pixel midpoints); the maps are joined by a cubic Hermite across all the
+  painted slices (tangents from the neighbours either side), never opening
+  a hole where both neighbouring slices are painted; a label is filled
+  between its own painted slices, labels painted on the same slices that
+  overlap are one shape split by which label a voxel is deepest in (a
+  label missing from one of them tapers, F5's end closure), and a voxel
+  already labelled is never written. The axis is the one whose slices are
+  sparsest (strokes offset in the plane leave empty rows too, fewer by
+  share). Dice against the truth over the painted range, cubic · linear ·
+  old Interp Z:
+
+  | case (1 mm grid) | every 3rd | every 5th | every 8th |
+  |---|---|---|---|
+  | sphere r15 | 0.990 · 0.990 · 0.988 | **0.983** · 0.979 · 0.979 | **0.967** · 0.948 · 0.960 |
+  | ellipsoid 16×8×12 turned 35° | 0.985 · 0.985 · 0.984 | **0.975** · 0.966 · 0.967 | **0.951** · 0.921 · 0.940 |
+  | BraTS tumour, whole (labels 1, 2, 4) | 0.962 · 0.963 · 0.962 | **0.944** · 0.942 · 0.942 | |
+  | BraTS per label 1 / 2 / 4 | 0.90 / 0.86 / 0.86 | 0.84 / 0.79 / 0.79 | |
+
+  (the old Interp Z cannot keep BraTS' labels at all; filling each label
+  alone, before grouping, gave the whole tumour 0.904 at every 5th.) The
+  ellipsoid painted across x and z every 5th slice: 0.977, 0.975; across
+  its 16-slice-thin y, every 3rd: 0.978 (every 5th leaves 4 painted slices
+  and its ends are guesses: 0.939, F5's thin-end limit). Nested core and
+  shell 0.983 whole, 0.964 / 0.977 by label; 0.5 × 1 mm pixels 0.987; two
+  structures painted apart fill 0.960 each and nothing between them. BraTS
+  at every 5th: 62 ms (the old op 174 ms). App: the seg dock's Interp runs
+  it, one undo step, and says what it did (`interp: 548 → 1,591 vox · 5
+  axial slices · label 1`), or why nothing was filled. Two bugs on the way
+  kept the workflow from being possible: every bump (a paint stroke's end)
+  sent the panes back to the series' opening slices, and undo landed one
+  edit too far back (edits snapshotted the mask before changing it, the
+  stack wants the state after). Journey A2 on BraTS: strokes on axial 60
+  and 66, Interp fills 61–65 (slice 63: 0 → 121 px of label colour), one
+  undo takes the fill back, the next the second stroke only.
 - OPEN — **F16. Curved reformat, usable.** A centreline tool on the panes,
   a straightened view from `cpr.ts`, e2e on a real vessel or spine series.

@@ -25,4 +25,5 @@ export * from './decimate.js';
 export * from './pick.js';
 export * from './clip.js';
 export * from './labels.js';
+export * from './slice-fill.js';
 export * from './thick-slices.js';

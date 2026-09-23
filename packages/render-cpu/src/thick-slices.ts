@@ -68,7 +68,7 @@ function edt1(f: Float64Array, n: number, h: number, out: Float64Array, v: Int32
 }
 
 /** Squared distance (mm²) from every pixel to the nearest `on` pixel. */
-function edt2(on: (i: number) => boolean, nx: number, ny: number, hx: number, hy: number): Float64Array {
+export function edt2(on: (i: number) => boolean, nx: number, ny: number, hx: number, hy: number): Float64Array {
   const d = new Float64Array(nx * ny);
   const n = Math.max(nx, ny);
   const f = new Float64Array(n), o = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n + 1);

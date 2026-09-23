@@ -1,6 +1,6 @@
 import {
   UndoStack, close, connectedComponents, countVoxels, dilate, drawPenLine, drawPt, erode, fillHoles,
-  fillGaps, keepLargest, open, regionGrow, smoothMask, splatFramePoint, strokeFrameLine, watershedSplit,
+  keepLargest, open, regionGrow, smoothMask, splatFramePoint, strokeFrameLine, watershedSplit,
 } from '@carys/editor-seg';
 import {
   fileMetaToSummary, isNrrdLike, nrrdDetachedName,
@@ -9,7 +9,7 @@ import {
 } from '@carys/io';
 import { uploadDicomFile } from './dicomUpload';
 import { importDicomSeg } from './segImport';
-import { fitMeshToBox, fitPointsToBox, isGiftiLike, isMz3Like, isStlLike, isTckLike, isTrkLike, isTrxLike, parseGifti, parseMz3, parseStl, parseTck, parseTrk, parseTrx } from '@carys/render-cpu';
+import { fillBetweenSlices, fitMeshToBox, fitPointsToBox, isGiftiLike, isMz3Like, isStlLike, isTckLike, isTrkLike, isTrxLike, parseGifti, parseMz3, parseStl, parseTck, parseTrk, parseTrx, type SliceFill } from '@carys/render-cpu';
 import { autoThreshold, histogram, PRESETS } from '@carys/volume-core';
 import { DEFAULT_HANGING, HANGING_RULES, hangingProtocol } from '@carys/study';
 import { addUploadedSeries, SERIES } from './catalog';
@@ -254,8 +254,8 @@ export function doUndo(): void {
 
 export function doClear(): void {
   if (!session.editMask) return;
-  undo.push(session.editMask);
   session.editMask.fill(0);
+  pushUndo();
   session.maskVer++;
   bump();
   toast('Mask cleared', 'ok');
@@ -282,6 +282,10 @@ export function strokeTo(a: [number, number, number], b: [number, number, number
   drawPenLine(editMask, nx, ny, nz, a, b, value);
 }
 
+/** Snapshot the mask AFTER a change: UndoStack keeps states (the series'
+ *  loaded one first) and undo steps back to the one before. Snapshotting
+ *  before a change, as the edits used to, made every undo but the first
+ *  land one change too far back. */
 export function pushUndo(): void {
   if (session.editMask) undo.push(session.editMask);
 }
@@ -553,10 +557,13 @@ export const SEG_OPS: { name: SegOpName; label: string; title: string }[] = [
   { name: 'open', label: 'Open', title: 'Remove specks (erode→dilate)' },
   { name: 'close', label: 'Close', title: 'Fill notches (dilate→erode)' },
   { name: 'smooth', label: 'Smooth', title: 'Mean-filter smooth' },
-  { name: 'interp', label: 'Interp Z', title: 'Morph across empty slices' },
+  { name: 'interp', label: 'Interp', title: 'Fill between painted slices (any plane, each label)' },
   { name: 'split', label: 'Split', title: 'Watershed split at shape necks' },
   { name: 'multilab', label: 'Multi-Lbl', title: 'Split mask into per-component label values' },
 ];
+
+/** The pane a fill's slices are in, by the axis it went across. */
+const AXIS_PLANE = ['sagittal', 'coronal', 'axial'] as const;
 
 /** Run a mask-wide op async (yields so the status paints first). */
 export async function applySegOp(op: SegOpName): Promise<void> {
@@ -567,8 +574,18 @@ export async function applySegOp(op: SegOpName): Promise<void> {
   const before = countVoxels(editMask);
   setStatus(`${op}…`);
   await new Promise((r) => setTimeout(r, 10));
-  pushUndo();
-  let filled = 0;
+  // F15: fill between painted slices, shape-based (render-cpu/slice-fill);
+  // nothing to fill is said, and changes nothing
+  let fill: SliceFill | null = null;
+  if (op === 'interp') {
+    fill = fillBetweenSlices(editMask, img.dims, img.spacing ?? [1, 1, 1]);
+    if (fill.slices === 0) {
+      setStatus(fill.labels.length
+        ? 'interp: nothing to fill — the outlines on the painted slices do not overlap, and a shape-based fill needs them to'
+        : 'interp: nothing to fill — paint a structure on slices with empty ones between them', 'error');
+      return;
+    }
+  }
   let basins = 0;
   switch (op) {
     case 'islands': session.editMask = keepLargest(editMask, d); break;
@@ -578,12 +595,7 @@ export async function applySegOp(op: SegOpName): Promise<void> {
     case 'open': session.editMask = open(editMask, d, 1); break;
     case 'close': session.editMask = close(editMask, d, 1); break;
     case 'smooth': session.editMask = smoothMask(editMask, d, 1); break;
-    case 'interp': {
-      const r = fillGaps(editMask, d);
-      session.editMask = r.mask;
-      filled = r.filled;
-      break;
-    }
+    case 'interp': session.editMask = fill!.mask; break;
     case 'split': {
       const r = watershedSplit(editMask, d);
       session.editMask = r.mask;
@@ -605,12 +617,15 @@ export async function applySegOp(op: SegOpName): Promise<void> {
   }
   session.maskVer++;
   session.seg = { dims: img.dims, data: session.editMask };
+  pushUndo();
   const after = countVoxels(session.editMask);
   bump();
   // Order matters: the bump-triggered repaint writes a generic status first;
   // the op summary lands after it so it survives.
   await new Promise((r) => setTimeout(r, 60));
-  const extra = op === 'interp' ? ` · ${filled} slices` : op === 'split' ? ` · ${basins} basins` : '';
+  const extra = fill
+    ? ` · ${fill.slices} ${AXIS_PLANE[fill.axis]} slices · label${fill.labels.length > 1 ? 's' : ''} ${fill.labels.join(', ')}`
+    : op === 'split' ? ` · ${basins} basins` : '';
   setStatus(`${op}: ${before.toLocaleString()} → ${after.toLocaleString()} vox${extra}`);
   toast(`${op}: ${before.toLocaleString()} → ${after.toLocaleString()} voxels${extra}`);
 }
