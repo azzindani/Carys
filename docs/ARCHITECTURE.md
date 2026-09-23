@@ -56,7 +56,12 @@ exports invert it exactly. No geometry → stored as-is, no edge letters, an
 Panes draw through `views/paneView.ts`: the canvas is the pane's pixels, the
 slice is fitted in millimetres (true aspect for anisotropic voxels), and the
 same mapping inverts every tap; what a pane draws over the image (crosshair,
-edge letters, scale bar, measurements) is `views/paneChrome.ts`. The 3D
+edge letters, scale bar, measurements) is `views/paneChrome.ts`. The mask
+keeps its labels (a catalog label map, a SEG import, Multi-Lbl): each pane
+takes its slice's labels (`render-cpu/labels.ts`, orthogonal, slab or
+oblique), tints them a colour each (`lib/palette.ts` LABEL_COLORS) and, in
+the default Outline look, draws each label's voxel-edge outline in screen px
+just inside the label (`views/paneLabels.ts`). The 3D
 surface, fibres and cursor are drawn in mm (`app/lib/physical3d.ts`), and the
 volume raycaster marches in mm (`renderVolume`'s `spacing`), so both 3D modes
 frame the same physical box.

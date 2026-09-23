@@ -2944,6 +2944,46 @@ try {
   }
   await page25c.locator('#dock-3d input[aria-label="Clip"]').uncheck({ force: true });
   if (await page25c.locator('#pane-clip').count()) fail('the clip pane outlived the Clip switch');
+
+  // ---- 41g. F14 segmentation outlines: BraTS keeps its labels 1, 2 and 4,
+  // and each draws its outline in its own colour on the axial pane (the
+  // palette's LABEL_COLORS); Fill paints them solid, and the segments
+  // table lists all three.
+  await page25c.locator('#s-axial').fill('120');
+  await page25c.waitForFunction(() => (document.getElementById('ro-axial')?.textContent ?? '').startsWith('120 /'), null, { timeout: 30000 });
+  const LABEL_RGB = { 1: [255, 60, 60], 2: [70, 200, 90], 4: [250, 220, 60] };
+  /** Axial pane pixels within `near` (sum of channel differences) of each label's colour. */
+  const labelPx = (near) => page25c.evaluate(([cols, near]) => {
+    const cv = document.getElementById('c-axial');
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    const n = {};
+    for (const [v, c] of Object.entries(cols)) {
+      let k = 0;
+      for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - c[0]) + Math.abs(d[i + 1] - c[1]) + Math.abs(d[i + 2] - c[2]) <= near) k++;
+      n[v] = k;
+    }
+    return n;
+  }, [LABEL_RGB, near]);
+  // fullscreen and zoomed, where a fill (area) outweighs its outline
+  // (perimeter); at 3-up size the tumour is a few hundred pixels and a
+  // 1.5 px outline covers as many as the fill
+  await page25c.click('#pane-axial button[aria-label="Axial fullscreen"]');
+  for (let k = 0; k < 2; k++) await page25c.click('button[title="Zoom in Axial"]');
+  await page25c.waitForTimeout(500);
+  // the light fill under an outline is far from every label colour, so
+  // what is near one is its outline
+  const lines = await labelPx(60);
+  await page25c.click('#masklook button[data-look="fill"]');
+  await page25c.waitForTimeout(500);
+  const solid = await labelPx(0);
+  await page25c.click('#masklook button[data-look="outline"]');
+  await page25c.click('#pane-axial button[aria-label="Axial fullscreen"]');
+  const outlined = Object.keys(LABEL_RGB).every((v) => lines[v] >= 20 && solid[v] > 2 * lines[v]);
+  if (!outlined) fail(`label outlines: outline px ${JSON.stringify(lines)}, fill px ${JSON.stringify(solid)}`);
+  else console.log(`label outlines on axial 120: ${JSON.stringify(lines)} px near each colour, fill ${JSON.stringify(solid)}`);
+  await openDetails(page25c);
+  const segRows = await page25c.locator('#seginfo').textContent();
+  if (!['L1 ·', 'L2 ·', 'L4 ·'].every((t) => segRows?.includes(t))) fail(`segments table lacks a BraTS label: ${segRows}`);
   await page25c.close();
 
   // ---- 42. G3 radiomics CSV import: hand-rolled pyradiomics-shaped CSV

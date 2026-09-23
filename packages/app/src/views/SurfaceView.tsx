@@ -10,7 +10,7 @@ import { SERIES } from '../lib/catalog';
 import type { Extractor } from '../lib/extractor';
 import { paintBus } from '../lib/paintBus';
 import { FIBER_BG } from '../lib/palette';
-import { maskBox, physicalMesh, toMm, vrBounds } from '../lib/physical3d';
+import { maskBox, maskField, physicalMesh, toMm, vrBounds } from '../lib/physical3d';
 import { session } from '../lib/session';
 import { setEngineFromExtractor } from '../lib/sessionOps';
 import { setAmbientStatus, setStatus } from '../lib/status';
@@ -109,9 +109,9 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
   /** Data range of the current VR field (for preset construction). */
   const fieldRange = (): [number, number] => {
     const u = getUi();
-    const f = u.src === 'mask' && session.editMask
-      ? session.editMask
-      : session.img?.data;
+    // a mask renders as 0/1 whatever its labels (maskField)
+    if (u.src === 'mask' && session.editMask) return [0, 1];
+    const f = session.img?.data;
     if (!f) return [0, 1];
     let mn = Infinity, mx = -Infinity;
     for (let i = 0; i < f.length; i += 37) {
@@ -150,7 +150,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       return;
     }
     const useMask = u.src === 'mask';
-    const field = useMask ? Float64Array.from(session.editMask!) : img.data;
+    const field = useMask ? maskField(session.editMask!) : img.data;
     // Tight padded bounds for mask fields: rays skip the empty 95%+.
     const bounds = useMask && session.editMask ? vrBounds(session.editMask, img.dims) : null;
     const full = quality === 'full';

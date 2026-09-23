@@ -15,7 +15,7 @@ import { setUi, useUi } from '../lib/store';
 import { setStatus } from '../lib/status';
 import { Chip, DarkSelect, IconBtn, Seg, SliderRow, Switch, UndoGroup } from '../ui/primitives';
 import { IconErase, IconGrow, IconMeasure, IconPaint, IconSelect } from '../ui/Icons';
-import type { CompareMode, MeasureKind, MprLayout, Plane, ProjMode, Tool } from '../lib/types';
+import type { CompareMode, MeasureKind, MprLayout, Plane, ProjMode, Tool, UiState } from '../lib/types';
 
 /** Core 2D tools: tool switch, brush, undo, mask.
  *
@@ -312,10 +312,20 @@ function PlaneAtlasCard(): JSX.Element {
 /** Segmentation ops (watershed split etc.). Own pill on desktop (`#dock-seg`),
  *  Display-panel section on mobile. */
 export function SegDock(): JSX.Element {
+  const ui = useUi();
   return (
     <>
       <div className="dock" id="dock-seg">
-        <div className="grp"><span className="lbl">Segment</span></div>
+        <div className="grp">
+          <span className="lbl">Segment</span>
+          {/* F14: each label's outline in its colour over a light fill,
+              or the opaque fill the panes always drew */}
+          <Seg<UiState['maskLook']>
+            id="masklook" dataKey="look" ariaLabel="Mask look" value={ui.maskLook}
+            onChange={(v) => { setUi({ maskLook: v }); paintBus.mpr(); }}
+            options={[{ value: 'outline', label: 'Outline' }, { value: 'fill', label: 'Fill' }]}
+          />
+        </div>
         {SEG_OPS.map((op) => (
           <div className="grp" key={op.name}>
             {/* bump() inside applySegOp repaints via the ver effect; no

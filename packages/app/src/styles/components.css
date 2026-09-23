@@ -334,6 +334,8 @@ input[type="range"].styled::-moz-range-thumb {
 .kv { display: grid; grid-template-columns: minmax(0, auto) minmax(96px, 1fr); gap: var(--sp-2) var(--sp-4); font-size: var(--fs-xs); margin: var(--sp-3) 0 0; }
 .kv dt, .kv dd { min-width: 0; }
 .kv dt { color: var(--color-faint); }
+/* a segment's colour in the 2D panes (F14), before its row's name */
+.lblswatch { display: inline-block; width: var(--sp-2); height: var(--sp-2); margin-right: var(--sp-1); border-radius: 50%; vertical-align: middle; }
 .kv dd {
   margin: 0; text-align: right; color: var(--color-muted);
   font-family: var(--font-mono); font-size: var(--fs-xs); overflow-wrap: anywhere;
