@@ -24,4 +24,5 @@ export * from './mesh-smooth.js';
 export * from './decimate.js';
 export * from './pick.js';
 export * from './clip.js';
+export * from './labels.js';
 export * from './thick-slices.js';

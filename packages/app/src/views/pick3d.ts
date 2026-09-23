@@ -7,7 +7,7 @@
 import { pickSurface, pickVolume, type PickHit, type TF } from '@carys/render-cpu';
 import { clipOf } from '../lib/clip3d';
 import { paintBus } from '../lib/paintBus';
-import { physicalMesh, toMm, vrBounds } from '../lib/physical3d';
+import { maskField, physicalMesh, toMm, vrBounds } from '../lib/physical3d';
 import { session } from '../lib/session';
 import { setStatus } from '../lib/status';
 import { getUi } from '../lib/store';
@@ -42,7 +42,7 @@ export function pick3d(view: PickView, clientX: number, clientY: number): void {
   const volume = u.render3d === 'volume';
   let hit: PickHit | null = null;
   if (volume) {
-    hit = pickVolume({ dims: img.dims, data: mask ? Float64Array.from(mask) : img.data }, {
+    hit = pickVolume({ dims: img.dims, data: mask ? maskField(mask) : img.data }, {
       width: canvas.width, height: canvas.height, angleY: view.orbit, tiltX: view.tilt, zoom: view.zoom,
       tf: view.vr.tf, density: view.vr.density, alphaStep: view.vr.alphaStep, step: PICK_STEP,
       spacing: sp, bounds: mask ? vrBounds(mask, img.dims) : null, clip: clipOf(u.clip3d, img.dims, -0.5),

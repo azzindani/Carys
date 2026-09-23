@@ -15,6 +15,7 @@ import type { JSX } from 'react';
 import { useUi } from '../lib/store';
 import { bump, useVersion } from '../lib/version';
 import { doClear, doUndo, setSpacing } from '../lib/sessionOps';
+import { labelCss } from '../lib/palette';
 
 function download(name: string, text: string, type: string): void {
   const a = document.createElement('a');
@@ -214,7 +215,7 @@ function SegmentsTable(): JSX.Element | null {
     <dl className="kv" id="seginfo">
       {rows.map((r) => (
         <div className="mrow" key={r.value}>
-          <dt>L{r.value} · {r.label}</dt>
+          <dt><span className="lblswatch" style={{ background: labelCss(r.value) }} aria-hidden="true" />L{r.value} · {r.label}</dt>
           <dd>{r.voxels.toLocaleString()} vox · {(Math.round(r.volumeMm3 / 100) / 10).toFixed(1)} cm³</dd>
         </div>
       ))}

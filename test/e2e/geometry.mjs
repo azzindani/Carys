@@ -155,7 +155,9 @@ try {
   console.log('dicom set: sparse cardiac pick warns on the image');
 
   // ---- D. mask export lands on the source grid with the source affine,
-  // and is exactly the source segmentation (the mask is its editing copy).
+  // and is exactly the source segmentation, label for label (the mask is
+  // its editing copy; since F14 a label map keeps its labels: liver 1,
+  // tumour 2).
   await openSeries(page, 'liver-ct-seg');
   const [dl] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
@@ -171,13 +173,14 @@ try {
   const mask = out.voxels;
   const labels = seg.voxels;
   let diff = 0, fg = 0;
+  const kinds = new Set();
   for (let i = 0; i < mask.length; i++) {
-    const want1 = labels[i] > 0 ? 1 : 0;
-    if (mask[i] !== want1) diff++;
-    if (want1) fg++;
+    if (mask[i] !== labels[i]) diff++;
+    if (labels[i] > 0) { fg++; kinds.add(labels[i]); }
   }
   if (diff !== 0) fail(`exported mask differs from source seg in ${diff} voxels`);
-  else console.log(`export: mask .nii on the source grid, affine within ${affErr.toExponential(1)}, ${fg.toLocaleString()} voxels match the source seg`);
+  else if (kinds.size < 2) fail(`the liver seg should hold two labels, found ${[...kinds]}`);
+  else console.log(`export: mask .nii on the source grid, affine within ${affErr.toExponential(1)}, ${fg.toLocaleString()} voxels match the source seg (labels ${[...kinds].sort().join(', ')})`);
 
   // ---- E. the upload path (parse worker) decodes a real int16 NIfTI to
   // the same data the catalog path does: same auto window on both.

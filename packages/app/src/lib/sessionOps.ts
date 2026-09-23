@@ -102,11 +102,21 @@ export async function loadSeries(name: string, uploadedVol?: Volume): Promise<Sl
       session.editMask = new Uint8Array(img.data.length);
       note = 'seg dims mismatch — empty mask';
     } else if (base) {
+      // A label map keeps its labels, which the panes colour one by one
+      // (F14); a probability map (the catalog names its cut) is one mask.
       const m = new Uint8Array(img.data.length);
-      const cut = spec.segThreshold ?? 0;
-      for (let i = 0; i < m.length; i++) m[i] = base.data[i] > cut ? 1 : 0;
+      const cut = spec.segThreshold;
+      const seen = new Set<number>();
+      let over = 0;
+      for (let i = 0; i < m.length; i++) {
+        const v = base.data[i]!;
+        if (!(v > (cut ?? 0))) continue;
+        if (cut !== undefined || !Number.isInteger(v)) m[i] = 1;
+        else if (v > 255) { m[i] = 255; over++; } else m[i] = v;
+        seen.add(m[i]!);
+      }
       session.editMask = m;
-      note = 'editing copy of seg';
+      note = `editing copy of seg${seen.size > 1 ? ` · ${seen.size} labels` : ''}${over ? ` · ${over} voxels of labels over 255 shown as 255` : ''}`;
     } else {
       session.editMask = new Uint8Array(img.data.length);
       note = uploadedVol ? 'uploaded volume' : 'no seg — empty mask';

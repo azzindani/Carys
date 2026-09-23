@@ -85,3 +85,9 @@ export function vrBounds(mask: ArrayLike<number>, dims: V3): { min: V3; max: V3 
     max: [Math.min(dims[0], box.max[0] + 3), Math.min(dims[1], box.max[1] + 3), Math.min(dims[2], box.max[2] + 3)],
   };
 }
+
+/** A mask as the volume render's field: every label inside, 1 (a label
+ *  map keeps its labels for the panes, F14; the 3D shows the whole mask). */
+export function maskField(mask: Uint8Array): Float64Array {
+  return Float64Array.from(mask, (v) => (v > 0 ? 1 : 0));
+}

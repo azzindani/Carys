@@ -117,6 +117,9 @@ export interface UiState {
   clip3d: Clip3d;
   preset: string;
   overlay: boolean;
+  /** how the 2D panes show the mask (F14): each label's outline over a
+   *  light fill, or the opaque fill */
+  maskLook: 'outline' | 'fill';
   brush: number;
   threshold: number;
   series: string;

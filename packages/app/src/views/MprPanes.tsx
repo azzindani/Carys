@@ -3,11 +3,15 @@ import type { JSX } from 'react';
 import { measureClick, paintDown, paintMove, planePoint } from './PanePaint';
 import type { PaintHost, StrokeState } from './PanePaint';
 import { ColorTable } from '@carys/volume-core';
-import { fuseSlices, mipRotate, obliqueBasis, reslice, resliceOblique, slabMask, slabProject, voxelSlices } from '@carys/render-cpu';
+import {
+  fuseSlices, labelOutlines, labelSlice, labelSliceOblique, mipRotate, obliqueBasis, reslice, resliceOblique, slabLabels,
+  slabProject, tintLabels, voxelSlices,
+} from '@carys/render-cpu';
 import { paintBus } from '../lib/paintBus';
-import { MASK_TINT } from '../lib/palette';
+import { LABEL_FILL_ALPHA, LABEL_LUT } from '../lib/palette';
 import { fmtDims, session } from '../lib/session';
 import { drawChrome, drawMeasures, fmtVal } from './paneChrome';
+import { drawLabelOutlines } from './paneLabels';
 import { fitPane, planeSpacing, toBitmap, type PaneView } from './paneView';
 
 import { doUndo } from '../lib/sessionOps';
@@ -67,6 +71,9 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
   const sliceRef = useRef<Record<Plane, { cv: HTMLCanvasElement; W: number; H: number; idx: number } | null>>({
     axial: null, coronal: null, sagittal: null,
   });
+  /** Each label's outline on the last reslice, when the mask shows as
+   *  outlines (F14). */
+  const outlineRef = useRef<Record<Plane, Map<number, Float32Array> | null>>({ axial: null, coronal: null, sagittal: null });
   /** The screen mapping the last compose used — taps invert through it. */
   const viewRef = useRef<Record<Plane, PaneView | null>>({ axial: null, coronal: null, sagittal: null });
 
@@ -113,6 +120,7 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     const H = plane === 'axial' ? ny : nz;
     const oblique = plane === u.oblPlane && (u.oblA !== 0 || u.oblB !== 0);
     let out: Uint8ClampedArray;
+    let labels: Uint8Array | null = null;
     let tag = `${idx} / ${max}`;
     if (oblique && u.proj !== 'slice') {
       // Rotating projection follows the same oblique angles as the slice
@@ -129,32 +137,13 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
         ? [nx / 2, ny / 2, idx] : plane === 'coronal' ? [nx / 2, idx, nz / 2] : [idx, ny / 2, nz / 2];
       out = resliceOblique(vol, center, row, col, W, H, session.wl);
       maybeInvert(out); applyLut(out);
-      if (u.overlay && session.seg) {
-        // nearest-mapped mask tint on the same oblique frame + center
-        const m = session.seg.data;
-        for (let j = 0; j < H; j++) {
-          for (let i = 0; i < W; i++) {
-            const px = Math.round(center[0] + (i - W / 2) * row[0] + (j - H / 2) * col[0]);
-            const py = Math.round(center[1] + (i - W / 2) * row[1] + (j - H / 2) * col[1]);
-            const pz = Math.round(center[2] + (i - W / 2) * row[2] + (j - H / 2) * col[2]);
-            if (px < 0 || py < 0 || pz < 0 || px >= nx || py >= ny || pz >= nz) continue;
-            if (m[pz * nx * ny + py * nx + px]! > 0) {
-              const o = (j * W + i) * 4;
-              out[o] = MASK_TINT[0]; out[o + 1] = MASK_TINT[1]; out[o + 2] = MASK_TINT[2];
-            }
-          }
-        }
-      }
+      // nearest-mapped labels on the same oblique frame + center
+      if (u.overlay && session.seg) labels = labelSliceOblique(session.seg.data, dims, center, row, col, W, H);
       tag = `${idx} / ${max} · obl ${Math.round(u.oblA * 57.3)}°/${Math.round(u.oblB * 57.3)}°`;
     } else if (u.proj !== 'slice') {
       out = slabProject(vol, plane, idx, u.slab, u.proj, session.wl);
       maybeInvert(out); applyLut(out);
-      if (u.overlay && session.seg) {
-        const pm = slabMask(session.seg.data, dims, plane, idx, u.slab);
-        for (let p = 0; p < pm.length; p++) {
-          if (pm[p]! > 0) { const o = p * 4; out[o] = MASK_TINT[0]; out[o + 1] = MASK_TINT[1]; out[o + 2] = MASK_TINT[2]; }
-        }
-      }
+      if (u.overlay && session.seg) labels = slabLabels(session.seg.data, dims, plane, idx, u.slab);
       tag = `${idx} / ${max} · ${u.proj.toUpperCase()} ${u.slab}`;
     } else {
       // Dual-volume compare rides on the orthogonal slice path only: tilt
@@ -180,18 +169,12 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
       }
       // the mask tint is the BASE series anatomy: skip it under a fused
       // overlay (mixed-series red would attribute to the wrong volume)
-      if (u.overlay && session.seg && !fused) {
-        const s = session.seg.data;
-        for (let j = 0; j < out.length / 4 / W; j++) {
-          for (let i = 0; i < W; i++) {
-            const v = plane === 'axial' ? s[idx * nx * ny + j * nx + i]
-              : plane === 'coronal' ? s[j * nx * ny + idx * nx + i]
-              : s[j * nx * ny + i * nx + idx];
-            if (v! > 0) { const o = (j * W + i) * 4; out[o] = MASK_TINT[0]; out[o + 1] = MASK_TINT[1]; out[o + 2] = MASK_TINT[2]; }
-          }
-        }
-      }
+      if (u.overlay && session.seg && !fused) labels = labelSlice(session.seg.data, dims, plane, idx);
     }
+    // a colour per label: outlines over a light fill, or the opaque fill
+    const outline = u.maskLook === 'outline';
+    if (labels) tintLabels(out, labels, LABEL_LUT, outline ? LABEL_FILL_ALPHA : 1);
+    outlineRef.current[plane] = labels && outline ? labelOutlines(labels, W, H) : null;
     const off = sliceRef.current[plane]?.cv ?? document.createElement('canvas');
     if (off.width !== W) off.width = W;
     if (off.height !== H) off.height = H;
@@ -236,6 +219,8 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     ctx.scale(v.sx, v.flipV ? -v.sy : v.sy);
     ctx.drawImage(sl.cv, 0, 0);
     ctx.restore();
+    const outlines = outlineRef.current[plane];
+    if (outlines) drawLabelOutlines(ctx, outlines, v);
     if (getUi().tool === 'measure' || session.measurements.some((m) => m.plane === plane)) {
       drawMeasures(ctx, plane, v, sl.idx);
     }

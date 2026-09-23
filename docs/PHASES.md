@@ -1249,7 +1249,32 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   surface 65,314 of 87,696 px drawn, a tap through the cut lands on the
   far wall at z 103; volume render 5,100 of 6,783 px, a tap lands on the
   cut face at z 123.
-- OPEN — **F14. Segmentation outlines** in the 2D panes, a colour per label.
+- DONE — **F14. Segmentation outlines** in the 2D panes, a colour per label.
+  `render-cpu/labels.ts`: the labels on a pane's slice (orthogonal; a thick
+  slab shows the label nearest its centre; oblique, nearest voxel), a tint
+  per label, and each label's outline: the voxel edges with another label
+  across, in maximal straight runs, each kept once per side with the side
+  its label is on. On multi-label fields in three planes the runs hold
+  exactly the brute-force voxel edges (0 missing, 0 extra, none split).
+  1.7 ms per slice for BraTS (3 labels, 516 runs), 5.0 ms for the 512×589
+  spine MR sagittal (17 labels, 3,652 runs), 4.1 ms for a 512² hepatic
+  vessel slice. The panes draw the outline in screen px half a line inside
+  its label (`views/paneLabels.ts`: touching labels show both colours at
+  every zoom, coronal and sagittal flipped right) over a 0.3 fill that
+  leaves the anatomy readable; the seg dock's Outline/Fill switch keeps the
+  old opaque fill, bit-identical for a one-label mask (label 1 is the old
+  tint). Label colours in `lib/palette.ts`: red, green, blue, yellow, then
+  softened primaries and golden-angle hues, none near the crosshair teal
+  (BraTS' 1, 2, 4 come out red, green, yellow). A catalog label map now
+  keeps its labels instead of being flattened to 1 (a probability map with
+  a `segThreshold` is still one mask), so a mask export is the source
+  label map value for value (geometry leg D, now checked label for label:
+  the liver's 152,211 voxels, labels 1 and 2); the 3D keeps showing the whole mask
+  (surfaces already binarized; the volume render and its pick now take
+  `maskField`, 0/1). The segments table shows each label's colour. Wire
+  leg 41g on BraTS axial 120, fullscreen and zoomed: 553 / 1,140 / 1,526
+  px near the label 1 / 2 / 4 colours in Outline, 4,881 / 2,727 / 3,149
+  solid in Fill; the table lists L1, L2, L4.
 - OPEN — **F15. Slice interpolation for editing.** Paint every few slices,
   fill between with the F5 distance-field interpolation, one undo step.
 - OPEN — **F16. Curved reformat, usable.** A centreline tool on the panes,
