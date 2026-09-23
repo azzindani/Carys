@@ -1348,3 +1348,64 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   the volume, is left out), 153.6 mm; taps at the six ticks on the middle
   row land on labels 17 → 18 → 19 → 20 → 21 → 22, and the same after a
   90° turn.
+
+## Body atlas, motion and microbiology (queued 2026-09-23)
+
+A whole-body anatomy atlas by body system, a rigged skeleton that moves,
+and pathogens from their structures, on the CPU renderer (no WebGL), for
+education (not diagnosis). Data is CC BY only: CC BY 4.0 or CC0, never
+share-alike, non-commercial or no-derivatives; every asset is wrapped into
+the repo under `digests/` with a `SOURCES.json` and a `DIGESTS.json` row,
+and its attribution shown where it is used. One item per delivery, in
+order, each with its tests, docs and measured numbers, pushed on
+`claude/body-atlas` with CI green before the next.
+
+- OPEN — **H1. Whole-body data package.** `scripts/build-body-atlas.mjs`
+  fetches BodyParts3D 4.0 (PART-OF meshes, obj_99, CC BY 4.0), assigns
+  every element mesh to a body system through the PART-OF tree, decimates
+  each (F11 QEM) and packs one compact binary per system (quantized
+  positions, indices, a part table with FMA id, name and system) into
+  `digests/bodyparts3d-body/`, read by a pure loader. Accept: every source
+  element present; each decimated part within 0.5 mm of its source (both
+  ways); the whole body at most 2 M triangles and 25 MB; the format
+  round-trips; SOURCES.json, DIGESTS.json row and attribution in place.
+- OPEN — **H2. The body by system in the Atlas.** The whole body in the
+  Atlas route with system toggles (skeletal, muscular, nervous,
+  cardiovascular, respiratory, digestive, urinary, reproductive,
+  endocrine, lymphatic, sensory, skin), LOD while orbiting, a tap names
+  the structure (FMA card), search isolates and frames it, hide/show.
+  Accept: e2e taps land on the named structures (femur, heart, liver,
+  brain); orbit and settled frame times measured on the full body.
+- OPEN — **H3. Lymphatic layer from the HuBMAP reference organs.** Lymph
+  nodes, spleen, thymus and the organs BodyParts3D lacks, from the HRA 3D
+  reference objects (GLB, CC BY 4.0), placed in the BodyParts3D frame by
+  a fit on the organs both have. Accept: after the fit, the shared organs'
+  surfaces within 5 mm mean of each other; each added organ attributed.
+- OPEN — **H4. See-through layers.** Order-independent transparency in
+  the rasterizer (weighted blended) with an opacity per system, so nerves
+  and vessels show inside muscle and skin. Accept: an inner sphere seen
+  through a 50% shell within 2 grey levels of the expected blend; opaque
+  renders bit-identical (goldens unchanged).
+- OPEN — **H5. A rigged skeleton.** A joint hierarchy (spine, neck,
+  shoulders, elbows, wrists, hips, knees, ankles), joint centres fitted
+  from the bones (a hip at the femoral head's sphere fit), bones rigid,
+  muscles and skin skinned to them; pose by joint angles. Accept: the
+  rest pose renders bit-identical to H2; bone lengths constant under any
+  pose (under 0.01 mm); the hip centre within 5 mm of the femoral head
+  fit; muscle ends stay on their bones (within 2 mm).
+- OPEN — **H6. Motion playback.** BVH import retargeted onto the H5 rig,
+  walk and run from a CC BY motion source (CMU mocap is not CC BY; if no
+  CC BY source exists this item is Blocked), muscles coloured by how far
+  they stretch. Accept: feet slip under 2 cm per gait cycle in contact;
+  a muscle's length over the cycle deterministic and pinned.
+- OPEN — **H7. Whole virus capsids.** mmCIF biological assemblies
+  expanded from their symmetry operators, and a coarse-grained level
+  (per residue, then per chain) so million-atom capsids render on the
+  CPU. Accept: the expanded atom count equals the RCSB assembly's; every
+  copy within 0.01 Å of its operator image; render time measured at 1 M
+  atoms.
+- OPEN — **H8. A microbiology library.** Cards for virus families and
+  bacteria (structure, genome, morphology, Gram stain, examples), written
+  here or from CC BY/CC0 sources, each linked to its PDB structures and
+  to Learn. Accept: every card names its source and licence; e2e opens a
+  card and its structure.
