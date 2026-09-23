@@ -21,4 +21,5 @@ export * from './trx.js';
 export * from './fibers.js';
 export * from './cursor3d.js';
 export * from './mesh-smooth.js';
+export * from './decimate.js';
 export * from './thick-slices.js';

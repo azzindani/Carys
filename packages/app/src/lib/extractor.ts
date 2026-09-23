@@ -46,6 +46,12 @@ export interface VrResult {
 // than VR_MEMORY_BUDGET of held copies.
 const VR_MAX_WORKERS = 4;
 const VR_MEMORY_BUDGET = 768 * 2 ** 20;
+// Level of detail (F11): a smooth surface over the budget gets an orbit
+// level, decimated on its own worker so extraction and VR never queue
+// behind it. The bound is the quadric's, in mm: 0.5 keeps the phantoms
+// within 0.15 mm of the full surface (render-cpu/src/test/decimate.test.ts).
+const ORBIT_BUDGET = 100_000;
+const LOD_MAX_ERROR = 0.5;
 
 interface Pending {
   resolve: (m: Mesh) => void;
@@ -64,6 +70,8 @@ export function createExtractor() {
   let usedWorker = false;
   const pending = new Map<number, Pending>();
   const pendingVr = new Map<number, PendingVr>();
+  const pendingLod = new Map<number, (m: Mesh | null) => void>();
+  let lodWorker: Worker | null = null;
   // the volume pool: [the shared worker, extra render workers…], the key
   // each one holds, and a key per field array
   const pool: Worker[] = [];
@@ -76,6 +84,15 @@ export function createExtractor() {
     const w = new Worker(new URL('../workers/extract.ts', import.meta.url), { type: 'module' });
     // Single router: mesh and volume replies share the channel.
     w.onmessage = (e: MessageEvent) => {
+      if (e.data.kind === 'lod') {
+        const done = pendingLod.get(e.data.id);
+        pendingLod.delete(e.data.id);
+        done?.(e.data.ok && !e.data.empty ? {
+          positions: new Float32Array(e.data.positions), normals: new Float32Array(e.data.normals),
+          indices: new Uint32Array(e.data.indices), tris: e.data.tris,
+        } : null);
+        return;
+      }
       if (e.data.kind === 'volume') {
         const pv = pendingVr.get(e.data.id);
         if (!pv) return;
@@ -227,13 +244,39 @@ export function createExtractor() {
     return r;
   }
 
+  /**
+   * The orbit level of a smooth surface over ORBIT_BUDGET triangles, or
+   * null (within budget, nothing the bound allows, no worker). Voxel units
+   * like the mesh; `spacing` makes the bound millimetres.
+   */
+  const lod = async (mesh: Mesh, spacing: [number, number, number]): Promise<Mesh | null> => {
+    if (mesh.tris <= ORBIT_BUDGET || workerDead) return null;
+    try {
+      if (!lodWorker) {
+        lodWorker = spawn();
+        lodWorker.onerror = () => {
+          lodWorker = null;
+          for (const done of pendingLod.values()) done(null);
+          pendingLod.clear();
+        };
+      }
+      const id = nextId++;
+      const p = new Promise<Mesh | null>((resolve) => pendingLod.set(id, resolve));
+      const positions = mesh.positions.slice().buffer as ArrayBuffer, indices = mesh.indices.slice().buffer as ArrayBuffer;
+      lodWorker.postMessage({ id, method: 'lod', positions, indices, spacing, budget: ORBIT_BUDGET, maxError: LOD_MAX_ERROR }, [positions, indices]);
+      return await p;
+    } catch {
+      return null;
+    }
+  };
+
   /** Let the workers free their copies of the volume. */
   const dropVolumes = (): void => {
     for (const w of pool) w.postMessage({ method: 'drop' });
     holds.clear();
   };
 
-  return { extract, renderVr, dropVolumes, get usedWorker() { return usedWorker; }, get vrWorkers() { return vrWorkers; } };
+  return { extract, renderVr, lod, dropVolumes, get usedWorker() { return usedWorker; }, get vrWorkers() { return vrWorkers; } };
 }
 
 export type Extractor = ReturnType<typeof createExtractor>;
