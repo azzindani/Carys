@@ -254,6 +254,7 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
   useEffect(() => {
     paintBus.mpr = paintAll;
     paintBus.mprPlane = paint;
+    paintBus.jumpTo = jumpTo;
     // Presentation snapshot + restore: slices read the sliders, zoom/pan
     // read the transform refs (same contract as applyPanZoom).
     paintBus.getMprView = () => {
@@ -391,13 +392,12 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     return planeVoxel(plane, e);
   };
 
-  /** Crosshair sync: a Select-tap jumps every plane to the clicked voxel. */
-  const syncToVoxel = (plane: Plane, e: React.PointerEvent): void => {
+  /** Every plane to a voxel, the crosshair on it. */
+  const jumpTo = (voxel: [number, number, number], with3d = true): void => {
     const img = session.img;
-    const hit = planePoint(hostRef.current, e, plane);
-    if (!img || !hit) return;
-    session.crosshair = hit.voxel;
-    const next = voxelSlices(hit.voxel, img.dims);
+    if (!img) return;
+    session.crosshair = voxel;
+    const next = voxelSlices(voxel, img.dims);
     for (const p of PLANES) {
       const s = sliderRefs.current[p];
       if (s) s.value = String(next[p]);
@@ -405,7 +405,13 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     paintAll();
     // V2 3D cursor follows the synced tap (NiiVue parity: crosshair
     // visible in 3D). Surface repaints from the same session.crosshair.
-    paintBus.surface();
+    if (with3d) paintBus.surface();
+  };
+
+  /** Crosshair sync: a Select-tap jumps every plane to the clicked voxel. */
+  const syncToVoxel = (plane: Plane, e: React.PointerEvent): void => {
+    const hit = planePoint(hostRef.current, e, plane);
+    if (session.img && hit) jumpTo(hit.voxel);
   };
 
   /** Select-drag pans the plane; a tap (<3px) still crosshair-syncs. Mapping

@@ -10,7 +10,7 @@ import { SERIES } from '../lib/catalog';
 import type { Extractor } from '../lib/extractor';
 import { paintBus } from '../lib/paintBus';
 import { FIBER_BG } from '../lib/palette';
-import { maskBox, physicalMesh, toMm } from '../lib/physical3d';
+import { maskBox, physicalMesh, toMm, vrBounds } from '../lib/physical3d';
 import { session } from '../lib/session';
 import { setEngineFromExtractor } from '../lib/sessionOps';
 import { setAmbientStatus, setStatus } from '../lib/status';
@@ -23,6 +23,8 @@ import { ViewportOverlay } from '../ui/ViewportOverlay';
 import type { Method, Render3D, Source } from '../lib/types';
 import { TfEditor } from './TfEditor';
 import { drawCursor3d, drawFibers } from './orbitOverlay';
+import { useOrbitPointer } from './orbitPointer';
+import { pick3d } from './pick3d';
 
 /** Quiet time after the last orbit frame before the anti-aliased repaint. */
 const ORBIT_SETTLE_MS = 160;
@@ -148,15 +150,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     const useMask = u.src === 'mask';
     const field = useMask ? Float64Array.from(session.editMask!) : img.data;
     // Tight padded bounds for mask fields: rays skip the empty 95%+.
-    let bounds: { min: [number, number, number]; max: [number, number, number] } | null = null;
-    const box = useMask && session.editMask ? maskBox(session.editMask, img.dims, 2) : null;
-    if (box) {
-      const [nx, ny, nz] = img.dims;
-      bounds = {
-        min: [Math.max(0, box.min[0] - 2), Math.max(0, box.min[1] - 2), Math.max(0, box.min[2] - 2)],
-        max: [Math.min(nx, box.max[0] + 3), Math.min(ny, box.max[1] + 3), Math.min(nz, box.max[2] + 3)],
-      };
-    }
+    const bounds = useMask && session.editMask ? vrBounds(session.editMask, img.dims) : null;
     const full = quality === 'full';
     const rw = full ? cv.width : Math.min(cv.width, 300);
     const rh = full ? cv.height : Math.round(cv.height * (rw / cv.width));
@@ -457,59 +451,14 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     zoomStep3d(e.deltaY < 0 ? 1.15 : 1 / 1.15);
   };
 
-  /** Drag-to-orbit: the demo's slow orbit drag now really rotates the volume. */
-  const orbDrag = useRef<{ x: number; y: number } | null>(null);
-  // Touch: one finger orbits, two fingers pinch to zoom — the same contract
-  // a 3D viewport gives a trackpad, so zoom is a gesture and not a button.
-  const touches = useRef(new Map<number, { x: number; y: number }>());
-  const pinch = useRef<{ d: number; z: number } | null>(null);
-
-  const onOrbitDown = (e: React.PointerEvent): void => {
-    if (e.pointerType === 'touch') {
-      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (touches.current.size === 2) {
-        const [a, b] = [...touches.current.values()];
-        orbDrag.current = null;                       // a pinch is not an orbit
-        pinch.current = { d: Math.hypot(a!.x - b!.x, a!.y - b!.y), z: session.zoom3d };
-        return;
-      }
-      if (touches.current.size > 2) return;
-    }
-    orbDrag.current = { x: e.clientX, y: e.clientY };
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-  };
-  const onOrbitMove = (e: React.PointerEvent): void => {
-    if (e.pointerType === 'touch' && touches.current.has(e.pointerId)) {
-      touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      const p = pinch.current;
-      if (p && touches.current.size >= 2) {
-        const [a, b] = [...touches.current.values()];
-        const d = Math.hypot(a!.x - b!.x, a!.y - b!.y);
-        if (p.d > 0) {
-          session.zoom3d = Math.min(8, Math.max(0.4, p.z * (d / p.d)));
-          queueOrbit();
-        }
-        return;
-      }
-    }
-    const d = orbDrag.current;
-    // Touch reports buttons === 0 while dragging, so only gate a mouse on it.
-    if (!d || (e.pointerType !== 'touch' && !(e.buttons & 1))) return;
-    const TAU = Math.PI * 2;
-    const o = (((angles.current.orbit + (e.clientX - d.x) * 0.006) % TAU) + TAU) % TAU;
-    const t = Math.min(1.2, Math.max(-1.2, angles.current.tilt + (e.clientY - d.y) * 0.004));
-    orbDrag.current = { x: e.clientX, y: e.clientY };
-    setOrbit(o);
-    setTilt(t);
-    queueOrbit();
-  };
-  const onOrbitUp = (e?: React.PointerEvent): void => {
-    if (e?.pointerType === 'touch') {
-      touches.current.delete(e.pointerId);
-      if (touches.current.size < 2) pinch.current = null;
-    }
-    orbDrag.current = null;
-  };
+  // drag orbits, pinch zooms, a tap picks: the panes jump to the point (F12)
+  const { onOrbitDown, onOrbitMove, onOrbitUp } = useOrbitPointer({
+    angles, setOrbit, setTilt, queueOrbit,
+    onTap: (x, y) => {
+      const cv = canvasRef.current;
+      if (cv) pick3d({ canvas: cv, orbit: angles.current.orbit, tilt: angles.current.tilt, zoom: session.zoom3d, center: maskCenter(), vr: { tf: currentTF(), density, alphaStep: VR_ALPHA_STEP } }, x, y);
+    },
+  });
 
   /** One dock, two homes: above the viewport on desktop, inside the control
    *  deck on mobile — so tools never cover the image they act on. */
