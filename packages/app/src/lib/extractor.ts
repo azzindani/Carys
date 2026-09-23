@@ -1,5 +1,5 @@
 import { extractBoundary, mergeRows, renderVolume, smoothMesh, smoothSurface } from '@carys/render-cpu';
-import type { TF } from '@carys/render-cpu';
+import type { Clip, TF } from '@carys/render-cpu';
 import { toMask } from './loaders';
 import type { Mesh } from './types';
 
@@ -27,6 +27,8 @@ export interface VrParams {
   jitter?: { pass: number; of: number };
   /** soft shadows + ambient light (render-cpu/vr-light.ts) */
   cinematic?: boolean;
+  /** what is kept, voxels (render-cpu/clip.ts) */
+  clip?: Clip;
 }
 
 export interface VrResult {
@@ -198,7 +200,7 @@ export function createExtractor() {
         id, method: 'volume', key, dims, dtype: 'float64', rows,
         w: vr.w, h: vr.h, angleY: vr.angleY, tiltX: vr.tiltX, zoom: vr.zoom,
         tf: vr.tf, step: vr.step, shade: vr.shade, density: vr.density,
-        bounds: vr.bounds, spacing: vr.spacing, alphaStep: vr.alphaStep, jitter: vr.jitter, cinematic: vr.cinematic,
+        bounds: vr.bounds, spacing: vr.spacing, alphaStep: vr.alphaStep, jitter: vr.jitter, cinematic: vr.cinematic, clip: vr.clip,
       };
       if (withField) {
         const copy = data.slice().buffer as ArrayBuffer;
@@ -237,7 +239,7 @@ export function createExtractor() {
     const r = renderVolume({ dims, data }, {
       width: vr.w, height: vr.h, angleY: vr.angleY, tiltX: vr.tiltX,
       zoom: vr.zoom, tf: vr.tf, step: vr.step, shade: vr.shade, density: vr.density,
-      bounds: vr.bounds, spacing: vr.spacing, alphaStep: vr.alphaStep, jitter: vr.jitter, cinematic: vr.cinematic,
+      bounds: vr.bounds, spacing: vr.spacing, alphaStep: vr.alphaStep, jitter: vr.jitter, cinematic: vr.cinematic, clip: vr.clip,
     });
     usedWorker = false;
     vrWorkers = 0;

@@ -9,6 +9,7 @@
 import { intersectAABB, type VrOpts, type VrVolume } from './vr.js';
 import { sampleSortedTF, sortTF } from './tf.js';
 import { sampleTrilinear, type Vec3 } from './oblique.js';
+import { clipRay, inClip, scaleClip, type Clip } from './clip.js';
 import type { TriMesh } from './surface.js';
 
 export interface PickHit {
@@ -24,6 +25,8 @@ export interface SurfacePickView {
   tiltX: number;
   zoom?: number;
   center?: Vec3;
+  /** as renderMesh's: clipped points are not there to hit */
+  clip?: Clip;
 }
 
 /** Opacity a volume ray must reach for its pick. */
@@ -54,7 +57,7 @@ export function pickSurface(mesh: TriMesh, dims: Vec3, view: SurfacePickView, x:
   let best = -Infinity, hit: Vec3 | null = null;
   for (let t = 0; t < I.length; t += 3) {
     const a = I[t]!, b = I[t + 1]!, c = I[t + 2]!;
-    if (NZ[a]! <= 0 && NZ[b]! <= 0 && NZ[c]! <= 0) continue;
+    if (!view.clip && NZ[a]! <= 0 && NZ[b]! <= 0 && NZ[c]! <= 0) continue;
     const x0 = X[a]!, y0 = Y[a]!, x1 = X[b]!, y1 = Y[b]!, x2 = X[c]!, y2 = Y[c]!;
     if (x < Math.min(x0, x1, x2) || x > Math.max(x0, x1, x2) || y < Math.min(y0, y1, y2) || y > Math.max(y0, y1, y2)) continue;
     const den = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
@@ -65,8 +68,10 @@ export function pickSurface(mesh: TriMesh, dims: Vec3, view: SurfacePickView, x:
     if (w0 < 0 || w1 < 0 || w2 < 0) continue;
     const z = w0 * Z[a]! + w1 * Z[b]! + w2 * Z[c]!;
     if (z <= best) continue;
+    const p = [0, 1, 2].map((k) => w0 * P[a * 3 + k]! + w1 * P[b * 3 + k]! + w2 * P[c * 3 + k]!) as Vec3;
+    if (view.clip && !inClip(view.clip, p[0], p[1], p[2])) continue;
     best = z;
-    hit = [0, 1, 2].map((k) => w0 * P[a * 3 + k]! + w1 * P[b * 3 + k]! + w2 * P[c * 3 + k]!) as Vec3;
+    hit = p;
   }
   // into the screen: minus the view's third axis, in the mesh's axes
   return hit ? { point: hit, dir: [sy * cx, -sx, -cy * cx] } : null;
@@ -108,6 +113,12 @@ export function pickVolume(vol: VrVolume, opts: VrOpts, x: number, y: number): P
     if (!hit) return null;
     t0 = -R + Math.ceil((Math.max(t0, hit[0]) + R) / step) * step;
     t1 = Math.min(t1, hit[1]);
+  }
+  if (opts.clip) {
+    const kept = clipRay(scaleClip(opts.clip, sp), org, dir, t0, t1);
+    if (!kept) return null;
+    if (kept[0] > t0) t0 = -R + Math.ceil((kept[0] + R) / step) * step;
+    t1 = kept[1];
   }
   const stops = sortTF(opts.tf);
   let a = 0, most = 0, mostAt: Vec3 | null = null;

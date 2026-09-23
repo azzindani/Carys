@@ -1224,7 +1224,31 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   names what was hit: `3D pick on the surface → voxel (123, 134, 133) ·
   value 241 · label 1`. Wire leg 41e on the BraTS tumour: surface and
   volume render both land on label 1, axial pane at the voxel's slice.
-- OPEN — **F13. Clip planes and crop box** for both 3D modes.
+- DONE — **F13. Clip planes and crop box** for both 3D modes.
+  `render-cpu/clip.ts`: a crop box and a plane, kept together as one convex
+  region, so a ray keeps one interval of it and a triangle wholly outside
+  one face is skipped by its vertices' outcodes. The rasterizer draws back
+  faces while clipping and shades them 0.55× from their own side, the
+  inside seen through the cut (a sphere cut at its middle: centre 82 vs
+  147 whole; a box around everything: 0 pixels differ; a box away from it:
+  all background). The raycaster clips each ray's interval and keeps the
+  unclipped sample lattice (a box around the whole volume: same hash, plain
+  and jittered passes). Clipped cells cast no cinematic light (a ball
+  cropped off the plate it shadowed: shadow patch 71.9 vs 140.3 lit, cut
+  away 140.5 vs 140.4). Both picks honour it: through a cut sphere to the
+  far wall at z 8.02 (analytic 8), onto a cut ball's face at z 15.96
+  (16.5). Cost on a 170 k-triangle shell at 560² 2×: 105 ms whole, 158 ms
+  clipped (248 before outcodes); the volume render gets faster, 195 →
+  112 ms at 300², its rays shorter. App: `lib/clip3d.ts` keeps the clip
+  as fractions of the volume (in mm for the surface, voxels less half a
+  voxel for the raycaster, which samples voxel centres), `views/ClipPanel.tsx`
+  under the 3D image when the dock's Clip switch is on (plane
+  axial/coronal/sagittal, position, keep the far side, crop x/y/z, reset).
+  Off, every render is the unclipped one (goldens and atlas hashes
+  unchanged). Wire leg 41f on the BraTS tumour, an axial plane at z 124:
+  surface 65,314 of 87,696 px drawn, a tap through the cut lands on the
+  far wall at z 103; volume render 5,100 of 6,783 px, a tap lands on the
+  cut face at z 123.
 - OPEN — **F14. Segmentation outlines** in the 2D panes, a colour per label.
 - OPEN — **F15. Slice interpolation for editing.** Paint every few slices,
   fill between with the F5 distance-field interpolation, one undo step.

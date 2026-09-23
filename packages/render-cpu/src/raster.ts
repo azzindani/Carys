@@ -12,6 +12,7 @@
 // Depth cues (F7): ambient occlusion and silhouette outlines, opt-in, as a
 // post-pass over the depth and normal buffers (screen-space.ts).
 import { ambientOcclusion, silhouettes, type GBuffer } from './screen-space.js';
+import { inClip, outcode, type Clip } from './clip.js';
 import type { TriMesh } from './surface.js';
 
 export interface RasterOpts {
@@ -32,6 +33,9 @@ export interface RasterOpts {
   ao?: boolean;
   /** darken the near side of silhouettes and depth steps */
   outline?: boolean;
+  /** keep only this region (mesh units); what it cuts open shows its
+   *  inside, darker (F13) */
+  clip?: Clip;
 }
 
 // Light rig, view space. Ambient + diffuse match the old per-face shader.
@@ -54,6 +58,8 @@ const AO_BLOCK = 2;
  *  near side is drawn at this fraction of its colour, one pixel wide. */
 const OUTLINE_GAP = 10;
 const OUTLINE_SHADE = 0.6;
+/** The inside of a clipped surface, lit from its own side, this much darker. */
+const INSIDE_SHADE = 0.55;
 
 export function renderMesh(
   mesh: TriMesh,
@@ -99,12 +105,30 @@ export function renderMesh(
   const Lx = 0.35 * inv, Ly = 0.7 * inv, Lz = 0.62 * inv;
   const hl = 1 / Math.hypot(Lx, Ly, Lz + 1);
   const Hx = Lx * hl, Hy = Ly * hl, Hz = (Lz + 1) * hl;
+  const clip = opts.clip ?? null;
+  // a triangle wholly outside the clip is skipped, one wholly inside is
+  // drawn without the per-pixel test
+  let code: Uint8Array | null = null;
+  if (clip) {
+    code = new Uint8Array(P.length / 3);
+    for (let v = 0; v < code.length; v++) code[v] = outcode(clip, P[v * 3]!, P[v * 3 + 1]!, P[v * 3 + 2]!);
+  }
   for (let t = 0; t < I.length; t += 3) {
     const i0 = I[t]!, i1 = I[t + 1]!, i2 = I[t + 2]!;
+    let test = false;
+    if (code) {
+      const k0 = code[i0]!, k1 = code[i1]!, k2 = code[i2]!;
+      if (k0 & k1 & k2) continue;
+      test = (k0 | k1 | k2) !== 0;
+    }
     // backface cull only when every vertex normal faces away: a mean-normal
-    // cull dropped visible silhouette triangles on wrinkled masks (pinholes)
-    if (NZ[i0]! <= 0 && NZ[i1]! <= 0 && NZ[i2]! <= 0) continue;
+    // cull dropped visible silhouette triangles on wrinkled masks (pinholes).
+    // A clip draws back faces: through the cut they are the inside.
+    if (!clip && NZ[i0]! <= 0 && NZ[i1]! <= 0 && NZ[i2]! <= 0) continue;
     const x0 = X[i0]!, y0 = Y[i0]!, x1 = X[i1]!, y1 = Y[i1]!, x2 = X[i2]!, y2 = Y[i2]!;
+    // outward winding is clockwise on screen (y down): the other way is the
+    // triangle's back
+    const inside = clip !== null && (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0) > 0;
     const denom = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
     if (Math.abs(denom) < 1e-9) continue;
     // barycentric weights as planes over the screen: w = a·x + b·y + c
@@ -123,18 +147,22 @@ export function renderMesh(
         const z = w0 * z0 + w1 * z1 + w2 * z2;
         const o = y * SW + x;
         if (!(z > depth[o]!)) continue;
+        if (test && !inClip(clip!,
+          w0 * P[i0 * 3]! + w1 * P[i1 * 3]! + w2 * P[i2 * 3]!,
+          w0 * P[i0 * 3 + 1]! + w1 * P[i1 * 3 + 1]! + w2 * P[i2 * 3 + 1]!,
+          w0 * P[i0 * 3 + 2]! + w1 * P[i1 * 3 + 2]! + w2 * P[i2 * 3 + 2]!)) continue;
         depth[o] = z;
-        // the surface normal at this pixel
+        // the surface normal at this pixel (turned to face us on the inside)
         let ex = w0 * NX[i0]! + w1 * NX[i1]! + w2 * NX[i2]!;
         let ey = w0 * NY[i0]! + w1 * NY[i1]! + w2 * NY[i2]!;
         let ez = w0 * NZ[i0]! + w1 * NZ[i1]! + w2 * NZ[i2]!;
-        const l = 1 / (Math.sqrt(ex * ex + ey * ey + ez * ez) || 1);
+        const l = (inside ? -1 : 1) / (Math.sqrt(ex * ex + ey * ey + ez * ez) || 1);
         ex *= l; ey *= l; ez *= l;
         if (G) { G.nx[o] = ex; G.ny[o] = ey; G.nz[o] = ez; }
         const d = Math.max(0, ex * Lx + ey * Ly + ez * Lz);
         const h = ex * Hx + ey * Hy + ez * Hz;
-        const shade = AMBIENT + DIFFUSE * d;
-        const spec = d > 0 && h > SPEC_CUT ? SPECULAR * 255 * h ** SHININESS : 0;
+        const shade = (AMBIENT + DIFFUSE * d) * (inside ? INSIDE_SHADE : 1);
+        const spec = !inside && d > 0 && h > SPEC_CUT ? SPECULAR * 255 * h ** SHININESS : 0;
         acc[o * 3] = color[0] * shade + spec;
         acc[o * 3 + 1] = color[1] * shade + spec;
         acc[o * 3 + 2] = color[2] * shade + spec;

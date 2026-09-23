@@ -29,6 +29,7 @@
 import type { Vec3 } from './oblique.js';
 import { maxOpacity, sampleSortedTF, sortTF, type TF } from './tf.js';
 import { cachedExtinction, cellAt, passLight, SKY_PER_PASS, type PassLight } from './vr-light.js';
+import { clipRay, scaleClip, type Clip } from './clip.js';
 
 export interface VrVolume {
   dims: [number, number, number];
@@ -67,6 +68,9 @@ export interface VrOpts {
   rows?: { from: number; every: number };
   /** soft shadows + ambient light, this pass's share (`jitter`) */
   cinematic?: boolean;
+  /** keep only this region, voxels like `bounds` (F13); a cut shows the
+   *  volume's inside, and cinematic light passes where it was cut away */
+  clip?: Clip;
 }
 
 /** Cinematic shading: a small fill no shadow reaches, the sky (ambient,
@@ -313,9 +317,10 @@ export function renderVolume(vol: VrVolume, opts: VrOpts): { rgba: Uint8ClampedA
   if (opts.cinematic) {
     const refMm = (opts.alphaStep ?? opts.step ?? 2) * minSp;
     const lw = invRot(opts.angleY, opts.tiltX, light[0], light[1], light[2]);
-    cin = passLight(cachedExtinction(field, dims, sp, stops, density, refMm), lw, jit?.pass ?? 0, jit?.of ?? 1);
+    cin = passLight(cachedExtinction(field, dims, sp, stops, density, refMm), lw, jit?.pass ?? 0, jit?.of ?? 1, opts.clip);
   }
 
+  const clipMm = opts.clip ? scaleClip(opts.clip, sp) : null;
   const rows = opts.rows ?? { from: 0, every: 1 };
   if (!(Number.isInteger(rows.from) && Number.isInteger(rows.every) && rows.every >= 1 && rows.from >= 0 && rows.from < rows.every)) {
     throw new RangeError(`vr-rows: from ${rows.from} every ${rows.every}`);
@@ -346,6 +351,21 @@ export function renderVolume(vol: VrVolume, opts: VrOpts): { rgba: Uint8ClampedA
         t0 = jit
           ? -R + phase + Math.ceil((t0 - (-R + phase)) / step) * step
           : -R + Math.ceil((t0 + R) / step) * step;
+      }
+      if (clipMm) {
+        // the clip's share of the ray, its start on the same lattice
+        const kept = clipRay(clipMm, org, marchDir, t0, t1);
+        if (!kept) {
+          const o = (py * W + px) * 4;
+          out[o] = bg[0]!; out[o + 1] = bg[1]!; out[o + 2] = bg[2]!; out[o + 3] = 255;
+          continue;
+        }
+        if (kept[0] > t0) {
+          t0 = jit
+            ? -R + phase + Math.ceil((kept[0] - (-R + phase)) / step) * step
+            : -R + Math.ceil((kept[0] + R) / step) * step;
+        }
+        t1 = kept[1];
       }
       let r = 0, g = 0, b = 0, a = 0;
       for (let t = t0; t <= t1 && a < 0.995; t += step) {

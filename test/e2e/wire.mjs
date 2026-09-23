@@ -2877,11 +2877,17 @@ try {
       const r = cv.getBoundingClientRect();
       return { x: r.left + best[0] * (r.width / cv.width), y: r.top + best[1] * (r.height / cv.height) };
     });
+    // a new pick's line, not the one a pick before it left standing
+    const before = await page25c.locator('#status-text').textContent();
     await page25c.mouse.click(at.x, at.y);
     const on = mode === 'volume' ? 'volume render' : 'surface';
-    await page25c.waitForFunction((w) => (document.getElementById('status-text')?.textContent ?? '').includes(`3D pick on the ${w}`), on, { timeout: 30000 });
+    await page25c.waitForFunction(([w, b]) => {
+      const t = document.getElementById('status-text')?.textContent ?? '';
+      return t.includes(`3D pick on the ${w}`) && t !== b;
+    }, [on, before], { timeout: 30000 });
     return page25c.locator('#status-text').textContent();
   };
+  let pickZ = 0;
   for (const mode of ['surface', 'volume']) {
     if (mode === 'volume') {
       await page25c.click('#renderseg button[data-r="volume"]');
@@ -2893,7 +2899,51 @@ try {
     if (!m || Number(m[4]) < 1) fail(`${mode} pick missed the tumour: ${said}`);
     else if (!axial?.startsWith(`${m[3]} /`)) fail(`${mode} pick: axial pane at ${axial}, voxel z ${m[3]}`);
     else console.log(`3D pick (${mode}): ${said} · axial ${axial}`);
+    if (m) pickZ = Number(m[3]);
   }
+
+  // ---- 41f. F13 clip: an axial plane through the tumour, 8 slices under
+  // where the last pick landed (so a pick that ignored it lands above it),
+  // takes away what is above it in both render modes, and a tap goes to
+  // what is left.
+  const nz = Number((await page25c.locator('#ro-axial').textContent())?.match(/\/ (\d+)/)?.[1]) + 1;
+  const drawnCount = () => page25c.evaluate(() => {
+    const cv = document.getElementById('view3d');
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 17) + Math.abs(d[i + 1] - 17) + Math.abs(d[i + 2] - 17) > 12) n++;
+    return n;
+  });
+  const lastPass = () => page25c.waitForFunction(() => /4\/4 passes/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 120000 });
+  await lastPass();
+  const whole = { volume: await drawnCount() };
+  // set the clip up on the surface (drawn at once), then enter volume mode:
+  // one render starts, and its last pass is the clipped one
+  await page25c.click('#renderseg button[data-r="surface"]');
+  await page25c.waitForFunction(() => /tris/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 90000 });
+  await page25c.waitForTimeout(1000);
+  whole.surface = await drawnCount();
+  await page25c.locator('#dock-3d input[aria-label="Clip"]').check({ force: true });
+  await page25c.waitForSelector('#pane-clip');
+  await page25c.click('#clipplane button[data-plane="axial"]');
+  // on the slider's 0.01 steps (a range input refuses anything between)
+  await page25c.locator('#clip-at').fill(String(Math.floor(((pickZ - 8) / nz) * 100) / 100));
+  const at = Number(await page25c.locator('#clip-at').inputValue()) * nz;
+  for (const mode of ['surface', 'volume']) {
+    if (mode === 'volume') {
+      await page25c.evaluate(() => { document.getElementById('ro-3d').textContent = ''; });
+      await page25c.click('#renderseg button[data-r="volume"]');
+      await lastPass();
+    } else await page25c.waitForTimeout(1000);
+    const cut = await drawnCount();
+    const said = await tapStructure(mode);
+    const z = Number(said?.match(/voxel \(\d+, \d+, (\d+)\)/)?.[1]);
+    if (!(cut > 0 && cut < whole[mode])) fail(`${mode} clip at z ${at.toFixed(1)}: ${cut} px drawn, ${whole[mode]} whole`);
+    else if (!(z <= at + 2)) fail(`${mode} pick through the clip at z ${at.toFixed(1)}: ${said}`);
+    else console.log(`clip (${mode}): axial plane z ${at.toFixed(1)} · ${cut} of ${whole[mode]} px drawn · pick z ${z}`);
+  }
+  await page25c.locator('#dock-3d input[aria-label="Clip"]').uncheck({ force: true });
+  if (await page25c.locator('#pane-clip').count()) fail('the clip pane outlived the Clip switch');
   await page25c.close();
 
   // ---- 42. G3 radiomics CSV import: hand-rolled pyradiomics-shaped CSV

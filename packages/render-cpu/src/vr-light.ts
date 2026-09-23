@@ -20,6 +20,7 @@
 // light.
 import type { Vec3 } from './oblique.js';
 import { sampleSortedTF, type TF } from './tf.js';
+import { inClip, type Clip } from './clip.js';
 
 /** Extinction on a coarse grid; cell i spans voxels [i·f, (i+1)·f). */
 export interface ExtinctionGrid {
@@ -83,9 +84,10 @@ export function extinctionGrid(
 
 /**
  * Transmittance of light arriving from unit direction `toLight` (world mm
- * axes) at every cell. Light enters from outside the grid unattenuated.
+ * axes) at every cell. Light enters from outside the grid unattenuated, and
+ * crosses cells `open` marks as if they were empty (clipped away).
  */
-export function transmittance(grid: ExtinctionGrid, toLight: Vec3): Float32Array {
+export function transmittance(grid: ExtinctionGrid, toLight: Vec3, open?: Uint8Array): Float32Array {
   const [gx, gy, gz] = grid.dims;
   const n = [gx, gy, gz], stride = [1, gx, gx * gy];
   // the direction in cells per mm; its dominant axis steps one cell a time
@@ -115,7 +117,7 @@ export function transmittance(grid: ExtinctionGrid, toLight: Vec3): Float32Array
         }
         const i = at(s, j, k);
         T[i] = t;
-        P[i] = t * Math.exp(-grid.sigma[i]! * h);
+        P[i] = open?.[i] ? t : t * Math.exp(-grid.sigma[i]! * h);
       }
     }
   }
@@ -146,7 +148,7 @@ export interface PassLight {
  * point of the cone (stratified in radius, golden-angle in turn), and this
  * pass's share of `of × SKY_PER_PASS` sky directions.
  */
-export function passLight(grid: ExtinctionGrid, toLight: Vec3, pass: number, of: number): PassLight {
+export function passLight(grid: ExtinctionGrid, toLight: Vec3, pass: number, of: number, clip?: Clip): PassLight {
   const [u, v] = basis(toLight);
   const r = LIGHT_CONE * Math.sqrt((pass + 0.5) / of), phi = pass * 2.399963229728653;
   const tr = Math.tan(r);
@@ -161,7 +163,16 @@ export function passLight(grid: ExtinctionGrid, toLight: Vec3, pass: number, of:
     const z = 1 - (2 * (m + 0.5)) / M, s = Math.sqrt(Math.max(0, 1 - z * z)), p = m * 2.399963229728653;
     sky.push([s * Math.cos(p), s * Math.sin(p), z]);
   }
-  return { grid, light, shadow: transmittance(grid, light), sky, skyT: sky.map((d) => transmittance(grid, d)) };
+  // cells a clip removed cast nothing: their centres, in voxels
+  let open: Uint8Array | undefined;
+  if (clip) {
+    const [gx, gy, gz] = grid.dims, [fx, fy, fz] = grid.f;
+    open = new Uint8Array(gx * gy * gz);
+    for (let k = 0; k < gz; k++) for (let j = 0; j < gy; j++) for (let i = 0; i < gx; i++) {
+      if (!inClip(clip, (i + 0.5) * fx - 0.5, (j + 0.5) * fy - 0.5, (k + 0.5) * fz - 0.5)) open[(k * gy + j) * gx + i] = 1;
+    }
+  }
+  return { grid, light, shadow: transmittance(grid, light, open), sky, skyT: sky.map((d) => transmittance(grid, d, open)) };
 }
 
 /** Trilinear read of a cell field at a voxel-space point (cells clamped). */

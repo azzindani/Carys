@@ -5,7 +5,7 @@
 // pool's shares reuse one copy, and its brick ranges (render-cpu/vr.ts).
 import { extractBoundary, lodChain, renderVolume, vertexNormals } from '@carys/render-cpu';
 import { smoothMesh, smoothSurface } from '@carys/render-cpu';
-import type { TF } from '@carys/render-cpu';
+import type { Clip, TF } from '@carys/render-cpu';
 
 const CTORS = {
   uint8: Uint8Array, int8: Int8Array, uint16: Uint16Array, int16: Int16Array,
@@ -52,6 +52,7 @@ interface VolumeRequest {
   alphaStep?: number;
   jitter?: { pass: number; of: number };
   cinematic?: boolean;
+  clip?: Clip;
 }
 
 /** An orbit level of a surface (F11): decimated in mm, returned in voxels. */
@@ -107,7 +108,7 @@ onmessage = (e: MessageEvent<Request>) => {
         {
           width: req.w, height: req.h, angleY: req.angleY, tiltX: req.tiltX,
           zoom: req.zoom, tf: req.tf, step: req.step, shade: req.shade, density: req.density,
-          bounds: req.bounds, spacing: req.spacing, alphaStep: req.alphaStep, jitter: req.jitter, rows: req.rows, cinematic: req.cinematic,
+          bounds: req.bounds, spacing: req.spacing, alphaStep: req.alphaStep, jitter: req.jitter, rows: req.rows, cinematic: req.cinematic, clip: req.clip,
         },
       );
       const buf = rgba.buffer as ArrayBuffer;

@@ -25,6 +25,8 @@ import { TfEditor } from './TfEditor';
 import { drawCursor3d, drawFibers } from './orbitOverlay';
 import { useOrbitPointer } from './orbitPointer';
 import { pick3d } from './pick3d';
+import { ClipPanel } from './ClipPanel';
+import { clipOf } from '../lib/clip3d';
 
 /** Quiet time after the last orbit frame before the anti-aliased repaint. */
 const ORBIT_SETTLE_MS = 160;
@@ -171,6 +173,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
           shade, density, bounds,
           // in mm, like the surface: a 5 mm-slice CT is not a fifth of its height
           spacing: img.spacing ?? [1, 1, 1],
+          clip: clipOf(getUi().clip3d, img.dims, -0.5),
         });
         // anything else drawn since (an orbit, a control, the surface) ends it
         if (mine !== vrToken.current || pmine !== session.paintToken || getUi().series !== s0 || getUi().render3d !== 'volume') return;
@@ -229,7 +232,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       // orbit frames draw the coarse level when there is one (F11)
       const out = renderMesh(physicalMesh(ss === 1 && session.mesh.lod ? session.mesh.lod : session.mesh, sp), box, {
         ...view, color: SERIES[getUi().series]?.color ?? [225, 215, 200], supersample: ss,
-        ao: cuesRef.current, outline: cuesRef.current,
+        ao: cuesRef.current, outline: cuesRef.current, clip: clipOf(getUi().clip3d, box),
       });
       ctx.putImageData(new ImageData(new Uint8ClampedArray(out), cv.width, cv.height), 0, 0);
     } else {
@@ -555,6 +558,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
             <Switch checked={cinematic} label="Cinematic" onChange={(v) => { setCinematic(v); bump(); }} />
           </>
         )}
+        <Switch checked={ui.clip3d.on} label="Clip" onChange={(v) => { setUi({ clip3d: { ...ui.clip3d, on: v } }); queueOrbit(); }} />
         <div className="sep" />
         <div className="grp">
           <span className="lbl">Tracts</span>
@@ -630,6 +634,8 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
           </div>
         </div>
       </div>
+      {/* under the image: the tool strip floats over the column's top */}
+      {ui.clip3d.on && <ClipPanel clip={ui.clip3d} onInput={(c) => { setUi({ clip3d: c }); queueOrbit(); }} />}
     </>
   );
 }
