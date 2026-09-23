@@ -173,9 +173,10 @@
 /* ------------------------------------------------------------- inspector
    A drawer over the image, not a column beside it. Closed by default; the
    Details toggle slides it in. Chrome costs zero layout area. */
+.main { --inspector-w: min(300px, 82vw); }
 .inspector {
   position: absolute; top: calc(var(--ctl-h) + var(--sp-3)); right: 0; bottom: 0; z-index: 14;
-  width: min(300px, 82vw);
+  width: var(--inspector-w);
   display: flex; flex-direction: column;
   overflow-y: auto;
   padding: 0 var(--sp-4) var(--sp-4);
@@ -203,6 +204,16 @@
   transition: all var(--dur-fast) var(--ease);
 }
 .inspector h2 .act button:hover { color: var(--color-text); background: var(--color-surface-3); }
+
+/* On desktop the open details drawer takes its width from the viewport
+   instead of lying over it. Lying over it hid the right half of the axial
+   pane behind readouts — a tap meant for the image hit the drawer, so a
+   measurement or a paint stroke there was impossible while Details was
+   open. The panes shrink instead (they recompose on resize). Tablet folds
+   the drawer under the stage and mobile hides it, so they keep their rules. */
+@media (min-width: 1281px) {
+  .main:has(> .inspector) > .viewport { margin-right: var(--inspector-w); }
+}
 
 /* ---------------------------------------------------------------- status */
 .status {

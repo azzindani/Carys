@@ -8,7 +8,8 @@ export interface DicomSlice {
   sliceLocation?: number;
   rows: number;
   cols: number;
-  pixelData: Int16Array | Uint8Array;
+  /** Modality values (rescale applied). Int16 when exact, Float32 otherwise. */
+  pixelData: Int16Array | Uint8Array | Float32Array;
   /** zero-based frame index inside its file (multi-frame only) */
   frameIndex?: number;
   /** per-frame ImagePositionPatient from functional groups (Enhanced MR/CT) */
@@ -38,13 +39,17 @@ export function stackToVolume(slices: DicomSlice[]): Volume {
   const nx = sorted[0].cols;
   const ny = sorted[0].rows;
   const nz = sorted.length;
-  const dtype = sorted[0].pixelData instanceof Int16Array ? 'int16' : 'uint8';
+  // The container follows the widest slice: one Float32 slice (a value int16
+  // cannot hold) promotes the stack, rather than truncating into the first
+  // slice's type.
+  const dtype = sorted.some((s) => s.pixelData instanceof Float32Array) ? 'float32'
+    : sorted[0].pixelData instanceof Int16Array ? 'int16' : 'uint8';
   const data =
-    dtype === 'int16'
-      ? new Int16Array(nx * ny * nz)
-      : new Uint8Array(nx * ny * nz);
+    dtype === 'float32' ? new Float32Array(nx * ny * nz)
+      : dtype === 'int16' ? new Int16Array(nx * ny * nz)
+        : new Uint8Array(nx * ny * nz);
   sorted.forEach((s, k) => {
-    (data as Int16Array).set(s.pixelData as Int16Array, k * nx * ny);
+    data.set(s.pixelData, k * nx * ny);
   });
   return {
     dims: [nx, ny, nz],

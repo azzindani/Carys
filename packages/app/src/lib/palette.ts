@@ -19,3 +19,8 @@ export const TF_GRID = 'rgba(255,255,255,0.12)';
 export const MONO_STACK = '"IBM Plex Mono", monospace';
 /** Viewport chrome text (anatomy letters, scale bar): near-white, dimmed. */
 export const CHROME_TEXT = 'rgba(238,242,247,0.8)';
+/** Canvas type size in CSS px. Chrome is drawn in screen space now, so one
+ *  size reads the same on every pane and every grid size. */
+export const CHROME_FONT_PX = 12;
+/** Dark halo behind canvas chrome text (the DOM readouts' text-shadow twin). */
+export const CHROME_HALO = 'rgba(0,0,0,0.9)';

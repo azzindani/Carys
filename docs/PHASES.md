@@ -775,3 +775,143 @@ defaults conspired to make DICOM look unsupported.
   13 studies when only some can open. Unblock: mark catalog entries that need
   real data and show it in the worklist, or generate phantoms for them too.
 
+## Production serving (2026-09-23)
+
+- DONE — **The image starts.** It never had: the Dockerfile switched to the
+  non-root `nginx` user but kept the stock config, whose temp and pid paths
+  are root-owned, so the container exited 1 at start-up ("mkdir()
+  /var/cache/nginx/client_temp failed"). CI only built it. `deploy/nginx.conf`
+  now owns the server: port 8080, every writable path in /tmp, and it runs
+  under `--read-only --tmpfs /tmp --cap-drop ALL`.
+- DONE — **`npm run test:image` is a gate** (CI image job): health, redirect,
+  headers, cache policy, compression and types over HTTP, then Chromium boots
+  the app and every route under the real CSP, failing on any violation, any
+  request off the origin and any route chunk that does not arrive. Proven to
+  fail: a config without `data:` in img-src gave 8 failures and exit 1.
+- DONE — **`digests/` ships.** Atlas, Learn and the pathogen structures fetch
+  it at runtime; the image left it out. The per-package tsc builds and the
+  legacy `packages/ui` shell no longer ship: the shell's import map points at
+  /node_modules/, so all three of its pages died on their first module, and
+  it runs only on inline script.
+- DONE — **No third-party requests.** Inter, Space Grotesk and IBM Plex Mono
+  are bundled from @fontsource (Latin, the weights the sheets use); the
+  Google Fonts links in both index pages are gone. Offline and air-gapped
+  sites get the real type, and no page view reaches Google.
+- DONE — **Route split.** Seven routes are `React.lazy` chunks; React and
+  Radix have their own. Entry 722.30 kB → 296.00 kB (gzip 237.28 → 100.53);
+  everything fetched at boot 722.30 → 564.59 kB (gzip 237.28 → 187.31).
+  Both build warnings (the 500 kB chunk, the mixed `@carys/io` import) gone.
+- OPEN — **`connect-src` allows any https origin**, because the PACS and zarr
+  hosts a user types in are unknowable at build time. Owner: whoever deploys
+  to a site. Unblock: a per-site origin list (an env var rendered into the
+  config at start-up) once a deployment can name its hosts.
+- OPEN — **The entry is mostly the parsers the viewer boots with**
+  (`@carys/io` alone is ~190 kB before minification). Owner: the imaging
+  lane (`lib/loaders`). Unblock: import format decoders on first use.
+
+## Clinical geometry on the real samples (2026-09-23)
+
+Every catalog series was opened in Chromium and screenshotted before and
+after. What the images showed, and what changed:
+
+- DONE — **Anatomy is where the patient is.** The panes mapped voxel axes to
+  the screen blind, so a RAS-stored NIfTI (liver_33) showed the liver on the
+  screen right with the spine at the top, and every coronal and sagittal was
+  upside down (inferior up). Volumes with a qform/sform or DICOM
+  IOP/IPP are now re-laid out once at load into LPS storage
+  (`volume-core/geometry.ts`, `app/lib/orient.ts`) and coronal/sagittal draw
+  superior-up: radiological convention on all three panes, with R/L, A/P,
+  S/I letters at the pane edges. A volume without orientation (ACDC 4D cine)
+  stays as stored and says "orientation unknown" on the image instead of
+  guessing letters. Oblique grids snap to their nearest axes.
+- DONE — **Reformats at true proportions.** The canvas was the voxel grid
+  stretched by CSS, so a 0.94 × 5 mm CT's coronal drew 512 × 58 — squashed
+  5.3×. The canvas is now the pane's own pixels; one mapping (`views/paneView.ts`)
+  fits the slice in millimetres, applies zoom/pan/flip, and inverts every tap.
+  Labels, scale bar and measurement marks are drawn in screen px (same size on
+  a 64² and a 512² grid) and zoom re-renders instead of upscaling a bitmap.
+- DONE — **3D in millimetres, both modes.** The surface (`app/lib/physical3d.ts`):
+  mesh, fibres, cursor and framing scale by spacing (normals by its inverse).
+  The volume raycaster (`render-cpu/vr.ts`) takes a `spacing` and marches in
+  mm, with the gradient per mm; unit spacing is bit-identical to the old
+  voxel-space render (unit-tested, with an 8 mm cube on a 1×1×2 mm grid that
+  must draw square). The covid chest CT's side view now spans 287 mm head to
+  foot instead of 58 voxels. A surface that finished extracting after the
+  switch to volume mode used to re-zoom the view and draw itself over the
+  raycast; so did the zoom reset. Both now leave the volume render alone.
+- DONE — **DICOM files become stacks, not a blind pile** (`io/dicom-stack.ts`).
+  Four copies of "sort by Slice Location, stack, take the median gap" (catalog,
+  DICOMDIR, PACS, upload) are now one: group by series + matrix + orientation
+  + spacing, order by IPP along the normal, space by position, split evenly
+  repeated positions into phases, and flag sparse stacks, gantry tilt and
+  dropped repeats — on the image, in amber. The vendored `lung_ct_0x` picks
+  are five different exams: they used to stack into one "volume" and a 3D
+  surface through five patients; they now open as five series.
+- DONE — **Folders open.** The file router opened only the first file of a
+  selection, so a real study (a folder of slices) could not be loaded. DICOM
+  is recognised by content (extensionless `IM0001` files included), several
+  files open as the series they contain, and a study folder can be dropped
+  anywhere on the viewer (`app/lib/dropFiles.ts`). The file input is the
+  viewer's own, always mounted: it lived in the 3D dock and vanished in every
+  fullscreen 2D view.
+- DONE — **Pixel values are exact.** The DICOM decoder wrote everything into
+  Int16: unsigned 16-bit MR above 32767 wrapped negative, fractional MR/PET
+  rescale was rounded away, and signed pixels stored in < 16 bits were masked
+  instead of sign-extended. Int16 stays where it is exact; the rest is
+  Float32. The lung-ct-dicom golden moved by < 1 HU (slope 1.000244 no longer
+  rounded) and was re-frozen after eyeballing.
+- DONE — **Uploads decode correctly.** The parse worker kept its own NIfTI
+  decode, which read voxels as `new Float64Array(frameBytes)`: an uploaded
+  int16 BraTS FLAIR came back 75% NaN. The worker now calls the loaders.
+- DONE — **PACS pulls parse the instance, not the envelope.** A WADO-RS
+  multipart part is a view into the whole response; `b.buffer` handed the
+  parser every boundary and header too.
+- DONE — **MR opens readable.** The hanging protocol pinned MR to fixed
+  windows (W200/C100, W256/C128) that fit one FLAIR by accident; the prostate
+  and brain MR samples (values to 5,000 and 21,700) opened solid white. 'auto'
+  is now the file's own VOI window, else the 2–98th percentile of the
+  non-background voxels. A series with no modality never inherits the
+  previous series' CT preset. ACDC cardiac is catalogued as the cine MR it is.
+- DONE — **Exports land on the source grid.** Mask `.nii` was written with
+  qform = sform = 0 in the viewer's layout; it now goes back to the file's own
+  voxel order with its affine as both sform and qform (qfac included), so it
+  overlays the scan in ITK-SNAP, Slicer and nibabel. The geometry suite checks
+  it voxel-for-voxel against the source segmentation.
+- DONE — **Single images open as images** (fullscreen axial, no idle 3D
+  extraction) instead of a one-voxel reformat and a slab "surface".
+- DONE — **Results stay readable.** A pane repaint or a surface landing
+  overwrote the status line a frame after an import reported ("US cine: 2
+  frames @ 26 fps" became "80 tris via worker"); background updates are now
+  ambient and never replace a result younger than 3 s. The cine transport now
+  appears for a US upload (the dock ignored session state).
+- DONE — **Seven vendored series now listed**: abdomen CT, two brain MR sets,
+  hepatic vessels + tumour, spine CT, sagittal lumbar spine MR, MS-lesion
+  FLAIR, T1 with a grey-matter probability map (thresholded at p > 0.5).
+- DONE — `npm run test:geometry` (in `test:e2e`) pins all of the above on the
+  real samples: liver on screen left, coronal aspect within 6% of physical,
+  lung picks → 5 series, sparse cardiac warns, mask export matches the source
+  seg exactly with its affine, worker upload matches the catalog decode, the
+  volume render spans the CT's physical length.
+- DONE — **The line cap covers the views.** `verify.test.ts` checked `.ts`
+  only, so `MprPanes.tsx` had reached 833 lines; its overlay drawing moved to
+  `views/paneChrome.ts`, three copies of the 3D view's mask bounding box
+  became `maskBox`, and the check now includes `.tsx`.
+- DONE — **Opening a series no longer stalls the viewer.** Catalog volumes
+  decoded and re-laid out on the main thread (most of a second on a 9M-voxel
+  NIfTI); they now go through the parse worker like uploads. One histogram
+  serves the window and the threshold, a surface already being extracted is
+  not extracted twice, and masks cross to the worker as bytes, not doubles.
+- DONE — **The wire suite runs to the end.** It had stopped at its first
+  failure for several changes, so every later leg rotted unseen. Running it
+  through surfaced real bugs, now fixed: Learn's "Open structure" never
+  opened its structure (it called a ref nothing had filled, and the demo
+  model raced it); the protein and atlas views repainted after every render
+  and erased the result just reported (pockets, RMSD, searches); a pocket
+  query with no pockets showed nothing; pocket, RMSD and map-fit results
+  outlived the model they ran on; the pathogen caption never named its PDB entry; a VCF
+  track opened on its first feature only; the VL tile grid was dropped by
+  the series load; JPEG-LS uploads reported no result; the appearance
+  popover opened under the top bar; the details drawer covered the right
+  pane; crosshairs were anti-aliased smears. Tests that asserted since-edited
+  text or waited 1.5 s for the details drawer (a slow mount read as "no
+  drawer") were corrected against the app, not the other way round.

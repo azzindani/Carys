@@ -13,6 +13,11 @@ import { bump } from './version';
  *  Split out of sessionOps by responsibility (rule 1: time lives here,
  *  opens/imports live there). */
 
+/** Fastest playback the transport offers (fps). One bound for the FPS
+ *  slider and for a file's own rate: ultrasound records 20–30 fps, and a
+ *  slider that stopped at 12 clamped a file's 26 to 12 behind its back. */
+export const CINE_MAX_FPS = 30;
+
 type CineSource =
   | { kind: 'nii'; raw: { hdr: Nifti1Header; buf: ArrayBuffer } }
   | { kind: 'dcm'; id: object };

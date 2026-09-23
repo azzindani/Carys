@@ -1,4 +1,4 @@
-import type { Nifti1Header } from '@carys/io';
+import type { DicomFileMeta, Nifti1Header } from '@carys/io';
 import type {
   DicomTagSummary, EncapsulatedDoc, RtDoseGrid, RtPlan, UsRegion, VlGrid,
 } from '@carys/io';
@@ -37,6 +37,14 @@ class Session {
   /** DICOM header summary for the open series (tag browser); null when the
    *  volume came from NIfTI/NRRD/Zarr or a PACS pull without file tags. */
   dcmMeta: DicomTagSummary | null = null;
+  /** The single-image rule put the axial pane fullscreen (and may undo it). */
+  autoSingle = false;
+  /** Why the open DICOM stack's geometry is approximate (gaps, tilt,
+   *  dropped repeats) — shown on the viewport, never only in a log. */
+  stackWarnings: string[] = [];
+  /** File identity + stack warnings per DICOM series name, so a cached
+   *  revisit or an upload keeps its overlay, VOI window and warnings. */
+  seriesMeta = new Map<string, { meta: DicomFileMeta; warnings: string[] }>();
   /** US region rows of the open file (tag browser + Doppler readout). */
   dcmRegions: UsRegion[] = [];
   /** RT adapters of the open file: plan summary and/or dose grid. */
@@ -83,6 +91,7 @@ class Session {
   private vols = new Map<string, Volume>();
   private volBytes = 0;
   private meshes = new Map<string, Mesh>();
+  private inflight = new Map<string, Promise<Mesh>>();
 
   getVol(name: string): Volume | undefined {
     return this.vols.get(name);
@@ -113,9 +122,25 @@ class Session {
     while (this.meshes.size > 5) this.meshes.delete(this.meshes.keys().next().value as string);
   }
 
+  /**
+   * One extraction per surface key at a time. The idle pre-build and the 3D
+   * pane both ask for the default surface the moment a series opens, and
+   * used to run it twice — twice the worker time and twice the copies on the
+   * main thread, while the reader waited for the first paint.
+   */
+  meshOnce(key: string, run: () => Promise<Mesh>): Promise<Mesh> {
+    const hit = this.inflight.get(key);
+    if (hit) return hit;
+    const p = run().finally(() => this.inflight.delete(key));
+    this.inflight.set(key, p);
+    return p;
+  }
+
+  /** A new volume: no cached surface of the old one may still be shown. */
   clearMeshes(): void {
     this.meshes.clear();
     this.meshPinned = null;
+    this.mesh = null;
   }
 
   beginLoad(): AbortSignal {

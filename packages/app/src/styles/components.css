@@ -441,6 +441,12 @@ input[type="range"].styled::-moz-range-thumb {
   box-shadow: var(--shadow-pop);
   z-index: 45;
 }
+/* The popover layer itself (Radix Content, see ui/primitives Popover).
+   Radix lifts its fixed popper wrapper to the content's computed z-index;
+   the content had no class, so that was auto, and every popover rendered
+   under the file-tab row (z 20) — the appearance panel's top row of buttons
+   was unclickable where the two overlap. */
+.pop-layer { position: relative; z-index: 45; }
 .appear { min-width: 268px; }
 .appear .grp { display: flex; align-items: center; gap: var(--sp-3); }
 .appear .lbl { min-width: 46px; }
@@ -481,6 +487,7 @@ input[type="range"].styled::-moz-range-thumb {
 }
 .route-stub h1 { font-family: var(--font-display); font-size: var(--fs-2xl); margin-bottom: var(--sp-3); }
 .route-stub p { color: var(--color-muted); }
+.route-stub .btn-primary { margin-top: var(--sp-6); }
 
 .seqstrip { display: flex; flex-wrap: wrap; gap: var(--sp-1); padding: var(--sp-4); max-height: 480px; overflow: auto; }
 .seqstrip button {

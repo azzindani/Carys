@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import type { JSX } from 'react';
-import { bump } from '../lib/version';
+import { bump, useVersion } from '../lib/version';
 import { PLANE_CARDS, PRESETS, planeCardByPlane, planeCardLine } from '@carys/volume-core';
 import { EDUCATION_BADGE } from '@carys/study';
 import { paintBus } from '../lib/paintBus';
 import { loadPresentStateFile, savePresentState } from '../lib/present';
 import { session } from '../lib/session';
-import { applyHanging, applySegOp, doClear, doUndo, hangingOptions, saveAxialPng, saveMaskNii, SEG_OPS, setCompare } from '../lib/sessionOps';
+import { applyHanging, applySegOp, doClear, doUndo, hangingOptions, saveAxialPng, saveMaskNii, SEG_OPS } from '../lib/sessionOps';
+import { setCompare } from '../lib/compare';
 import { saveSegDcm } from '../lib/segImport';
-import { isCinePlaying, retimeCine, setTimeFrame, toggleCine } from '../lib/cine';
+import { CINE_MAX_FPS, isCinePlaying, retimeCine, setTimeFrame, toggleCine } from '../lib/cine';
 import { SERIES } from '../lib/catalog';
 import { setUi, useUi } from '../lib/store';
 import { setStatus } from '../lib/status';
@@ -84,6 +85,10 @@ export function MprTuneDock({ axialCanvasRef }: {
   axialCanvasRef: React.RefObject<HTMLCanvasElement | null>;
 }): JSX.Element {
   const ui = useUi();
+  // Session state drives parts of this dock (the cine group appears when a
+  // series has frames): re-render on the session version, not only on UI
+  // prefs, or a US cine upload never shows its transport.
+  useVersion();
 
   return (
     <>
@@ -226,7 +231,7 @@ export function MprTuneDock({ axialCanvasRef }: {
               <span className="lbl">Time</span>
               <IconBtn id="cine-play" title={isCinePlaying() ? 'Pause cine' : 'Play cine'}
                 onClick={() => toggleCine()}>{isCinePlaying() ? '⏸' : '▶'}</IconBtn>
-              <SliderRow id="cine-fps" label="FPS" min={1} max={12} step={1} value={ui.cineFps} width={56}
+              <SliderRow id="cine-fps" label="FPS" min={1} max={CINE_MAX_FPS} step={1} value={ui.cineFps} width={56}
                 onInput={(v) => { setUi({ cineFps: v }); retimeCine(); }} />
               <SliderRow label="Frame" min={0} max={session.timeNt - 1} step={1} value={session.timeT} width={64}
                 onInput={(v) => setTimeFrame(v)} />

@@ -495,20 +495,42 @@ export function parseDicomFrames(buffer: ArrayBuffer): ParsedDicomSlice[] {
   const invert = photometric === 'MONOCHROME1';
   const slope = num('00281053') ?? 1;
   const intercept = num('00281052') ?? 0;
-  const convert = (bytes: Uint8Array, workBits: number, workStored: number): Int16Array => {
+  /**
+   * Stored values → modality values (rescale applied), in the narrowest
+   * array that holds them exactly.
+   *
+   * This used to write everything into an Int16Array. That is exact for CT
+   * (-1024..3071 HU) and silently wrong for the rest: unsigned 16-bit MR
+   * above 32767 wrapped negative, and a fractional rescale (MR/PET slopes
+   * like 2.708913) was rounded away. Signed pixels stored in fewer bits than
+   * allocated were masked instead of sign-extended, so -5 in 12 bits read
+   * back as 4091. Int16 stays the representation whenever it is exact — the
+   * CT path and every consumer that expects it are unchanged — and anything
+   * it cannot hold comes back as Float32.
+   */
+  const convert = (bytes: Uint8Array, workBits: number, workStored: number): Int16Array | Float32Array => {
     const maxVal = 2 ** workStored - 1;
-    const mask = workStored === workBits ? 0xffffffff : (1 << workStored) - 1;
+    const partial = workStored < workBits;
+    const mask = partial ? (2 ** workStored) - 1 : 0xffffffff;
+    const signShift = 32 - workStored;
     const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    const out = new Int16Array(n);
+    const out = new Float32Array(n);
+    let fitsInt16 = true;
     for (let i = 0; i < n; i++) {
       let raw = workBits === 16
         ? pixelRep === 1 ? dv.getInt16(i * 2, w.little) : dv.getUint16(i * 2, w.little)
-        : dv.getUint8(i);
-      raw &= mask;
+        : pixelRep === 1 ? dv.getInt8(i) : dv.getUint8(i);
+      if (partial) {
+        raw &= mask;
+        // two's complement in `workStored` bits: shift the sign bit to bit 31
+        if (pixelRep === 1) raw = (raw << signShift) >> signShift;
+      }
       if (invert) raw = maxVal - raw;
-      out[i] = Math.round(raw * slope + intercept);
+      const v = raw * slope + intercept;
+      out[i] = v;
+      if (fitsInt16 && (v !== Math.trunc(v) || v < -32768 || v > 32767)) fitsInt16 = false;
     }
-    return out;
+    return fitsInt16 ? Int16Array.from(out) : out;
   };
   // validate + learn the shared layout from frame 0 (bits are file-level:
   // every frame of one syntax decodes to the same container; the native

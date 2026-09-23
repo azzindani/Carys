@@ -28,7 +28,9 @@ describe('verification', () => {
   it('700-line cap holds for every source file (packages/*/src)', () => {
     const over: string[] = [];
     for (const f of walk(join(ROOT, 'packages'))) {
-      if (!f.endsWith('.ts') || f.includes('/test/') || f.includes('/dist/')) continue;
+      // .tsx too: the views are where files grow, and MprPanes reached 833
+      // lines while this looked only at .ts
+      if (!/\.tsx?$/.test(f) || f.includes('/test/') || f.includes('/dist/')) continue;
       const lines = readFileSync(f, 'utf8').split('\n').length;
       if (lines > 700) over.push(`${f}: ${lines}`);
     }

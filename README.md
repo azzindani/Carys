@@ -59,8 +59,35 @@ npm run audit:a11y # axe-core WCAG 2.1 A/AA over every route, both breakpoints
 npm run test:unit  # unit suites; fixture-backed ones skip without samples/
 npm run gen:samples # synthetic volumes into samples/ — do this first on a fresh clone
 npm run serve    # static root on :8000
-# open http://localhost:8000/packages/ui/  (shell)
+# open http://localhost:8000/packages/app/dist/  (the app; run build:app first)
+# legacy static shell: http://localhost:8000/packages/ui/
 ```
+
+### Opening your own data
+
+**Open** (beside the file tabs) or drag onto the viewer: NIfTI (`.nii`, `.nii.gz`), NRRD,
+OME-TIFF, meshes (STL/MZ3/GIFTI), tracts (TCK/TRK/TRX) — and DICOM, by
+content rather than extension, so an extensionless PACS export or CD folder
+works. Drop a whole study folder: its files are grouped into the series they
+really are (by Series UID, orientation and matrix), ordered by position, and
+each opens as its own entry; a localizer never lands inside the axial stack.
+
+What the viewer guarantees about geometry, and says on the image when it
+cannot:
+
+- **Orientation.** A volume whose file carries it (NIfTI qform/sform, DICOM
+  Image Orientation/Position) is shown in radiological convention — patient
+  right on screen left, anterior up, superior up — with R/L, A/P, S/I at the
+  pane edges. Without it, the image is shown as stored, with no letters and
+  an "orientation unknown" caution.
+- **Proportions.** Reformats, the 3D surface and the volume render are drawn
+  in millimetres, so thick-slice series are not squashed.
+- **Honesty about stacks.** Non-contiguous slices, a tilted gantry and
+  repeated positions (e.g. DCE phases) are flagged in amber on the viewport:
+  reformats of those are approximate.
+- **Round trips.** An exported mask `.nii` goes back onto the source file's
+  grid with its affine, so it overlays the scan in ITK-SNAP, 3D Slicer or
+  nibabel.
 
 ### Fixtures and what runs without them
 
@@ -75,6 +102,8 @@ surface, with no patient data. Then:
 - **`npm run ci` / `npm run test:unit`** — suites that need a fixture **skip**,
   and the run prints the skip count. Green here means green, not "nothing ran":
   a skip is reported as a skip, never as a pass.
+- **`npm run test:geometry`** — the geometry guarantees above, on the real
+  samples (part of `test:e2e`).
 - **`npm run verify`** — sets `CARYS_REQUIRE_SAMPLES=1`, which turns a missing
   fixture into a **failure**. Use it before a release, with samples mounted; a
   half-populated `samples/` fails loudly instead of quietly thinning coverage.
@@ -85,19 +114,46 @@ surface, with no patient data. Then:
 
 ```bash
 docker build -t carys:latest .
-docker run --rm -p 8080:80 \
+docker run --rm -p 8080:8080 \
   -v /path/to/samples:/usr/share/nginx/html/samples:ro \
   carys:latest
-# open http://localhost:8080/packages/ui/
+# open http://localhost:8080/   (302 to the app at /packages/app/dist/)
 ```
 
 Multi-stage image (pinned `node:20` build, `nginx:1.27` serve, non-root
-`nginx` user, healthcheck). Samples are never baked in — mount read-only.
-No GPU, no backend, no secrets in the image.
+`nginx` user, healthcheck on `/healthz`). The server listens on **8080**, not
+80: a non-root process cannot bind below 1024 on runtimes that withhold that
+capability. Every path nginx writes is under `/tmp`, so the container also
+runs locked down:
+
+```bash
+docker run --rm -p 8080:8080 --read-only --tmpfs /tmp --cap-drop ALL \
+  -v /path/to/samples:/usr/share/nginx/html/samples:ro carys:latest
+```
+
+Samples are never baked in — mount read-only. No GPU, no backend, no secrets
+in the image, and no third-party requests: fonts are bundled, so the app runs
+on an air-gapped network and no page view reaches Google. The image ships the
+React app, `digests/` (Atlas, Learn and the pathogen structures fetch it) and
+nothing else; the legacy static shell (`packages/ui`) is a dev page under
+`npm run serve`.
+
+`deploy/nginx.conf` is the whole server config: gzip (imaging included), a
+cache policy (hashed assets immutable for a year, `index.html` always
+revalidated, `samples/` private and short-lived), types for `.nii` `.dcm`
+`.nrrd` `.mz3` and zarr metadata, and security headers. The CSP allows
+scripts, styles, fonts and workers from the image's own origin only;
+`connect-src` also allows any `https:` origin (plus `http://localhost` /
+`127.0.0.1`) because the app opens OME-Zarr stores and DICOMweb endpoints the
+user types in. A PACS on plain `http://` elsewhere on the LAN needs its origin
+added there — the file explains the trade.
 
 The build layer runs `tsc -b`, lint, the unit suites, `typecheck:app` and the
 app build, all without `samples/` (`.dockerignore` drops it). CI builds the
-image on every push so that layer cannot rot.
+image on every push, then runs it and points `npm run test:image` at it:
+headers, cache and compression over HTTP, then Chromium boots the app and
+visits every route under the real CSP. The image used to build green and exit
+at start-up, because nothing ever ran it.
 
 ## Privacy note
 

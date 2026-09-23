@@ -14,8 +14,10 @@ import { autoThreshold, histogram, PRESETS } from '@carys/volume-core';
 import { DEFAULT_HANGING, HANGING_RULES, hangingProtocol } from '@carys/study';
 import { addUploadedSeries, SERIES } from './catalog';
 import { idle, session } from './session';
-import { autoWindow, loadDicomSeries, loadNii, loadNiiRaw, loadNrrdDetached, volumeFromNifti } from './loaders';
-import { parseUpload } from './parseClient';
+import { autoWindow, fileWindow, loadDicomSeries, loadNiiRaw, loadNrrdDetached, volumeFromNifti } from './loaders';
+import { alongside, toSourceOrder } from './orient';
+import { heldStackVolume, isDicomPart10, openDicomFiles, registerSiblingStacks } from './dicomSets';
+import { loadVolumeUrl, parseUpload } from './parseClient';
 import { readFrame } from '@carys/io';
 import { paintBus } from './paintBus';
 import { setEngine, setStatus } from './status';
@@ -29,67 +31,6 @@ import type { Volume } from './types';
 export const undo = new UndoStack(16);
 let extractorRef: Extractor | null = null;
 
-/**
- * Resolve any series to a display Volume without disturbing the open one:
- * vol cache first, then the same decode path loadSeries uses (NIfTI /
- * DICOM / NRRD / OME-TIFF). Powers the compare overlay. Uploads already
- * live in the vol cache via addUploadedSeries + loadSeries.
- */
-export async function resolveCompareVolume(name: string): Promise<Volume> {
-  const hit = session.getVol(name);
-  if (hit) return hit;
-  const spec = SERIES[name] ?? {};
-  if (spec.time && spec.img) {
-    const raw = await loadNiiRaw(spec.img[0]!);
-    const v = volumeFromNifti(raw.hdr, readFrame(raw.hdr, raw.buf, 0));
-    session.cacheVol(name, v);
-    return v;
-  }
-  if (spec.dicom) {
-    const loaded = await loadDicomSeries(spec.dicom);
-    session.cacheVol(name, loaded.vol);
-    return loaded.vol;
-  }
-  if (spec.img) {
-    const v = await loadNii(spec.img[0]!);
-    session.cacheVol(name, v);
-    return v;
-  }
-  throw new Error(`compare-no-source: ${name}`);
-}
-
-/**
- * Set the compare overlay series + prime its volume and window in the
- * background; the panes repaint with "compare loading…" until it lands.
- * Same series or '' clears the overlay (compare needs two volumes).
- */
-export function setCompare(series: string, mode: 'checker' | 'alpha' | 'subtract' | 'off'): void {
-  const u = getUi();
-  if (mode === 'off' || !series || series === u.series) {
-    setUi({ compareSeries: '', compareMode: 'off' });
-    session.compareWl = null;
-    paintBus.mpr();
-    return;
-  }
-  setUi({ compareSeries: series, compareMode: mode });
-  session.compareWl = null;
-  paintBus.mpr();
-  void resolveCompareVolume(series)
-    .then((v) => {
-      // overlay hasn't moved on while we fetched: still wanted, still base
-      const now = getUi();
-      if (now.compareSeries !== series || now.series !== u.series) return;
-      session.compareWl = autoWindow(v.data);
-      paintBus.mpr();
-      toast(`Compare: ${u.series} vs ${series} (${mode})`);
-    })
-    .catch((e) => {
-      setStatus(`compare failed: ${(e as Error).message}`, 'error');
-      setUi({ compareSeries: '', compareMode: 'off' });
-      paintBus.mpr();
-    });
-}
-
 export function setExtractor(e: Extractor): void {
   extractorRef = e;
 }
@@ -100,7 +41,7 @@ export interface SliceInit {
   values: Record<Plane, number>;
 }
 
-export async function loadSeries(name: string, uploadedVol?: { dims: [number, number, number]; data: Float64Array; spacing?: [number, number, number] }): Promise<SliceInit | null> {
+export async function loadSeries(name: string, uploadedVol?: Volume): Promise<SliceInit | null> {
   const spec = SERIES[name] ?? {};
   const signal = session.beginLoad();
   setUi({ series: name });
@@ -120,7 +61,8 @@ export async function loadSeries(name: string, uploadedVol?: { dims: [number, nu
     session.pendingPlane = null;
     session.pendingFrame = null;
     session.dcmMeta = null;
-    let img;
+    session.stackWarnings = [];
+    let img: Volume;
     let dicomMeta: DicomFileMeta | null = null;
     if (!uploadedVol && !cached && spec.time && spec.img) {
       const raw = await loadNiiRaw(spec.img[0], { signal });
@@ -129,11 +71,22 @@ export async function loadSeries(name: string, uploadedVol?: { dims: [number, nu
       session.timeNt = raw.hdr.nt;
       img = volumeFromNifti(raw.hdr, readFrame(raw.hdr, raw.buf, 0));
     } else if (!uploadedVol && !cached && spec.dicom) {
-      const loaded = await loadDicomSeries(spec.dicom, { signal });
+      const loaded = await loadDicomSeries(spec.dicom, { signal, pick: spec.stackIndex });
+      if (signal.aborted) return null;
       img = loaded.vol;
       dicomMeta = loaded.meta;
+      session.stackWarnings = loaded.stack.warnings.map((w) => w.message);
+      session.seriesMeta.set(name, { meta: dicomMeta, warnings: session.stackWarnings });
+      // Files that turned out to be several series open as several series.
+      if (spec.stackIndex == null && loaded.stacks.length > 1) {
+        registerSiblingStacks(name, spec, loaded.stacks);
+      }
     } else {
-      img = uploadedVol ?? cached ?? await loadNii(spec.img![0], { signal });
+      img = uploadedVol ?? cached ?? heldStackVolume(name)?.vol ?? await loadVolumeUrl(spec.img![0], { signal });
+      // A revisit (cache) or an upload arrives without its file identity;
+      // the meta recorded when its files were read rides along instead.
+      const known = session.seriesMeta.get(name);
+      if (known) { dicomMeta = known.meta; session.stackWarnings = known.warnings; }
     }
     if (signal.aborted) return null;
     if (session.rawNii) session.baseFrame = Float64Array.from(img.data);
@@ -141,27 +94,35 @@ export async function loadSeries(name: string, uploadedVol?: { dims: [number, nu
     // Time series keep raw 4D bytes in session.rawNii instead of the vol cache.
     if (!uploadedVol && !cached && !spec.time) session.cacheVol(name, img);
 
-    const base = !uploadedVol && spec.seg ? await loadNii(spec.seg[0], { signal }) : null;
+    const segRaw = !uploadedVol && spec.seg ? await loadVolumeUrl(spec.seg[0], { signal }) : null;
     if (signal.aborted) return null;
+    const base = segRaw ? alongside(img, segRaw) : null;
     let note: string;
     if (base && base.data.length !== img.data.length) {
       session.editMask = new Uint8Array(img.data.length);
       note = 'seg dims mismatch — empty mask';
     } else if (base) {
       const m = new Uint8Array(img.data.length);
-      for (let i = 0; i < m.length; i++) m[i] = base.data[i] > 0 ? 1 : 0;
+      const cut = spec.segThreshold ?? 0;
+      for (let i = 0; i < m.length; i++) m[i] = base.data[i] > cut ? 1 : 0;
       session.editMask = m;
       note = 'editing copy of seg';
     } else {
       session.editMask = new Uint8Array(img.data.length);
       note = uploadedVol ? 'uploaded volume' : 'no seg — empty mask';
     }
-    // Auto-hanging: catalog modality/body-part picks layout + preset + proj
-    // before the window is computed, so the series opens as read-ready.
-    if (!uploadedVol && spec.modality) {
-      const hang = hangingProtocol(spec.modality, spec.bodyPart ?? name);
+    // Auto-hanging: the modality (catalog, else the file's own tag) picks
+    // layout + preset + proj before the window is computed, so the series
+    // opens read-ready. With no modality at all the window is data-driven:
+    // a CT preset left over from the previous series would put an MR or a
+    // microscopy stack on a Hounsfield window and show it white.
+    const modality = spec.modality ?? dicomMeta?.modality ?? null;
+    if (modality && (!uploadedVol || dicomMeta)) {
+      const hang = hangingProtocol(modality, spec.bodyPart ?? dicomMeta?.seriesDescription ?? name);
       setUi({ layout: hang.layout, preset: hang.preset, proj: hang.proj, hang: hang.protocol });
       note += ` · hanging: ${hang.protocol}`;
+    } else if (!modality) {
+      setUi({ preset: 'auto', hang: DEFAULT_HANGING.protocol });
     }
     if (session.rawNii) note += ` · 4D cine (${session.timeNt} frames, mask overlays current frame)`;
     session.seriesNote = note;
@@ -172,12 +133,17 @@ export async function loadSeries(name: string, uploadedVol?: { dims: [number, nu
     session.maskVer++;
     session.clearMeshes();
 
-    session.autoWl = autoWindow(img.data);
+    // 'auto' is the file's own VOI window when it has one (what the
+    // modality intended), else the data-driven percentile window.
+    // One histogram of the image feeds the window, the grow seed and the 3D
+    // cut: each used to take its own pass over every voxel.
+    const imgHist = histogram(img.data, 256);
+    session.autoWl = fileWindow(dicomMeta) ?? autoWindow(img.data, imgHist);
     session.wl = getUi().preset === 'auto' ? session.autoWl : PRESETS[getUi().preset];
     // Data-driven grow default: start at the 90th percentile so the flood
     // begins in bright tissue (lesion) instead of the whole brain.
     try {
-      const { hist, min, max } = histogram(img.data, 256);
+      const { hist, min, max } = imgHist;
       const total = img.data.length;
       let acc = 0, p90 = max;
       for (let bIdx = 0; bIdx < hist.length; bIdx++) {
@@ -200,13 +166,17 @@ export async function loadSeries(name: string, uploadedVol?: { dims: [number, nu
     // Hounsfield volume, and a fixed ceiling of 1000 could not reach cortical
     // bone at ~1100 HU. A catalog entry may still pin its own.
     const haveMask = session.editMask.some((v) => v > 0);
-    session.autoThreshold = autoThreshold(haveMask ? session.editMask : img.data);
+    session.autoThreshold = haveMask ? autoThreshold(session.editMask) : autoThreshold(img.data, 256, imgHist);
     setUi({
       src: haveMask ? 'mask' : 'image',
       threshold: spec.threshold3d ?? session.autoThreshold.value,
     });
 
     const [nx, ny, nz] = img.dims;
+    // The catalog may name where the anatomy is (BraTS opens on the tumour,
+    // 0.72 of the way up — the slice its render golden pins). The last
+    // commit dropped this line and every series opened mid-volume.
+    session.axialFrac = spec.axialFrac ?? 0.5;
     const init: SliceInit = {
       ranges: { axial: nz, coronal: ny, sagittal: nx },
       values: {
@@ -218,6 +188,16 @@ export async function loadSeries(name: string, uploadedVol?: { dims: [number, nu
     // Seed the sidecar slice record: a direct #/report visit never paints,
     // so the report route would otherwise read viewer defaults.
     session.slices = { ...init.values };
+    // A single image has no depth: its reformats are one-voxel lines and a
+    // "surface" of it is a slab. Open it as the 2D image it is; undo that
+    // for the next real volume only if it was this rule that did it.
+    if (nz === 1) {
+      session.autoSingle = true;
+      setUi({ fullVp: 'axial', mView: 'axial' });
+    } else if (session.autoSingle) {
+      session.autoSingle = false;
+      if (getUi().fullVp === 'axial') setUi({ fullVp: null });
+    }
     // Idle pre-reconstruction: default 3D surface ready before it's opened.
     const v0 = session.maskVer;
     idle(() => {
@@ -225,12 +205,15 @@ export async function loadSeries(name: string, uploadedVol?: { dims: [number, nu
         try {
           const ui = getUi();
           if (v0 !== session.maskVer || ui.view !== 'mpr' || !extractorRef || !session.img) return;
+          if (session.img.dims[2] < 2) return;
           const useMask = ui.src === 'mask' && session.editMask?.some((v) => v > 0);
-          const field = useMask ? Float64Array.from(session.editMask!) : session.img.data;
+          const field = useMask ? session.editMask! : session.img.data;
           if (getUi().series !== name) return;
-          const mesh = await extractorRef.extract(field, session.img.dims, ui.threshold, ui.method === 'smooth');
+          const key = session.meshKey(name, ui.src, ui.threshold, ui.method);
+          const dims = session.img.dims, ex = extractorRef;
+          const mesh = await session.meshOnce(key, () => ex.extract(field, dims, ui.threshold, ui.method === 'smooth'));
           if (v0 !== session.maskVer) return;
-          session.cacheMesh(session.meshKey(name, ui.src, ui.threshold, ui.method), mesh);
+          session.cacheMesh(key, mesh);
         } catch { /* idle best-effort only */ }
       })();
     });
@@ -320,30 +303,53 @@ export function saveAxialPng(canvas: HTMLCanvasElement): void {
 export function saveMaskNii(): void {
   const { editMask, img } = session;
   if (!editMask || !img) return;
+  // Back onto the file's own grid, with its affine: the mask then overlays
+  // the source scan in ITK-SNAP / Slicer / nibabel, not just in this viewer.
+  const out = toSourceOrder(img, editMask);
   const buf = writeNifti1({
-    dims: img.dims, spacing: img.spacing ?? [1, 1, 1],
-    origin: [0, 0, 0], dtype: 'uint8', data: editMask,
-  });
+    dims: out.dims, spacing: out.spacing,
+    origin: [0, 0, 0], dtype: 'uint8', data: out.data,
+  }, out.affine ? { affine: out.affine, qformCode: out.qformCode || 1, sformCode: out.sformCode || 1 } : {});
   const a = document.createElement('a');
   a.download = `mask-${getUi().series}.nii`;
   a.href = URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  toast('Mask .nii saved — open it in the 3D view upload', 'ok');
+  toast(out.affine ? 'Mask .nii saved on the source grid (with orientation)' : 'Mask .nii saved (source had no orientation)', 'ok');
 }
 
-/** Shared file-open router (desktop toolbar + mobile Files panel): routes
- *  chosen files to the paired-NRRD, mesh, tract, or volume importer. */
+/** Shared file-open router (desktop toolbar + mobile Files panel + drop):
+ *  routes chosen files to the paired-NRRD, mesh, tract, DICOM or volume
+ *  importer. */
 export function handleOpenFiles(files: File[]): void {
   if (files.length === 0) return;
-  if (files.some((f) => /\.nhdr$/i.test(f.name))) void uploadNrrdPair(files);
-  else {
-    const f = files[0]!;
-    if (/\.(stl|mz3|gii)$/i.test(f.name)) void importMeshFile(f);
-    else if (/\.(tck|trk|trx)$/i.test(f.name)) void importTractFile(f);
-    else if (/\.dcm$/i.test(f.name)) void uploadDicomFile(f);
-    else void uploadNiiFile(f);
+  if (files.some((f) => /\.nhdr$/i.test(f.name))) { void uploadNrrdPair(files); return; }
+  const f = files[0]!;
+  if (/\.(stl|mz3|gii)$/i.test(f.name)) { void importMeshFile(f); return; }
+  if (/\.(tck|trk|trx)$/i.test(f.name)) { void importTractFile(f); return; }
+  void routeVolumeFiles(files);
+}
+
+/**
+ * DICOM is recognised by content, not extension: PACS exports and CD
+ * folders are full of extensionless "IM0001"-style files. One DICOM file
+ * keeps the single-file path (SEG/RTSTRUCT/RT/US/VL/document routing);
+ * several open as the series they contain. Everything else is a volume.
+ */
+async function routeVolumeFiles(files: File[]): Promise<void> {
+  const dicom: File[] = [];
+  for (const f of files) {
+    if (/\.dcm$/i.test(f.name) || isDicomPart10(new Uint8Array(await f.slice(0, 132).arrayBuffer()))) dicom.push(f);
   }
+  if (dicom.length > 1) {
+    await openDicomFiles(dicom, async (name, vol) => {
+      const init = await loadSeries(name, vol);
+      if (init) session.pendingSliceInit = init;
+    });
+    return;
+  }
+  if (dicom.length === 1) { await uploadDicomFile(dicom[0]!); return; }
+  await uploadNiiFile(files[0]!);
 }
 
 export async function uploadNiiFile(f: File): Promise<void> {

@@ -3,17 +3,19 @@
 // the US lane pushed it over the 700-line gate; the router still lives
 // there, the decode + cine arming lives here (rule 1: one module, one job).
 import {
-  doseStats, encapsulatedDocLabel, fileMetaToSummary, isEncapsulatedSopClass,
+  doseStats, encapsulatedDocLabel, fileMetaToSummary, groupDicomStacks, isEncapsulatedSopClass, stackLabel,
   isRtDoseSopClass, isRtPlanSopClass, isTomoSopClass, isUsSopClass,
   isVlSopClass, parseDicomFrames, parseEncapsulatedDoc, parseRtDose, parseRtPlan,
   parseVlGrid, readDataset, RTSTRUCT_SOP_CLASS, SEG_SOP_CLASS, stackPixelSpacing,
   stackZGap, summarizeDataset, usRegionsFromBuffer, vlGridLabel,
 } from '@carys/io';
 import { addUploadedSeries } from './catalog';
+import { volumeFromStack } from './loaders';
 import { importDicomSeg } from './segImport';
 import { loadSeries } from './sessionOps';
 import { session } from './session';
 import { setStatus } from './status';
+import { CINE_MAX_FPS } from './cine';
 import { setUi } from './store';
 import { toast } from './toasts';
 import { bump } from './version';
@@ -30,6 +32,9 @@ export async function uploadDicomFile(f: File): Promise<void> {
   try {
     const buf = await f.arrayBuffer();
     let sop: string | null = null;
+    // loadSeries starts every volume from a clean session (vlGrid included),
+    // so a grid parsed before it is re-applied after it.
+    let vlGrid: ReturnType<typeof parseVlGrid> | null = null;
     try {
       sop = readDataset(buf.slice(0)).text('00080016');
     } catch { /* not a dataset: fall through to NIfTI */ }
@@ -49,6 +54,7 @@ export async function uploadDicomFile(f: File): Promise<void> {
       }
       const name = `vl: ${f.name}`;
       addUploadedSeries(name);
+      vlGrid = grid;
       session.vlGrid = grid;
       session.wsiAnnotations = [];
       session.dcmMeta = summarizeDataset(readDataset(buf.slice(0)));
@@ -136,6 +142,27 @@ export async function uploadDicomFile(f: File): Promise<void> {
       return;
     }
     const first = parts[0]!.meta;
+    // Cross-sectional images (a CT slice, an Enhanced CT/MR multi-frame with
+    // per-frame positions) are space, not time: they go through the same
+    // stack builder as a folder — ordered by position, placed in the patient,
+    // oriented on screen. US cine, tomo and whole-slide tiles keep frame order.
+    if (!isUsSopClass(first.sopClassUID) && !isTomoSopClass(first.sopClassUID) && !isVlSopClass(first.sopClassUID)) {
+      const stack = groupDicomStacks(parts)[0]!;
+      const name = `uploaded: ${f.name}`;
+      addUploadedSeries(name, undefined, { modality: first.modality ?? undefined });
+      session.seriesMeta.set(name, { meta: stack.meta, warnings: stack.warnings.map((w) => w.message) });
+      const init = await loadSeries(name, volumeFromStack(stack));
+      if (init) {
+        session.pendingSliceInit = init;
+        session.dcmMeta = fileMetaToSummary(stack.meta, stack.meta.sopClassUID, usRegionsFromBuffer(buf.slice(0)));
+        // The result goes on the status line too: the toast is gone in
+        // seconds, the status is what a reader glances back at.
+        setStatus(`Loaded ${f.name}: ${stackLabel(stack)}`);
+        toast(`Loaded ${f.name}`);
+        bump();
+      }
+      return;
+    }
     const n = first.rows * first.cols;
     const frames = parts.map((p) => p.slice.pixelData);
     const data = new Float64Array(n * frames.length);
@@ -147,7 +174,7 @@ export async function uploadDicomFile(f: File): Promise<void> {
     addUploadedSeries(name);
     session.dcmRegions = regions;
     const fps = first.cineFps;
-    if (fps != null) setUi({ cineFps: Math.min(30, Math.max(1, Math.round(fps))) });
+    if (fps != null) setUi({ cineFps: Math.min(CINE_MAX_FPS, Math.max(1, Math.round(fps))) });
     const asFrames = frames.map((px) => {
       const f64 = new Float64Array(n);
       for (let i = 0; i < n; i++) f64[i] = px[i]!;
@@ -162,8 +189,13 @@ export async function uploadDicomFile(f: File): Promise<void> {
     });
     if (init) {
       session.pendingSliceInit = init;
+      if (vlGrid) session.vlGrid = vlGrid;
       session.dcmFrames = { frames: asFrames, n };
-      session.dcmMeta = fileMetaToSummary(first, first.sopClassUID, regions);
+      // A VL tile's tag browser is its dataset (grid, optical paths), which
+      // the frame summary does not carry.
+      session.dcmMeta = vlGrid
+        ? summarizeDataset(readDataset(buf.slice(0)))
+        : fileMetaToSummary(first, first.sopClassUID, regions);
       if (isUsSopClass(first.sopClassUID) && frames.length > 1) {
         session.timeNt = frames.length;
         session.baseFrame = Float64Array.from(data.subarray(0, n));

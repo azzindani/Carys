@@ -13,7 +13,7 @@ import {
 import { loadNiiBuffer } from '../lib/loaders';
 import { session } from '../lib/session';
 import { subscribeResidueLink, takeResidueLink } from '../lib/linkBus';
-import { setStatus } from '../lib/status';
+import { setAmbientStatus, setStatus } from '../lib/status';
 import { ACCENT, PROTEIN_BG } from '../lib/palette';
 import { toast } from '../lib/toasts';
 import { undoBus } from '../lib/undoBus';
@@ -53,13 +53,13 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
   const [colorBy, setColorBy] = useState<ColorBy>('element');
   const [sel, setSelState] = useState<ResidueBundle | null>(null);
   const [query, setQuery] = useState('chain A');
-  const [pockets, setPockets] = useState<Pocket[]>([]);
+  /** Null until a pocket query runs on this model; [] is a real answer. */
+  const [pockets, setPockets] = useState<Pocket[] | null>(null);
   const [rmsd, setRmsd] = useState<string>('');
   // Map-fit stub: uploaded density (NIfTI) + dock-and-score report. Null =
   // no map open; the report says translation-only docking, never a 6D fit.
   const [mapName, setMapName] = useState('');
   const [pathogenId, setPathogenId] = useState('');
-  const openPathogenRef = useRef<(id: string) => void>(() => {});
   const initialRef = useRef(initialPathogen ?? '');
   const [pathogenNote, setPathogenNote] = useState('');
   const [fit, setFit] = useState<MapFitReport | null>(null);
@@ -118,7 +118,9 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
       }
     }
     const chains = new Set(model.atoms.map((a) => a.chain)).size;
-    setStatus(`${model.atoms.length.toLocaleString()} atoms · ${model.residues.length} residues · ${chains} chain(s)${sel ? ` · ${sel.residues.length} selected` : ''} · ${name}`);
+    // every render repaints: the summary is ambient, or it would erase the
+    // result of whatever the user just ran (pockets, RMSD, a query)
+    setAmbientStatus(`${model.atoms.length.toLocaleString()} atoms · ${model.residues.length} residues · ${chains} chain(s)${sel ? ` · ${sel.residues.length} selected` : ''} · ${name}`);
   };
 
   const doUndoSel = (): void => {
@@ -135,18 +137,22 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
   useEffect(() => { paint(); });
   useEffect(() => {
     undoBus.current = doUndoSel;
-    void fetch('/samples/1crn.pdb').then(async (r) => {
-      if (!r.ok) return;
-      openModel(await r.text(), '1crn.pdb (crambin demo)');
-    }).catch(() => { /* offline: upload instead */ });
-    // A link queued while the protein view was already mounted (tracks →
-    // protein jump with the demo model open): consume against the model
-    // once it lands, via the model effect below.
-    if (initialRef.current) {
-      const id = initialRef.current;
-      initialRef.current = '';
-      openPathogenRef.current(id);
+    // Learn's "Open structure" arrives as initialPathogen: open that entry
+    // instead of the demo. It used to go through a ref nothing had filled
+    // yet (a no-op, so the link landed on crambin), and the demo fetch
+    // raced the entry's anyway — whichever parsed last was shown.
+    const initial = initialRef.current;
+    initialRef.current = '';
+    if (initial) openPathogen(initial);
+    else {
+      void fetch('/samples/1crn.pdb').then(async (r) => {
+        if (!r.ok) return;
+        openModel(await r.text(), '1crn.pdb (crambin demo)');
+      }).catch(() => { /* offline: upload instead */ });
     }
+    // A residue link queued while the protein view was already mounted
+    // (tracks → protein jump with the demo model open) is consumed against
+    // the model once it lands.
     const unsub = subscribeResidueLink(() => consumeLink(modelRef.current));
     return () => { undoBus.current = () => {}; unsub(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,6 +176,10 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
       setName(label);
       selHist.current.clear(); // new document drops selection history (mirrors mask undo)
       setSelState(null);
+      // results describe the model they ran on
+      setPockets(null);
+      setRmsd('');
+      setFit(null);
       toast(`Protein: ${m.atoms.length} atoms, ${m.residues.length} residues`);
       // A queued tracks link belongs to the model just opened.
       requestAnimationFrame(() => consumeLink(m));
@@ -182,15 +192,14 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
    *  context), pin the digest, and announce chain roles. Failures stay
    *  loud on the visible status — never a silent empty view. */
   const openPathogen = (id: string): void => {
-    openPathogenRef.current = openPathogen;
     const entry = pathogenById(id);
     if (!entry) {
       setStatus(`unknown pathogen entry: ${id}`);
       return;
     }
-    openPathogenRef.current = openPathogen;
     setPathogenId(id);
-    setPathogenNote(Object.entries(entry.chainRoles).map(([c, r]) => `${c}: ${r}`).join(' · '));
+    // the caption names the structure, then what each chain is
+    setPathogenNote([entry.pdbId, ...Object.entries(entry.chainRoles).map(([c, r]) => `${c}: ${r}`)].join(' · '));
     session.digestPins = { [PATHOGEN_DIGEST_ID]: PATHOGEN_DIGEST_PIN };
     void fetch(`/digests/rcsb-pathogens/${entry.file}`).then(async (r) => {
       if (!r.ok) {
@@ -472,9 +481,12 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
           <IconBtn title="Find ligand pockets (exposed clefts), select the largest" onClick={runPockets}>Pockets</IconBtn>
           <IconBtn title="Self-RMSD of the selection (alignment sanity)" onClick={runRmsd}>RMSD</IconBtn>
         </div>
-        {(pockets.length > 0 || rmsd) && (
+        {(pockets !== null || rmsd) && (
           <div className="grp">
-            <Chip><span id="ro-pocket">{pockets.length > 0 ? `${pockets.length} pocket(s) · top ${pockets[0]!.residues.length} res` : 'no pockets'}{rmsd ? ` · ${rmsd}` : ''}</span></Chip>
+            <Chip><span id="ro-pocket">{[
+              pockets === null ? '' : pockets.length > 0 ? `${pockets.length} pocket(s) · top ${pockets[0]!.residues.length} res` : 'no pockets',
+              rmsd,
+            ].filter(Boolean).join(' · ')}</span></Chip>
           </div>
         )}
         <div className="sep" />

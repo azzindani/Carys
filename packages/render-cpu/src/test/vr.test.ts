@@ -67,6 +67,70 @@ describe('aabb', () => {
   });
 });
 
+describe('physical spacing', () => {
+  // An 8 mm cube on a 1 × 1 × 2 mm grid: x, y voxels 4..11, z voxels 2..5.
+  // Trilinear crossings of the 5-threshold sit half a voxel out on each side,
+  // so the cube is exactly 8 mm on every axis.
+  const CUBE_TF = [
+    { value: 0, color: [200, 100, 50] as [number, number, number], opacity: 0 },
+    { value: 4.99, color: [200, 100, 50] as [number, number, number], opacity: 0 },
+    { value: 5, color: [200, 100, 50] as [number, number, number], opacity: 1 },
+    { value: 10, color: [200, 100, 50] as [number, number, number], opacity: 1 },
+  ];
+  const dims: [number, number, number] = [16, 16, 8];
+  const cube = solid(dims, 0);
+  for (let z = 2; z < 6; z++) {
+    for (let y = 4; y < 12; y++) {
+      for (let x = 4; x < 12; x++) cube.data[z * 256 + y * 16 + x] = 10;
+    }
+  }
+  /** Opaque run lengths through the image centre: [across, down]. */
+  const extent = (rgba: Uint8ClampedArray, w: number, h: number): [number, number] => {
+    const lit = (x: number, y: number): boolean => rgba[(y * w + x) * 4] !== 17;
+    let across = 0, down = 0;
+    for (let x = 0; x < w; x++) if (lit(x, h >> 1)) across++;
+    for (let y = 0; y < h; y++) if (lit(w >> 1, y)) down++;
+    return [across, down];
+  };
+  // orbit 90°: z runs across the screen, y down it
+  const side = { width: 64, height: 64, angleY: Math.PI / 2, tiltX: 0, tf: CUBE_TF, step: 0.5, shade: false };
+
+  it('unit spacing is bit-identical to the voxel-space render', () => {
+    const base = { width: 24, height: 24, angleY: 0.4, tiltX: 0.2, tf: CUBE_TF, step: 1, shade: true };
+    assert.deepEqual(
+      renderVolume(cube, { ...base, spacing: [1, 1, 1] }).rgba,
+      renderVolume(cube, base).rgba,
+    );
+    const bounds = { min: [2, 2, 0] as [number, number, number], max: [14, 14, 8] as [number, number, number] };
+    assert.deepEqual(
+      renderVolume(cube, { ...base, bounds, spacing: [1, 1, 1] }).rgba,
+      renderVolume(cube, { ...base, bounds }).rgba,
+    );
+  });
+  it('an anisotropic grid renders at physical proportions', () => {
+    const r = renderVolume(cube, { ...side, spacing: [1, 1, 2] });
+    const [across, down] = extent(r.rgba, r.w, r.h);
+    assert.ok(down > 20, `cube visible (${down} px)`);
+    assert.ok(Math.abs(across - down) <= 2, `8 mm × 8 mm drew ${across} × ${down} px`);
+  });
+  it('without spacing the same grid is squashed to voxel units', () => {
+    const r = renderVolume(cube, side);
+    const [across, down] = extent(r.rgba, r.w, r.h);
+    assert.ok(Math.abs(across / down - 0.5) < 0.1, `4 of 8 voxels deep: ${across} × ${down} px`);
+  });
+  it('voxel bounds clip in mm: bounded matches unbounded', () => {
+    const opts = { ...side, angleY: 1.1, tiltX: 0.3, spacing: [1, 1, 2] as [number, number, number] };
+    assert.deepEqual(
+      renderVolume(cube, { ...opts, bounds: { min: [0, 0, 0], max: [16, 16, 8] } }).rgba,
+      renderVolume(cube, opts).rgba,
+    );
+  });
+  it('rejects spacing that is not positive', () => {
+    assert.throws(() => renderVolume(cube, { ...side, spacing: [1, 0, 2] }), /vr-spacing/);
+    assert.throws(() => renderVolume(cube, { ...side, spacing: [1, Number.NaN, 2] }), /vr-spacing/);
+  });
+});
+
 describe('raycaster', () => {
   it('renders background for empty volumes', () => {
     const { rgba } = renderVolume(solid([8, 8, 8], 0), {

@@ -1,6 +1,10 @@
-import { isNrrdLike, isTiffLike, parseDicomFrames, parseNrrd, parseNrrdDetached, parseOmeTiff, readFrame, readHeader, readImage, decodeNiftiBuffer, stackPixelSpacing, stackZGap, type DicomFileMeta, type Nifti1Header } from '@carys/io';
-import { sortSlices, stackToVolume } from '@carys/io';
-import { histogram, windowLevelFromRange } from '@carys/volume-core';
+import {
+  decodeNiftiBuffer, groupDicomStacks, isNrrdLike, isTiffLike, parseDicomFrames, parseNrrd,
+  parseNrrdDetached, parseOmeTiff, readFrame, readHeader, readImage, stackVoxels,
+  type DicomFileMeta, type DicomStack, type Nifti1Header, type ParsedDicomSlice,
+} from '@carys/io';
+import { geometryFromRasAffine, histogram, windowLevelFromRange } from '@carys/volume-core';
+import { toDisplayOrder } from './orient';
 import type { Volume } from './types';
 
 // Typed ports of the shell loaders. Engine stays pure; fetch + scaling
@@ -34,20 +38,32 @@ export class MissingSampleError extends Error {
 }
 
 /** One fetch for every sample path, so the missing-file story is told once. */
-async function fetchSample(url: string, signal?: AbortSignal): Promise<ArrayBuffer> {
+export async function fetchSample(url: string, signal?: AbortSignal): Promise<ArrayBuffer> {
   const res = await fetch(url, { signal });
   if (!res.ok) throw new MissingSampleError(url, res.status);
   return res.arrayBuffer();
 }
 
-/** Decode one frame of an already-read header into a display Volume. */
+/**
+ * Decode one frame of an already-read header into a display Volume.
+ *
+ * Orientation comes from the header's qform/sform when either is set;
+ * spacing then follows the affine, which is what places the voxels (pixdim
+ * alone can disagree with an sform, and can carry a sign). A header with
+ * neither code has no orientation to honour and stays as stored.
+ */
 export function volumeFromNifti(h: Nifti1Header, frame: ArrayBuffer): Volume {
   const raw = new (ARRAYS[h.dtype as keyof typeof ARRAYS] ?? Uint8Array)(frame);
   const n = h.dims[0] * h.dims[1] * h.dims[2];
   const data = new Float64Array(n);
   const useSlope = Number.isFinite(h.scl_slope) && h.scl_slope !== 0;
   for (let i = 0; i < n; i++) data[i] = useSlope ? raw[i] * h.scl_slope + h.scl_inter : raw[i];
-  return { dims: h.dims, data, spacing: [h.pixDims[1], h.pixDims[2], h.pixDims[3]] };
+  const pix = (k: number): number => Math.abs(h.pixDims[k] ?? 1) || 1;
+  const geometry = h.qform_code > 0 || h.sform_code > 0 ? geometryFromRasAffine(h.affine) : null;
+  return toDisplayOrder(
+    { dims: h.dims, data, spacing: [pix(1), pix(2), pix(3)] },
+    geometry ? { geometry, qformCode: h.qform_code, sformCode: h.sform_code } : null,
+  );
 }
 
 export function loadNiiBuffer(buf: ArrayBuffer): Volume {
@@ -166,42 +182,72 @@ export function loadOmeTiff5D(buf: ArrayBuffer): {
   };
 }
 
-export async function loadDicomSeries(urls: string[], opts: { signal?: AbortSignal } = {}): Promise<{
-  vol: Volume; meta: DicomFileMeta | null;
-}> {
-  const parsed = [];
-  for (const u of urls) {
-    // multi-frame files expand in file order (stable sort keeps it downstream)
-    for (const p of parseDicomFrames(await fetchSample(u, opts.signal))) parsed.push(p);
-  }
-  const order = new Map(parsed.map((s) => [s.slice, s.meta.sliceLocation ?? s.meta.instanceNumber ?? 0]));
-  const slices = sortSlices(parsed.map((s) => s.slice)).sort((a, b) => order.get(a)! - order.get(b)!);
-  const locs = parsed.map((s) => s.meta.sliceLocation).filter((v): v is number => v != null).sort((a, b) => a - b);
-  // tomo stacks resolve from the file first (Spacing Between Slices, then
-  // Slice Thickness, then the loc median) — one derivation for every stack.
-  const m0 = parsed[0]!.meta;
-  let zgap = stackZGap(m0);
-  if (locs.length > 1) {
-    const gaps = locs.slice(1).map((v, i) => Math.abs(v - locs[i]));
-    gaps.sort((a, b) => a - b);
-    const med = gaps[Math.floor(gaps.length / 2)];
-    if (med != null && med > 0 && Number.isFinite(med)) zgap = med;
-  }
-  const ps = stackPixelSpacing(m0) ?? [1, 1];
-  const stacked = stackToVolume(slices);
-  const n = stacked.dims[0] * stacked.dims[1] * stacked.dims[2];
-  const data = new Float64Array(n);
-  for (let i = 0; i < n; i++) data[i] = stacked.data[i];
-  return { vol: { dims: stacked.dims, data, spacing: [ps[1], ps[0], zgap] }, meta: parsed[0]?.meta ?? null };
+/**
+ * One DICOM stack as a display Volume. Image Position/Orientation place it
+ * in the patient (written back as a scanner-anatomical xform on export);
+ * a stack without them keeps its stored order and no geometry.
+ */
+export function volumeFromStack(stack: DicomStack): Volume {
+  const placed = stack.origin && stack.direction
+    ? { geometry: { origin: stack.origin, spacing: stack.spacing, direction: stack.direction }, qformCode: 1, sformCode: 1 }
+    : null;
+  return toDisplayOrder({ dims: stack.dims, data: stackVoxels(stack), spacing: stack.spacing }, placed);
 }
 
-export function autoWindow(data: Float64Array | ArrayLike<number>): { width: number; center: number } {
-  const { hist, min, max } = histogram(data as Float64Array, 256);
-  const total = data.length;
+/** Fetch + parse every file (multi-frame files expand to their frames). */
+export async function fetchDicomParts(urls: string[], opts: { signal?: AbortSignal } = {}): Promise<ParsedDicomSlice[]> {
+  const parts: ParsedDicomSlice[] = [];
+  for (const u of urls) {
+    for (const p of parseDicomFrames(await fetchSample(u, opts.signal))) parts.push(p);
+  }
+  return parts;
+}
+
+/**
+ * Load a set of DICOM files as stacks (see io/dicom-stack.ts): the files
+ * are grouped by series and geometry, never stacked blindly. `pick` selects
+ * which stack to open (largest first); the rest come back so the caller can
+ * offer them as their own series.
+ */
+export async function loadDicomSeries(urls: string[], opts: { signal?: AbortSignal; pick?: number } = {}): Promise<{
+  vol: Volume; meta: DicomFileMeta; stack: DicomStack; stacks: DicomStack[];
+}> {
+  const stacks = groupDicomStacks(await fetchDicomParts(urls, opts));
+  const stack = stacks[opts.pick ?? 0] ?? stacks[0];
+  if (!stack) throw new Error('no decodable DICOM images');
+  return { vol: volumeFromStack(stack), meta: stack.meta, stack, stacks };
+}
+
+/**
+ * The window the modality asked for: the first image's VOI (0028,1050/1051)
+ * when it carries a usable one. Null otherwise — the caller falls back to
+ * the data-driven window.
+ */
+export function fileWindow(meta: DicomFileMeta | null): { width: number; center: number } | null {
+  if (!meta || meta.windowWidth == null || meta.windowCenter == null) return null;
+  if (!(meta.windowWidth > 1) || !Number.isFinite(meta.windowCenter)) return null;
+  return { width: meta.windowWidth, center: meta.windowCenter };
+}
+
+/**
+ * Data-driven window: the 2nd–98th percentile of the voxels that are not
+ * background. Background — the padding value outside the field of view, or
+ * the zeros around a skull-stripped brain — is often most of the volume, and
+ * counting it drags the low percentile onto it and flattens the anatomy. So
+ * the lowest bin sits out whenever it holds more than a fifth of the voxels.
+ */
+export function autoWindow(
+  data: Float64Array | ArrayLike<number>,
+  pre?: { hist: Uint32Array; min: number; max: number },
+): { width: number; center: number } {
+  const { hist, min, max } = pre ?? histogram(data as Float64Array, 256);
+  const skip = hist[0]! > data.length * 0.2 && hist[0]! < data.length ? 1 : 0;
+  let total = 0;
+  for (let b = skip; b < hist.length; b++) total += hist[b]!;
   const at = (q: number): number => {
     let acc = 0;
-    for (let b = 0; b < hist.length; b++) {
-      acc += hist[b];
+    for (let b = skip; b < hist.length; b++) {
+      acc += hist[b]!;
       if (acc / total >= q / 100) return min + ((b + 0.5) / 256) * (max - min || 1);
     }
     return max;
@@ -209,7 +255,7 @@ export function autoWindow(data: Float64Array | ArrayLike<number>): { width: num
   return windowLevelFromRange(at(2), at(98));
 }
 
-export function toMask(data: Float64Array, threshold = 0): Uint8Array {
+export function toMask(data: ArrayLike<number>, threshold = 0): Uint8Array {
   const mask = new Uint8Array(data.length);
   for (let i = 0; i < data.length; i++) mask[i] = data[i] > threshold ? 1 : 0;
   return mask;

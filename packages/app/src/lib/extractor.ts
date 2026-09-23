@@ -19,6 +19,8 @@ export interface VrParams {
   shade: boolean;
   density: number;
   bounds: VrBounds | null;
+  /** voxel size in mm: the volume is drawn at physical proportions */
+  spacing: [number, number, number];
 }
 
 export interface VrResult {
@@ -83,14 +85,21 @@ export function createExtractor() {
     return worker;
   };
 
-  async function extract(data: Float64Array, dims: [number, number, number], t: number, smooth: boolean): Promise<Mesh> {
+  /**
+   * Surface of a field: the image (Float64) or a mask as it is stored
+   * (Uint8). A mask used to be widened to Float64 first — 8 bytes a voxel,
+   * 72 MB for a 240×240×155 brain, copied again to reach the worker; it now
+   * travels at 1 byte a voxel, and the worker reads it by its own dtype.
+   */
+  async function extract(data: Float64Array | Uint8Array, dims: [number, number, number], t: number, smooth: boolean): Promise<Mesh> {
     const w = getWorker();
     if (w) {
       try {
         const id = nextId++;
         const copy = data.slice().buffer as ArrayBuffer;
+        const dtype = data instanceof Uint8Array ? 'uint8' : 'float64';
         const p = new Promise<Mesh>((resolve, reject) => pending.set(id, { resolve, reject }));
-        w.postMessage({ id, method: smooth ? 'smooth' : 'blocky', dims, threshold: t, dtype: 'float64', buffer: copy }, [copy]);
+        w.postMessage({ id, method: smooth ? 'smooth' : 'blocky', dims, threshold: t, dtype, buffer: copy }, [copy]);
         const r = await p;
         usedWorker = true;
         return r;
@@ -116,7 +125,7 @@ export function createExtractor() {
           id, method: 'volume', dims, dtype: 'float64', buffer: copy,
           w: vr.w, h: vr.h, angleY: vr.angleY, tiltX: vr.tiltX, zoom: vr.zoom,
           tf: vr.tf, step: vr.step, shade: vr.shade, density: vr.density,
-          bounds: vr.bounds,
+          bounds: vr.bounds, spacing: vr.spacing,
         }, [copy]);
         const r = await p;
         usedWorker = true;
@@ -128,7 +137,7 @@ export function createExtractor() {
     const r = renderVolume({ dims, data }, {
       width: vr.w, height: vr.h, angleY: vr.angleY, tiltX: vr.tiltX,
       zoom: vr.zoom, tf: vr.tf, step: vr.step, shade: vr.shade, density: vr.density,
-      bounds: vr.bounds,
+      bounds: vr.bounds, spacing: vr.spacing,
     });
     usedWorker = false;
     return r;

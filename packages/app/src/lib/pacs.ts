@@ -1,7 +1,7 @@
 import { DicomWebClient } from '@carys/dicomweb';
-import { parseDicomSlice, sortSlices, stackPixelSpacing, stackToVolume, stackZGap } from '@carys/io';
+import { groupDicomStacks, parseDicomFrames, type ParsedDicomSlice } from '@carys/io';
 import { SERIES } from './catalog';
-import { loadDicomSeries, loadNii } from './loaders';
+import { loadDicomSeries, loadNii, volumeFromStack } from './loaders';
 import { session } from './session';
 import type { Volume } from './types';
 
@@ -48,9 +48,15 @@ export function pacsClient(baseUrl: string): DicomWebClient {
   return new DicomWebClient({ baseUrl, fetchFn: (url, init) => fetch(url, init) });
 }
 
-/** Pull a full series via WADO-RS instances and stack it like local DICOM. */
+/**
+ * Pull a full series via WADO-RS and stack it exactly like local DICOM
+ * (io/dicom-stack.ts): ordered by position, spaced by position, placed in
+ * the patient. A series that holds more than one stack (a localizer riding
+ * along) opens its largest.
+ */
 export async function pullSeriesVolume(
   client: DicomWebClient, studyUID: string, seriesUID: string, signal?: AbortSignal,
+  key?: string,
 ): Promise<Volume> {
   const instances = await client.searchInstances(studyUID, seriesUID);
   if (instances.length === 0) throw new Error('series has no instances');
@@ -59,25 +65,19 @@ export async function pullSeriesVolume(
     .sort((a, b) => (a.instanceNumber ?? 0) - (b.instanceNumber ?? 0))
     .map((i) => i.instanceUID);
   const bufs = await client.retrieveInstances(studyUID, seriesUID, order);
-  const parsed = bufs.map((b) => parseDicomSlice(b.buffer as ArrayBuffer));
-  const byLoc = new Map(parsed.map((s) => [s.slice, s.meta.sliceLocation ?? s.meta.instanceNumber ?? 0]));
-  const slices = sortSlices(parsed.map((s) => s.slice))
-    .sort((a, b) => (byLoc.get(a) ?? 0) - (byLoc.get(b) ?? 0));
-  const locs = parsed.map((s) => s.meta.sliceLocation).filter((v): v is number => v != null).sort((a, b) => a - b);
-  let zgap = stackZGap(parsed[0]!.meta);
-  if (locs.length > 1) {
-    const gaps = locs.slice(1).map((v, i) => Math.abs(v - locs[i]!));
-    gaps.sort((a, b) => a - b);
-    const med = gaps[Math.floor(gaps.length / 2)]!;
-    if (med > 0 && Number.isFinite(med)) zgap = med;
+  if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
+  const parts: ParsedDicomSlice[] = [];
+  for (const b of bufs) {
+    // A multipart/related body part is a view into the whole response:
+    // `b.buffer` would hand the parser every boundary and header too, so
+    // copy out exactly this instance's bytes.
+    const own = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
+    for (const p of parseDicomFrames(own)) parts.push(p);
   }
-  const ps = stackPixelSpacing(parsed[0]!.meta) ?? [1, 1];
-  const stacked = stackToVolume(slices);
-  const n = stacked.dims[0] * stacked.dims[1] * stacked.dims[2];
-  const data = new Float64Array(n);
-  for (let i = 0; i < n; i++) data[i] = stacked.data[i];
-  void signal;
-  return { dims: stacked.dims, data, spacing: [ps[1]!, ps[0]!, zgap] };
+  const stack = groupDicomStacks(parts)[0];
+  if (!stack) throw new Error('series has no decodable images');
+  if (key) session.seriesMeta.set(key, { meta: stack.meta, warnings: stack.warnings.map((w) => w.message) });
+  return volumeFromStack(stack);
 }
 
 /** Resolve any catalog key to a volume: cache, local files, or PACS pull. */
@@ -88,9 +88,9 @@ export async function resolveVolume(key: string, signal?: AbortSignal): Promise<
   if (!spec) throw new Error(`unknown series: ${key}`);
   let vol: Volume;
   if (spec.remote) {
-    vol = await pullSeriesVolume(pacsClient(spec.remote.endpoint), spec.remote.studyUID, spec.remote.seriesUID, signal);
+    vol = await pullSeriesVolume(pacsClient(spec.remote.endpoint), spec.remote.studyUID, spec.remote.seriesUID, signal, key);
   } else if (spec.dicom?.length) {
-    vol = (await loadDicomSeries(spec.dicom, { signal })).vol;
+    vol = (await loadDicomSeries(spec.dicom, { signal, pick: spec.stackIndex })).vol;
   } else if (spec.img?.length) {
     vol = await loadNii(spec.img[0]!, { signal });
   } else {

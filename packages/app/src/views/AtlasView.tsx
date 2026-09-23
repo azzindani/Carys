@@ -11,7 +11,7 @@ import {
 import { EDUCATION_BADGE, validateKnowledgeEntry, type KnowledgeEntry } from '@carys/study';
 import { fitMeshToBox, parseMz3, renderMesh } from '@carys/render-cpu';
 import { session } from '../lib/session';
-import { setStatus } from '../lib/status';
+import { setAmbientStatus, setStatus } from '../lib/status';
 import { toast } from '../lib/toasts';
 import { bump } from '../lib/version';
 import { Chip, DarkSelect, IconBtn, SliderRow } from '../ui/primitives';
@@ -186,7 +186,8 @@ export function AtlasView(): JSX.Element {
         const hit = termByFma(fma);
         return hit ? { term: hit.name, source: 'FMA', source_version: hit.fma, reviewed_by: null } : null;
       });
-      setStatus(`${label.term} · ${st.bpId} · ${(fitted.indices.length / 3).toLocaleString()} tris · ${EDUCATION_BADGE}`);
+      // paint follows every render: ambient, so a search result stays readable
+      setAmbientStatus(`${label.term} · ${st.bpId} · ${(fitted.indices.length / 3).toLocaleString()} tris · ${EDUCATION_BADGE}`);
     } catch (e) {
       setErr((e as Error).message);
       setStatus(`atlas failed: ${(e as Error).message}`, 'error');

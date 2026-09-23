@@ -3,9 +3,9 @@
 // math stays in io/dicomdir.ts (pure), slice decode in loaders.ts.
 // No new ids beyond dock-dir: the series picker reuses DarkSelect.
 import { parseDicomDir, resolveDicomDirFiles, type DicomDir, type DicomDirSeries } from '@carys/io';
-import { parseDicomFrames, stackPixelSpacing, stackZGap, type ParsedDicomSlice } from '@carys/io';
-import { sortSlices, stackToVolume } from '@carys/io';
+import { groupDicomStacks, parseDicomFrames, type ParsedDicomSlice } from '@carys/io';
 import { addUploadedSeries } from './catalog';
+import { volumeFromStack } from './loaders';
 import { loadSeries } from './sessionOps';
 import { session } from './session';
 import { setStatus } from './status';
@@ -13,17 +13,12 @@ import { toast } from './toasts';
 import { bump } from './version';
 import type { Volume } from './types';
 
-function volumeFromParsed(parts: ParsedDicomSlice[]): Volume {
-  const order = new Map(parts.map((s) => [s.slice, s.meta.sliceLocation ?? s.meta.instanceNumber ?? 0]));
-  const slices = sortSlices(parts.map((s) => s.slice)).sort((a, b) => order.get(a)! - order.get(b)!);
-  const stacked = stackToVolume(slices);
-  const n = stacked.dims[0] * stacked.dims[1] * stacked.dims[2];
-  const data = new Float64Array(n);
-  for (let i = 0; i < n; i++) data[i] = stacked.data[i];
-  const m0 = parts[0]?.meta;
-  const ps = (m0 && stackPixelSpacing(m0)) ?? [1, 1];
-  const zgap = m0 ? stackZGap(m0) : 1;
-  return { dims: stacked.dims, data, spacing: [ps[1], ps[0], zgap] };
+/** The directory series as one stack (io/dicom-stack.ts decides what that is). */
+function volumeFromParsed(name: string, parts: ParsedDicomSlice[]): Volume {
+  const stack = groupDicomStacks(parts)[0];
+  if (!stack) throw new Error('no decodable images in the series');
+  session.seriesMeta.set(name, { meta: stack.meta, warnings: stack.warnings.map((w) => w.message) });
+  return volumeFromStack(stack);
 }
 
 /** Parse a DICOMDIR buffer (loud rejects land on the status). */
@@ -57,7 +52,7 @@ export async function openDicomDirSeries(
     const label = series.seriesUID ?? `series-${series.seriesNumber ?? '?'}`;
     const name = `dicomdir: ${dirName} / ${series.modality ?? '?'} ${series.seriesNumber ?? ''}`.trim();
     addUploadedSeries(name);
-    const init = await loadSeries(name, volumeFromParsed(parts));
+    const init = await loadSeries(name, volumeFromParsed(name, parts));
     if (init) {
       session.pendingSliceInit = init;
       bump();

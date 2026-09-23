@@ -61,7 +61,7 @@ jobs:
         run: npm run test:unit 2>&1 | grep -E '^# (tests|pass|fail|skipped)'
 
   image:
-    name: docker build (sample-free)
+    name: docker build + run (sample-free)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -76,4 +76,41 @@ jobs:
         with:
           context: .
           push: false
+          # into the local daemon, so the next step can run what was built
+          load: true
           tags: carys:ci
+
+      # Building is not shipping. This job only ever built the image, and the
+      # image exited 1 at start-up for as long as it existed (the stock nginx
+      # config cannot run as the non-root user the Dockerfile switches to).
+      # Run it the locked-down way the README documents; a start-up failure
+      # fails here, before anything else is spent.
+      - name: Run the image
+        run: |
+          docker run -d --name carys -p 8080:8080 --read-only --tmpfs /tmp --cap-drop ALL carys:ci
+          curl -fsS --retry 10 --retry-delay 1 --retry-all-errors http://127.0.0.1:8080/healthz
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+
+      # Docker's first health probe fires one interval (30s) after start; the
+      # installs above cover that wait. This proves the HEALTHCHECK command
+      # itself works, not just the endpoint it calls.
+      - name: Healthcheck reports healthy
+        run: timeout 60 sh -c 'until [ "$(docker inspect -f "{{.State.Health.Status}}" carys)" = healthy ]; do sleep 2; done'
+
+      # deploy/nginx.conf is live nowhere else: headers, cache policy and
+      # compression over HTTP, then Chromium boots the app and every route
+      # under the real CSP. No samples on the runner, so the imaging legs
+      # report as skipped.
+      - run: npm run test:image
+        env:
+          CARYS_URL: http://127.0.0.1:8080
+
+      - name: Container log
+        if: always()
+        run: docker logs carys 2>&1 | tail -50

@@ -77,8 +77,12 @@ function looksLikeLabels(data: ArrayLike<number>, min: number, max: number): boo
  * - Hounsfield data cuts at bone, which is what a CT surface is for;
  * - anything else falls back to Otsu.
  */
-export function autoThreshold(data: ArrayLike<number>, bins = 256): ThresholdSuggestion {
-  const { hist, min, max } = histogram(data, bins);
+export function autoThreshold(
+  data: ArrayLike<number>, bins = 256,
+  /** A histogram of `data` the caller already has (same bins): saves a pass. */
+  pre?: { hist: Uint32Array; min: number; max: number },
+): ThresholdSuggestion {
+  const { hist, min, max } = pre && pre.hist.length === bins ? pre : histogram(data, bins);
   const lo = Math.floor(min);
   const hi = Math.ceil(max);
   if (looksLikeLabels(data, min, max)) return { value: 0, lo: 0, hi: Math.max(1, hi), kind: 'mask' };

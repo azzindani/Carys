@@ -1,5 +1,6 @@
 // Shared domain types for the app shell. Engine math stays in packages/*;
 // this file only describes what flows between chrome and canvas.
+import type { PatientGeometry, Reorientation } from '@carys/volume-core';
 
 export type View = 'mpr';
 /** Fullscreen viewport: null = grid, 'v3d' = 3D, or one 2D plane. */
@@ -13,6 +14,21 @@ export interface Volume {
   dims: [number, number, number];
   data: Float64Array;
   spacing?: [number, number, number];
+  /** Where this grid sits in the patient (LPS). Present only when the file
+   *  said so; the viewer then holds the grid in LPS order (lib/orient.ts). */
+  geometry?: PatientGeometry;
+  /** The file's own grid, kept so exports land back on it exactly. */
+  source?: SourceLayout;
+}
+
+/** A volume's grid as the file stored it, and how the viewer re-laid it out. */
+export interface SourceLayout {
+  dims: [number, number, number];
+  geometry: PatientGeometry;
+  reorient: Reorientation;
+  /** NIfTI xform codes to write back (1 = scanner anatomical for DICOM). */
+  qformCode: number;
+  sformCode: number;
 }
 
 export interface Mesh {
@@ -37,6 +53,8 @@ export interface FiberSet {
 export interface SeriesSpec {
   img?: string[];
   seg?: string[];
+  /** A seg voxel is foreground above this (0 for labels; 0.5 for a probability map). */
+  segThreshold?: number;
   dicom?: string[];
   /** hanging-protocol hints: modality + free-text body part */
   modality?: string;
@@ -47,6 +65,8 @@ export interface SeriesSpec {
   axialFrac?: number;
   threshold3d?: number;
   source?: 'nifti' | 'dicom' | 'upload';
+  /** Which stack of `dicom` to open when the files hold several (io/dicom-stack). */
+  stackIndex?: number;
   /** PACS-pulled series: resolved on demand via DICOMweb. */
   remote?: { endpoint: string; studyUID: string; seriesUID: string };
 }

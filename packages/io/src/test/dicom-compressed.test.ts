@@ -236,7 +236,7 @@ function encapFile(s: EncapSpec): ArrayBuffer {
   return Uint8Array.from(b).buffer as ArrayBuffer;
 }
 
-const maxDiff = (a: Uint8Array | Int16Array, c: Uint8Array): number => {
+const maxDiff = (a: Uint8Array | Int16Array | Float32Array, c: Uint8Array): number => {
   let m = 0;
   for (let i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i]! - c[i]!));
   return m;
