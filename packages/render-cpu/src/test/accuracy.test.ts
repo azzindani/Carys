@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { extractBoundary } from '../surface.js';
+import { smoothMesh } from '../mesh-smooth.js';
 import { maskNets, surfaceNets } from '../surface-nets.js';
 import {
   box, capsule, ellipsoid, erf, sampleIntensity, sampleMask, scoreMesh, sphere, torus,
@@ -185,5 +186,26 @@ describe('F1 accuracy harness', () => {
       const cell = Math.min(Math.floor(plain.positions[i]! - 0.5), c.dims[i % 3]! - 2) + 0.5;
       assert.ok(relaxed.positions[i]! >= cell - 1e-6 && relaxed.positions[i]! <= cell + 1 + 1e-6, `vertex ${Math.floor(i / 3)} left its cell`);
     }
+  });
+
+  it('F4: smoothing keeps volume and beats F3 on every curved shape', () => {
+    // Acceptance: volume change < 1% on the phantoms, staircase below F3's.
+    // Strength 0.5 measured: sphere 5.4° → 2.1°, torus 5.5° → 3.3°,
+    // ellipsoid 16.0° → 8.4°, 5 mm-slice sphere 17.4° → 12.3°.
+    for (const c of CASES) {
+      const f3 = paths(c)['smooth-mask']!;
+      const a = scoreMesh(f3, c.sp, c.ph);
+      const b = scoreMesh(smoothMesh({ ...f3, normals: new Float32Array(f3.positions.length) }, { strength: 0.5 }), c.sp, c.ph);
+      assert.ok(Math.abs(b.volErrPct - a.volErrPct) < 1, `${c.id}: volume ${a.volErrPct.toFixed(2)}% → ${b.volErrPct.toFixed(2)}%`);
+      assert.ok(b.normalDevDeg < a.normalDevDeg, `${c.id}: staircase ${a.normalDevDeg.toFixed(1)}° → ${b.normalDevDeg.toFixed(1)}°`);
+    }
+    // A thin tube keeps its volume and stays sub-voxel; the per-piece volume
+    // restore is what does it (the filter alone took 15% at 0.35).
+    const tube = capsule([6, 16.5, 16.5], [26, 16.5, 16.5], 1.2);
+    const m = maskNets(sampleMask(tube, [32, 32, 32], [1, 1, 1]), 32, 32, 32);
+    const a = scoreMesh(m, [1, 1, 1], tube);
+    const b = scoreMesh(smoothMesh(m, { strength: 0.5 }), [1, 1, 1], tube);
+    assert.ok(Math.abs(b.volErrPct - a.volErrPct) < 1, `tube volume ${a.volErrPct.toFixed(2)}% → ${b.volErrPct.toFixed(2)}%`);
+    assert.ok(b.meanErr < 0.25, `tube error ${b.meanErr.toFixed(3)} mm`);
   });
 });

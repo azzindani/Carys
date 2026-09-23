@@ -307,7 +307,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       return;
     }
     const field = u.src === 'mask' ? session.editMask! : img.data;
-    const key = session.meshKey(u.series, u.src, u.threshold, u.method);
+    const key = session.meshKey(u.series, u.src, u.threshold, u.method, u.smooth3d);
     const hit = session.getMesh(key);
     if (hit) {
       session.mesh = hit;
@@ -323,7 +323,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       }
       await new Promise((r) => setTimeout(r, 10));
       const mine = ++session.paintToken;
-      const mesh = await session.meshOnce(key, () => extractor.extract(field, img.dims, u.threshold, u.method === 'smooth'));
+      const mesh = await session.meshOnce(key, () => extractor.extract(field, img.dims, u.threshold, u.method === 'smooth', u.smooth3d));
       if (mine !== session.paintToken || getUi().series !== s0) return;
       session.mesh = mesh;
       session.cacheMesh(key, mesh);
@@ -367,7 +367,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
   useEffect(() => {
     const u = getUi();
     const sig = [
-      u.series, u.src, u.method, u.threshold, u.render3d, tfPreset, density,
+      u.series, u.src, u.method, u.smooth3d, u.threshold, u.render3d, tfPreset, density,
       quality, shade, tf ? JSON.stringify(tf) : '',
       session.meshPinned ? 'mp' : '', session.fibersPinned ? 'fp' : '',
     ].join('|');
@@ -578,6 +578,14 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
                 options={[{ value: 'blocky', label: 'Blocky' }, { value: 'smooth', label: 'Smooth' }]}
               />
             </div>
+            {ui.method === 'smooth' && (
+              // 0 is the surface as extracted; higher filters terraces away
+              // and keeps each piece's volume (render-cpu/mesh-smooth.ts).
+              <SliderRow
+                label="Smoothing" min={0} max={1} step={0.1} value={ui.smooth3d}
+                onInput={(v) => setUi({ smooth3d: v })} onCommit={() => { session.meshPinned = null; bump(); }}
+              />
+            )}
           </>
         ) : (
           <>

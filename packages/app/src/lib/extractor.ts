@@ -1,4 +1,4 @@
-import { extractBoundary, maskNets, renderVolume, surfaceNets } from '@carys/render-cpu';
+import { extractBoundary, maskNets, renderVolume, smoothMesh, surfaceNets } from '@carys/render-cpu';
 import type { TF } from '@carys/render-cpu';
 import { toMask } from './loaders';
 import type { Mesh } from './types';
@@ -92,8 +92,11 @@ export function createExtractor() {
    * travels at 1 byte a voxel, and the worker reads it by its own dtype.
    * The dtype also picks the smooth surface: a mask's is relaxed inside its
    * cells (maskNets, no terraces), an image's sits on the field itself.
+   * `smoothing` (0–1) then filters a smooth surface, keeping its volume.
    */
-  async function extract(data: Float64Array | Uint8Array, dims: [number, number, number], t: number, smooth: boolean): Promise<Mesh> {
+  async function extract(
+    data: Float64Array | Uint8Array, dims: [number, number, number], t: number, smooth: boolean, smoothing = 0,
+  ): Promise<Mesh> {
     const w = getWorker();
     if (w) {
       try {
@@ -101,7 +104,7 @@ export function createExtractor() {
         const copy = data.slice().buffer as ArrayBuffer;
         const dtype = data instanceof Uint8Array ? 'uint8' : 'float64';
         const p = new Promise<Mesh>((resolve, reject) => pending.set(id, { resolve, reject }));
-        w.postMessage({ id, method: smooth ? 'smooth' : 'blocky', dims, threshold: t, dtype, buffer: copy }, [copy]);
+        w.postMessage({ id, method: smooth ? 'smooth' : 'blocky', dims, threshold: t, smoothing, dtype, buffer: copy }, [copy]);
         const r = await p;
         usedWorker = true;
         return r;
@@ -109,11 +112,12 @@ export function createExtractor() {
         workerDead = true;
       }
     }
-    const mesh = !smooth
+    const raw = !smooth
       ? extractBoundary(toMask(data, t), dims[0], dims[1], dims[2])
       : data instanceof Uint8Array
         ? maskNets(toMask(data, t), dims[0], dims[1], dims[2])
         : surfaceNets(data, dims[0], dims[1], dims[2], t + 0.5);
+    const mesh = smooth && smoothing > 0 ? smoothMesh(raw, { strength: smoothing }) : raw;
     usedWorker = false;
     return { ...mesh, tris: mesh.indices.length / 3 };
   }
