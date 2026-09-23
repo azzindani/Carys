@@ -68,6 +68,10 @@ frame the same physical box.
   rotating oblique MIP (`mip-rotate.ts`: same orbit/tilt as the raycaster).
 - 3D surfaces: cuberille boundary faces (blocky) + naive surface nets (smooth),
   orthographic + Lambert + z-buffer rasterizer → RGBA.
+- Surface accuracy is measured, not eyeballed: analytic phantoms (sphere,
+  ellipsoid, torus; `test/phantoms.ts`) sampled on isotropic and thick-slice
+  grids score every extraction path in mm — vertex distance to the true
+  surface, volume, normal deviation (`test/accuracy.test.ts`).
 - Export: binary STL from any TriMesh (re-parse verified).
 - Volume raycast: orthographic front-to-back CPU compositing (`vr.ts`). Rays
   march in mm and sample in voxels; the step is in voxels of the finest axis,

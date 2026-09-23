@@ -927,17 +927,31 @@ passes `npm run ci` and the e2e suites it touches, and is pushed on
 `claude/3d-fidelity` with CI green before the next starts. Accuracy is
 measured, not eyeballed: analytic phantoms have known surfaces and volumes.
 
-- OPEN — **F1. Accuracy harness.** Analytic phantoms (sphere, ellipsoid,
-  torus) sampled on isotropic and anisotropic grids (e.g. 1×1×5 mm), as
-  intensity fields and as binary masks. Metrics: mean and max distance of
-  mesh vertices to the true surface in mm, mesh volume (divergence theorem)
-  vs the analytic volume, and a staircase score (normal deviation from the
-  true normal). Baseline numbers for today's blocky and smooth paths are
-  recorded in the test so every later item has to beat them.
+- DONE — **F1. Accuracy harness.** `render-cpu/src/test/phantoms.ts` +
+  `accuracy.test.ts`: sphere, ellipsoid and torus sampled as blurred
+  intensity fields (σ 0.5 mm) and as masks, on 1 mm, 0.8×0.8×2.5 mm and
+  1×1×5 mm grids, scored in mm. The harness proves itself first (an exact
+  UV sphere scores ~0; a 0.5 mm shift scores 0.5 mm). Baseline, sphere on
+  1 mm / on 5 mm slices, mean vertex error · volume · normal deviation:
+
+  | path | 1 mm grid | 1×1×5 mm |
+  |---|---|---|
+  | blocky (default today) | 0.34 mm · +0.8% · 45° | 0.93 mm · −5.0% · 43° |
+  | smooth, image | 0.43 mm · −1.9% · 5.4° | 1.44 mm · −8.6% · 19° |
+  | smooth, mask | 0.44 mm · −0.2% · 12.6° | 1.45 mm · −8.6% · 25° |
+
+  Findings it made at once: the smooth path sits **half a voxel off** the
+  voxel-centre convention the panes and cuberille use (sample i at i, not
+  i + 0.5): shifted into place its 1 mm error drops from 0.43 to 0.02 mm,
+  and on 5 mm slices it is worse than blocky because of it. Surface nets
+  also reads ~2% low in volume (vertices average the crossings and cut
+  convex corners). Both go into F2.
 - OPEN — **F2. Sub-voxel surfaces by default.** Image-source extraction at
   the threshold on the intensity field (interpolated crossings), `smooth`
-  the default method, blocky kept as an option. Accept: sphere at 1 mm has
-  mean error < 0.1 mm and volume within 1%.
+  the default method, blocky kept as an option. Includes F1's findings:
+  surface-net vertices on the voxel-centre convention (the half-voxel
+  shift), and vertex placement that does not shrink convex shapes. Accept:
+  sphere at 1 mm has mean error < 0.1 mm and volume within 1%.
 - OPEN — **F3. Anti-aliased masks.** Masks become a signed distance field
   (or a narrow smoothing) before extraction at the midpoint. Accept: a
   binary sphere mask's mesh is within 0.25 voxel of the true surface, with
