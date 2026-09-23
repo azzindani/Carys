@@ -1067,6 +1067,13 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   implicit surface through the slice constraints instead of per-column
   interpolation — owner render lane; pinned by thick-slices.test.ts, which
   fails when the bound is met so this note gets lifted.
+  Measured again (2026-09-23, after F16), splitting the acceptance
+  ellipsoid's error at its outer slices (12.5 and 22.5 mm): the sides
+  between them 0.23 mm (1,084 vertices, image and mask alike), the ends
+  0.83 mm (674). No end model can reach the image bound: with perfect
+  ends the mean is still 0.14 mm, because three 5 mm slices do not fix
+  the sides to 0.1 mm either. Meeting it needs either more slices than the
+  scan has or a bound set for 5 mm data; that choice is the owner's.
 - DONE — **F6. Per-pixel shading.** Interpolated normals, Blinn-Phong with a
   soft specular, 2× supersampled edges. Surface goldens re-frozen only after
   the PNGs are looked at. `raster.ts` interpolates the three vertex normals
