@@ -74,7 +74,9 @@ frame the same physical box.
   rasterizer → RGBA, lit per pixel (interpolated normals, Blinn-Phong) and
   2× supersampled; SurfaceView orbits at 1× and repaints at 2× once the
   view settles (`views/orbitOverlay.ts` draws tracts and the cursor on
-  both). The image and the mask keep separate
+  both). Depth cues are a post-pass over the depth and normal buffers
+  (`screen-space.ts`: ambient occlusion, silhouette outlines), opt-in per
+  render. The image and the mask keep separate
   thresholds (`session.thresholds`). Optional smoothing (`mesh-smooth.ts`):
   windowed-sinc filtering, then each closed piece restored to its volume.
 - Surface accuracy is measured, not eyeballed: analytic phantoms (sphere,

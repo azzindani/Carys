@@ -2,31 +2,14 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderMesh } from '../raster.js';
 import type { TriMesh } from '../surface.js';
+import { uvSphere as sphereAt } from './phantoms.js';
 
 // F6 (docs/PHASES.md): per-pixel shading and supersampled edges.
 
 const BG = 17;
 
-/** A coarse latitude/longitude sphere with exact unit normals at its
- *  vertices, wound outward, centred in a 40³ box. */
-function uvSphere(lat: number, lon: number): TriMesh {
-  const pos: number[] = [], nrm: number[] = [];
-  for (let i = 0; i <= lat; i++) {
-    const th = (Math.PI * i) / lat;
-    for (let j = 0; j < lon; j++) {
-      const ph = (2 * Math.PI * j) / lon;
-      const n = [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), Math.cos(th)];
-      nrm.push(...n);
-      pos.push(20 + 15 * n[0]!, 20 + 15 * n[1]!, 20 + 15 * n[2]!);
-    }
-  }
-  const idx: number[] = [];
-  const v = (i: number, j: number): number => i * lon + (j % lon);
-  for (let i = 0; i < lat; i++) {
-    for (let j = 0; j < lon; j++) idx.push(v(i, j), v(i + 1, j), v(i + 1, j + 1), v(i, j), v(i + 1, j + 1), v(i, j + 1));
-  }
-  return { positions: Float32Array.from(pos), normals: Float32Array.from(nrm), indices: Uint32Array.from(idx) };
-}
+/** Radius 15 in the middle of the 40³ box. */
+const uvSphere = (lat: number, lon: number): TriMesh => sphereAt([20, 20, 20], 15, lat, lon);
 
 /** The same triangles with every vertex carrying its face's normal: what
  *  a per-face shader draws. */

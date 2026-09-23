@@ -17,10 +17,22 @@ const PNG_DIR = join(HERE, 'surface-goldens');
 const ROOT = process.cwd();
 const FROZEN = join(ROOT, 'packages/render-cpu/src/test/surface-goldens.json');
 
-const SURF_SPECS = [
-  { name: 'skull-orbit', file: 'skull_case_0001_seg.nii', color: [225, 215, 200] as [number, number, number], minTris: 1000 },
-  { name: 'brats-tumor-orbit', file: 'brain_tumor_BraTS19_CBICA_AQN_1_seg.nii', color: [230, 80, 80] as [number, number, number], minTris: 1000 },
-  { name: 'skull-ct-smooth', file: 'skull_case_0001_img.nii', color: [225, 215, 200] as [number, number, number], minTris: 10000, iso: 250 },
+interface SurfSpec {
+  name: string;
+  file: string;
+  color: [number, number, number];
+  minTris: number;
+  /** surface nets on the image at this level; a mask's cuberille otherwise */
+  iso?: number;
+  /** F7 depth cues: ambient occlusion + outlines */
+  cues?: boolean;
+}
+
+const SURF_SPECS: SurfSpec[] = [
+  { name: 'skull-orbit', file: 'skull_case_0001_seg.nii', color: [225, 215, 200], minTris: 1000 },
+  { name: 'brats-tumor-orbit', file: 'brain_tumor_BraTS19_CBICA_AQN_1_seg.nii', color: [230, 80, 80], minTris: 1000 },
+  { name: 'skull-ct-smooth', file: 'skull_case_0001_img.nii', color: [225, 215, 200], minTris: 10000, iso: 250 },
+  { name: 'skull-ct-cues', file: 'skull_case_0001_img.nii', color: [225, 215, 200], minTris: 10000, iso: 250, cues: true },
 ];
 
 describe('surface goldens', () => {
@@ -30,10 +42,11 @@ describe('surface goldens', () => {
     mkdirSync(PNG_DIR, { recursive: true });
     const got: Record<string, string> = {};
     for (const s of SURF_SPECS) {
-      const built = 'iso' in s && (s as { iso?: number }).iso !== undefined
+      const iso = s.iso;
+      const built = iso !== undefined
         ? (() => {
             const { dims, data } = loadField(join(ROOT, 'samples', s.file));
-            return { mesh: surfaceNets(data, dims[0], dims[1], dims[2], (s as { iso: number }).iso), dims };
+            return { mesh: surfaceNets(data, dims[0], dims[1], dims[2], iso), dims };
           })()
         : (() => {
             const { dims, mask } = loadMask(join(ROOT, 'samples', s.file));
@@ -45,6 +58,7 @@ describe('surface goldens', () => {
       assert.equal(stlFacets(meshToStl(mesh)).count, tris, `${s.name} STL facet mismatch`);
       const rgba = renderMesh(mesh, dims, {
         width: 320, height: 320, angleY: 0.7, tiltX: 0.3, color: s.color,
+        ...(s.cues ? { ao: true, outline: true } : {}),
       });
       const png = encodePngRgba(rgba, 320, 320);
       writeFileSync(join(PNG_DIR, `${s.name}.png`), png);

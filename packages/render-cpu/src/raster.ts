@@ -8,6 +8,10 @@
 // white highlight — so a surface reads by its curvature, not its
 // triangles. The frame is drawn at twice the size and box-filtered down:
 // silhouettes are anti-aliased instead of stair-stepped.
+//
+// Depth cues (F7): ambient occlusion and silhouette outlines, opt-in, as a
+// post-pass over the depth and normal buffers (screen-space.ts).
+import { ambientOcclusion, silhouettes, type GBuffer } from './screen-space.js';
 import type { TriMesh } from './surface.js';
 
 export interface RasterOpts {
@@ -24,6 +28,10 @@ export interface RasterOpts {
   /** samples per pixel along each axis: 2 (default) anti-aliases edges,
    *  1 is a quarter of the fill work for interaction */
   supersample?: 1 | 2;
+  /** darken crevices and contact (screen-space ambient occlusion) */
+  ao?: boolean;
+  /** darken the near side of silhouettes and depth steps */
+  outline?: boolean;
 }
 
 // Light rig, view space. Ambient + diffuse match the old per-face shader.
@@ -35,6 +43,17 @@ const SHININESS = 40;
 /** Below this half-vector cosine the highlight adds under a quarter of a
  *  grey level: skipped, the power is the costliest term per pixel. */
 const SPEC_CUT = (0.25 / (SPECULAR * 255)) ** (1 / SHININESS);
+/** Occlusion disc radius, as a fraction of the frame's shorter side, and
+ *  how dark full occlusion gets. */
+const AO_RADIUS = 0.1;
+const AO_STRENGTH = 3;
+/** Occlusion is low-frequency: it is estimated once per 2×2 samples (one
+ *  output pixel at 2×, a quarter of the work at 1×). */
+const AO_BLOCK = 2;
+/** A depth step deeper than this many pixel widths is a silhouette; its
+ *  near side is drawn at this fraction of its colour, one pixel wide. */
+const OUTLINE_GAP = 10;
+const OUTLINE_SHADE = 0.6;
 
 export function renderMesh(
   mesh: TriMesh,
@@ -50,6 +69,8 @@ export function renderMesh(
   const acc = new Float32Array(SW * SH * 3);
   for (let i = 0; i < SW * SH; i++) { acc[i * 3] = bg[0]!; acc[i * 3 + 1] = bg[1]!; acc[i * 3 + 2] = bg[2]!; }
   const depth = new Float32Array(SW * SH).fill(-Infinity);
+  // view-space normals per sample, kept only for the occlusion pass
+  const G = opts.ao ? { nx: new Float32Array(SW * SH), ny: new Float32Array(SW * SH), nz: new Float32Array(SW * SH) } : null;
   const [nx, ny, nz] = dims;
   const maxDim = Math.max(nx, ny, nz);
   const scale = (Math.min(W, H) / maxDim) * 0.92 * (opts.zoom ?? 1) * ss;
@@ -109,6 +130,7 @@ export function renderMesh(
         let ez = w0 * NZ[i0]! + w1 * NZ[i1]! + w2 * NZ[i2]!;
         const l = 1 / (Math.sqrt(ex * ex + ey * ey + ez * ez) || 1);
         ex *= l; ey *= l; ez *= l;
+        if (G) { G.nx[o] = ex; G.ny[o] = ey; G.nz[o] = ez; }
         const d = Math.max(0, ex * Lx + ey * Ly + ez * Lz);
         const h = ex * Hx + ey * Hy + ez * Hz;
         const shade = AMBIENT + DIFFUSE * d;
@@ -119,6 +141,13 @@ export function renderMesh(
       }
     }
   }
+  // depth cues: outlines per sample, one output pixel wide; occlusion per
+  // AO_BLOCK² samples, from the nearest of them
+  const edge = opts.outline ? silhouettes(depth, SW, SH, ss, (OUTLINE_GAP * ss) / scale) : null;
+  const AW = Math.ceil(SW / AO_BLOCK);
+  const occ = G ? ambientOcclusion(nearestSamples(depth, G, SW, SH, AO_BLOCK), {
+    radiusPx: (AO_RADIUS * Math.min(W, H) * ss) / AO_BLOCK, unitPerPx: AO_BLOCK / scale, strength: AO_STRENGTH,
+  }) : null;
   // box-filter the samples down to the frame
   const out = new Uint8ClampedArray(W * H * 4);
   const k = 1 / (ss * ss);
@@ -127,8 +156,11 @@ export function renderMesh(
       let r = 0, g = 0, b = 0;
       for (let j = 0; j < ss; j++) {
         for (let i = 0; i < ss; i++) {
-          const s = ((y * ss + j) * SW + x * ss + i) * 3;
-          r += Math.min(255, acc[s]!); g += Math.min(255, acc[s + 1]!); b += Math.min(255, acc[s + 2]!);
+          const o = (y * ss + j) * SW + x * ss + i, s = o * 3;
+          if (depth[o] === -Infinity) { r += acc[s]!; g += acc[s + 1]!; b += acc[s + 2]!; continue; }
+          const f = occ ? occ[Math.floor((y * ss + j) / AO_BLOCK) * AW + Math.floor((x * ss + i) / AO_BLOCK)]! : 1;
+          const m = edge?.[o] ? f * OUTLINE_SHADE : f;
+          r += Math.min(255, acc[s]!) * m; g += Math.min(255, acc[s + 1]!) * m; b += Math.min(255, acc[s + 2]!) * m;
         }
       }
       const o = (y * W + x) * 4;
@@ -136,4 +168,27 @@ export function renderMesh(
     }
   }
   return out;
+}
+
+/** The occlusion pass's input: per k×k block of samples, the nearest one
+ *  (edge blocks clipped to the frame). */
+function nearestSamples(
+  depth: Float32Array, G: { nx: Float32Array; ny: Float32Array; nz: Float32Array },
+  SW: number, SH: number, k: number,
+): GBuffer {
+  const W = Math.ceil(SW / k), H = Math.ceil(SH / k);
+  const d = new Float32Array(W * H), nx = new Float32Array(W * H), ny = new Float32Array(W * H), nz = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      let best = y * k * SW + x * k;
+      for (let j = y * k; j < Math.min(SH, (y + 1) * k); j++) {
+        for (let i = x * k; i < Math.min(SW, (x + 1) * k); i++) {
+          if (depth[j * SW + i]! > depth[best]!) best = j * SW + i;
+        }
+      }
+      const p = y * W + x;
+      d[p] = depth[best]!; nx[p] = G.nx[best]!; ny[p] = G.ny[best]!; nz[p] = G.nz[best]!;
+    }
+  }
+  return { width: W, height: H, depth: d, nx, ny, nz };
 }

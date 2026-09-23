@@ -2799,6 +2799,33 @@ try {
   console.log(`3d cursor lands accent px on #view3d (${accentBefore} -> up)`);
   await page25.close();
 
+  // ---- 41b. F7 depth cues: occlusion + outlines darken the surface; the
+  // dock switch turns them off (brighter) and back on (the same frame).
+  const page25b = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page25b.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
+  await page25b.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await page25b.waitForFunction(() => /tris/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 90000 });
+  const surfMean = () => page25b.evaluate(() => {
+    const cv = document.getElementById('view3d');
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    let s = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] !== 17 || d[i + 1] !== 17 || d[i + 2] !== 17) { s += d[i]; n++; }
+    return n ? s / n : 0;
+  });
+  const cuesOn = await surfMean();
+  const cuesSwitch = page25b.locator('#dock-3d input[aria-label="Depth cues"]');
+  if (!(await cuesSwitch.isChecked())) fail('depth cues not on by default');
+  await cuesSwitch.uncheck({ force: true });
+  await page25b.waitForTimeout(400);
+  const cuesOff = await surfMean();
+  await cuesSwitch.check({ force: true });
+  await page25b.waitForTimeout(400);
+  const cuesBack = await surfMean();
+  if (!(cuesOff > cuesOn * 1.02)) fail(`depth cues off should brighten the surface: on ${cuesOn.toFixed(1)}, off ${cuesOff.toFixed(1)}`);
+  else if (cuesBack !== cuesOn) fail(`depth cues back on should restore the frame: ${cuesOn} vs ${cuesBack}`);
+  else console.log(`depth cues: surface mean ${cuesOn.toFixed(1)} on, ${cuesOff.toFixed(1)} off`);
+  await page25b.close();
+
   // ---- 42. G3 radiomics CSV import: hand-rolled pyradiomics-shaped CSV
   // lands tagged rows in the measurement table (offline features shown,
   // never computed in-viewer — same provenance contract as leg 29b).
