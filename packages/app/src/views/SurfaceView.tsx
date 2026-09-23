@@ -193,7 +193,8 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
         if (ro) ro.textContent = `VR ${r.w}×${r.h} · ${(ms / 1000).toFixed(1)}s${passes}`;
         const zchip = document.getElementById('zoom3d');
         if (zchip) zchip.textContent = `${Math.round(session.zoom3d * 100)}%`;
-        setAmbientStatus(`VR ${r.w}×${r.h} · ${(ms / 1000).toFixed(1)}s${passes} via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
+        const by = extractor.vrWorkers > 1 ? `${extractor.vrWorkers} workers` : extractor.usedWorker ? 'worker' : 'main thread';
+        setAmbientStatus(`VR ${r.w}×${r.h} · ${(ms / 1000).toFixed(1)}s${passes} via ${by} · ${u.series}`);
       }
     } catch (e) {
       if (mine !== vrToken.current) return;
@@ -528,7 +529,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
           <Seg<Render3D>
             id="renderseg" dataKey="r"
             ariaLabel="Render mode" value={ui.render3d}
-            onChange={(v) => { setUi({ render3d: v }); session.zoom3d = 1; bump(); }}
+            onChange={(v) => { setUi({ render3d: v }); session.zoom3d = 1; if (v === 'surface') extractor?.dropVolumes(); bump(); }}
             options={[{ value: 'surface', label: 'Surface' }, { value: 'volume', label: 'Volume' }]}
           />
         </div>

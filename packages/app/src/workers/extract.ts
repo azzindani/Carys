@@ -1,5 +1,8 @@
 // Mesh-extraction + volume-rendering worker, bundled by Vite.
 // Transfer protocol: field buffer in, mesh/RGBA buffers out, zero copies.
+// A volume render names its field by `key` and sends the buffer only when
+// this worker does not hold that key yet (F9): a refinement's passes and a
+// pool's shares reuse one copy, and its brick ranges (render-cpu/vr.ts).
 import { extractBoundary, renderVolume } from '@carys/render-cpu';
 import { smoothMesh, smoothSurface } from '@carys/render-cpu';
 import type { TF } from '@carys/render-cpu';
@@ -27,9 +30,14 @@ interface MeshRequest {
 interface VolumeRequest {
   id: number;
   method: 'volume';
+  /** the field's identity on the main thread */
+  key: number;
   dims: [number, number, number];
   dtype: DType;
-  buffer: ArrayBuffer;
+  /** absent when this worker already holds `key` */
+  buffer?: ArrayBuffer;
+  /** this worker's share of the rows */
+  rows?: { from: number; every: number };
   w: number;
   h: number;
   angleY: number;
@@ -45,7 +53,14 @@ interface VolumeRequest {
   jitter?: { pass: number; of: number };
 }
 
-type Request = MeshRequest | VolumeRequest;
+/** Frees the held volume (the 3D view left volume mode). */
+interface DropRequest {
+  method: 'drop';
+}
+
+type Request = MeshRequest | VolumeRequest | DropRequest;
+
+let held: { key: number; field: Float64Array } | null = null;
 
 function toMask(data: Float64Array, threshold: number): Uint8Array {
   const mask = new Uint8Array(data.length);
@@ -55,21 +70,24 @@ function toMask(data: Float64Array, threshold: number): Uint8Array {
 
 onmessage = (e: MessageEvent<Request>) => {
   const req = e.data;
+  if (req.method === 'drop') { held = null; return; }
   try {
-    const field = new (CTORS[req.dtype] ?? Float64Array)(req.buffer) as Float64Array;
     if (req.method === 'volume') {
+      if (req.buffer) held = { key: req.key, field: new (CTORS[req.dtype] ?? Float64Array)(req.buffer) as Float64Array };
+      else if (held?.key !== req.key) throw new Error(`vr-volume-missing: key ${req.key}`);
       const { rgba, w, h, ms } = renderVolume(
-        { dims: req.dims, data: field },
+        { dims: req.dims, data: held!.field },
         {
           width: req.w, height: req.h, angleY: req.angleY, tiltX: req.tiltX,
           zoom: req.zoom, tf: req.tf, step: req.step, shade: req.shade, density: req.density,
-          bounds: req.bounds, spacing: req.spacing, alphaStep: req.alphaStep, jitter: req.jitter,
+          bounds: req.bounds, spacing: req.spacing, alphaStep: req.alphaStep, jitter: req.jitter, rows: req.rows,
         },
       );
       const buf = rgba.buffer as ArrayBuffer;
       postMessage({ id: req.id, ok: true, kind: 'volume', rgba: buf, w, h, ms }, [buf]);
       return;
     }
+    const field = new (CTORS[req.dtype] ?? Float64Array)(req.buffer) as Float64Array;
     const [nx, ny, nz] = req.dims;
     // A mask arrives as bytes (extractor.ts). smoothSurface picks the path:
     // thick slices interpolated, else a mask relaxed in its cells, an image
@@ -89,6 +107,8 @@ onmessage = (e: MessageEvent<Request>) => {
       [positions, normals, indices],
     );
   } catch (err) {
-    postMessage({ id: req.id, ok: false, error: String((err as Error)?.message ?? err) });
+    // the kind routes the failure to the right caller (a volume error used
+    // to be read as a mesh reply and its render never settled)
+    postMessage({ id: req.id, ok: false, kind: req.method === 'volume' ? 'volume' : 'mesh', error: String((err as Error)?.message ?? err) });
   }
 };
