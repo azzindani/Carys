@@ -40,7 +40,7 @@ const MIN_VOLUME = 1e-3;
 const MAX_STEP = 1;
 
 /** Area-weighted unit vertex normals. */
-function vertexNormals(P: ArrayLike<number>, I: ArrayLike<number>): Float64Array {
+export function vertexNormals(P: ArrayLike<number>, I: ArrayLike<number>): Float64Array {
   const n = new Float64Array(P.length);
   for (let t = 0; t < I.length; t += 3) {
     const a = I[t]! * 3, b = I[t + 1]! * 3, d = I[t + 2]! * 3;
@@ -114,6 +114,28 @@ function volumes(P: ArrayLike<number>, I: ArrayLike<number>, comp: Int32Array, n
 }
 
 /**
+ * Vertex neighbours as CSR (start/adj) from the triangle edges. Each
+ * interior edge borders two triangles, so every neighbour is listed twice:
+ * equal weights, and no dedupe pass.
+ */
+export function meshNeighbours(I: ArrayLike<number>, nv: number): { start: Uint32Array; adj: Uint32Array } {
+  const deg = new Uint32Array(nv);
+  for (let t = 0; t < I.length; t++) deg[I[t]!]! += 2;
+  const start = new Uint32Array(nv + 1);
+  for (let i = 0; i < nv; i++) start[i + 1] = start[i]! + deg[i]!;
+  const adj = new Uint32Array(start[nv]!);
+  const fill = start.slice(0, nv);
+  for (let t = 0; t < I.length; t += 3) {
+    for (let e = 0; e < 3; e++) {
+      const a = I[t + e]!, b = I[t + ((e + 1) % 3)]!;
+      adj[fill[a]!++] = b;
+      adj[fill[b]!++] = a;
+    }
+  }
+  return { start, adj };
+}
+
+/**
  * Filter coefficients c₀…c_N: a Hamming-windowed sinc low-pass with its
  * cut-off nudged (Newton on σ) so the gain at the pass band edge is 1.
  */
@@ -155,21 +177,7 @@ export function smoothMesh(mesh: TriMesh, opts: SmoothOpts): TriMesh {
   const c = sincCoefficients(iterations, 10 ** (-4 * strength));
   const I = mesh.indices;
   const nv = mesh.positions.length / 3;
-  // Neighbours as CSR from the triangle edges. Each interior edge borders
-  // two triangles, so every neighbour is listed twice: equal weights.
-  const deg = new Uint32Array(nv);
-  for (let t = 0; t < I.length; t++) deg[I[t]!]! += 2;
-  const start = new Uint32Array(nv + 1);
-  for (let i = 0; i < nv; i++) start[i + 1] = start[i]! + deg[i]!;
-  const adj = new Uint32Array(start[nv]!);
-  const fill = start.slice(0, nv);
-  for (let t = 0; t < I.length; t += 3) {
-    for (let e = 0; e < 3; e++) {
-      const a = I[t + e]!, b = I[t + ((e + 1) % 3)]!;
-      adj[fill[a]!++] = b;
-      adj[fill[b]!++] = a;
-    }
-  }
+  const { start, adj } = meshNeighbours(I, nv);
   /** out = x + ½·(mean of neighbours − x) = (I − K/2)·x */
   const halfStep = (x: Float64Array, out: Float64Array): void => {
     for (let i = 0; i < nv; i++) {

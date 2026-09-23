@@ -215,7 +215,7 @@ export async function loadSeries(name: string, uploadedVol?: Volume): Promise<Sl
           if (getUi().series !== name) return;
           const key = session.meshKey(name, ui.src, ui.threshold, ui.method, ui.smooth3d);
           const dims = session.img.dims, ex = extractorRef;
-          const mesh = await session.meshOnce(key, () => ex.extract(field, dims, ui.threshold, ui.method === 'smooth', ui.smooth3d));
+          const mesh = await session.meshOnce(key, () => ex.extract(field, dims, ui.threshold, ui.method === 'smooth', ui.smooth3d, session.img!.spacing));
           if (v0 !== session.maskVer) return;
           session.cacheMesh(key, mesh);
         } catch { /* idle best-effort only */ }

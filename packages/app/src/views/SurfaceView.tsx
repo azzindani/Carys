@@ -323,7 +323,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       }
       await new Promise((r) => setTimeout(r, 10));
       const mine = ++session.paintToken;
-      const mesh = await session.meshOnce(key, () => extractor.extract(field, img.dims, u.threshold, u.method === 'smooth', u.smooth3d));
+      const mesh = await session.meshOnce(key, () => extractor.extract(field, img.dims, u.threshold, u.method === 'smooth', u.smooth3d, img.spacing));
       if (mine !== session.paintToken || getUi().series !== s0) return;
       session.mesh = mesh;
       session.cacheMesh(key, mesh);
@@ -348,7 +348,8 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     paintOrbit();
     setEngineFromExtractor();
     const mesh = session.mesh;
-    setAmbientStatus(`${mesh.tris.toLocaleString()} tris via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
+    // the last word on the surface, cached or fresh: thick slices say so
+    setAmbientStatus(`${mesh.tris.toLocaleString()} tris via ${extractor.usedWorker ? 'worker' : 'main thread'}${(mesh.sliceFactor ?? 1) > 1 ? ` · slices ×${mesh.sliceFactor} interpolated` : ''} · ${u.series}`);
     // No bump(): nothing reactive changed — bumping here would loop the ver effect.
   };
 

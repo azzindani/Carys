@@ -1033,6 +1033,40 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   between slices for masks, cubic along z for intensity, before extraction.
   Accept: the ellipsoid on a 1×1×5 mm grid meets the F2/F3 bounds; the
   covid chest CT surface shows no 5 mm terraces (eyeballed screenshot).
+  Landed (`render-cpu/thick-slices.ts`, `smoothSurface`): when the slice gap
+  is ≥ 1.5× the pixel, each slice becomes a 2D signed distance map in mm
+  (exact EDT; an image's pixels next to the edge seeded at their sub-pixel
+  crossings, a mask's at the midpoint), the maps are Catmull-Rom
+  interpolated onto near-isotropic slices (an empty slice = its neighbour
+  one gap further out), the zero surface is extracted, and it is relaxed
+  inside the scan's own cells. Cropped to the object and capped at 32 M
+  voxels (the factor drops to fit). Cubic interpolation of the intensity
+  itself was measured and dropped: 0.45 → 0.38 mm on the 5 mm sphere, the
+  staircase unchanged — a sharp edge 5 mm away cannot move a crossing.
+  Measured, one-grid path → thick path:
+
+  | phantom | image (F2 → F5) | mask (F3 → F5) |
+  |---|---|---|
+  | sphere r10, 1×1×5 mm | 0.45 mm · 14.9° → **0.15 mm · 6.2°** | 0.59 mm · 17.4° → 0.21 mm · 8.5° |
+  | ellipsoid 12×9×20, 1×1×5 mm | 0.23 mm · 8.6° → 0.12 mm · 4.1° | 0.28 mm · 9.8° → 0.20 mm · 7.4° |
+  | ellipsoid 12×9×7, 0.8×0.8×2.5 mm | 0.18 mm · 10.8° → 0.18 mm · 7.7° | 0.30 mm · 16.0° → 0.22 mm · 9.4° |
+
+  The covid lesions (0.94×0.94×5 mm) render without 5 mm terraces and the
+  status says `slices ×5 interpolated`; 1.9 s instead of 0.9 s for the
+  mask; the full-body bone surface is ×3, 1.6 M triangles, ~7 s in the
+  worker (was 1.3 s, 0.8 M). Blocked: the acceptance ellipsoid (12×9×7 mm
+  on 1×1×5 mm) measures 0.45 mm (image) and 0.46 mm / 12.9° (mask) against
+  bounds of 0.1 mm and 0.25 mm / 8°. Three slices cross that 14 mm-tall
+  shape, so each end lies somewhere in a 5 mm gap the samples do not
+  resolve, and the ends are ~15% of its surface: no interpolation of the
+  slices alone gets there (a trend extrapolation of the ends was tried and
+  made every case worse). The same guess shows on real data: a lesion seen
+  in one slice closes as a lens with a sharp rim. The max error on the
+  2.5 mm ellipsoid's ends is 1.3 mm (0.49 on the one-grid image path).
+  Unblock: a shape prior for object ends — e.g. a variational (thin-plate)
+  implicit surface through the slice constraints instead of per-column
+  interpolation — owner render lane; pinned by thick-slices.test.ts, which
+  fails when the bound is met so this note gets lifted.
 - OPEN — **F6. Per-pixel shading.** Interpolated normals, Blinn-Phong with a
   soft specular, 2× supersampled edges. Surface goldens re-frozen only after
   the PNGs are looked at.

@@ -68,7 +68,8 @@ frame the same physical box.
   rotating oblique MIP (`mip-rotate.ts`: same orbit/tilt as the raycaster).
 - 3D surfaces: surface nets (smooth, the default: vertices on the
   voxel-centre convention, projected onto each cell's trilinear surface; a
-  binary mask's relaxed inside its cells instead, `maskNets`) +
+  binary mask's relaxed inside its cells instead, `maskNets`; thick-sliced
+  grids interpolated between slices first, `thick-slices.ts`) +
   cuberille boundary faces (blocky, an option), orthographic + Lambert +
   z-buffer rasterizer → RGBA. The image and the mask keep separate
   thresholds (`session.thresholds`). Optional smoothing (`mesh-smooth.ts`):
