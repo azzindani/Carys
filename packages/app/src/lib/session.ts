@@ -39,6 +39,9 @@ class Session {
   zoom3d = 1;
   /** Crosshair voxel (synced tap): reference lines on the other MPR panes. */
   crosshair: [number, number, number] | null = null;
+  /** The curve clicked with the Curve tool (voxels) and the pane its first
+   *  point was on: the straightened view follows it (F16). */
+  curve: { plane: 'axial' | 'coronal' | 'sagittal'; pts: [number, number, number][] } | null = null;
   /** DICOM header summary for the open series (tag browser); null when the
    *  volume came from NIfTI/NRRD/Zarr or a PACS pull without file tags. */
   dcmMeta: DicomTagSummary | null = null;

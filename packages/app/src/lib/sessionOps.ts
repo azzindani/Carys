@@ -54,7 +54,7 @@ export async function loadSeries(name: string, uploadedVol?: Volume): Promise<Sl
     session.rtPlan = null; session.rtDose = null;
     session.vlGrid = null; session.encapsulatedDoc = null; session.wsiAnnotations = [];
     session.digestPins = {};
-    session.crosshair = null;
+    session.crosshair = null; session.curve = null;
     // a new volume invalidates any in-progress stroke (voxels are stale)
     session.pendingMeasure = [];
     session.pendingVoxel = [];

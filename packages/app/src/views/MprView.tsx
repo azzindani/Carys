@@ -14,7 +14,7 @@ import { SERIES } from '../lib/catalog';
 import { setUi, useUi } from '../lib/store';
 import { setStatus } from '../lib/status';
 import { Chip, DarkSelect, IconBtn, Seg, SliderRow, Switch, UndoGroup } from '../ui/primitives';
-import { IconErase, IconGrow, IconMeasure, IconPaint, IconSelect } from '../ui/Icons';
+import { IconCurve, IconErase, IconGrow, IconMeasure, IconPaint, IconSelect } from '../ui/Icons';
 import type { CompareMode, MeasureKind, MprLayout, Plane, ProjMode, Tool, UiState } from '../lib/types';
 
 /** Core 2D tools: tool switch, brush, undo, mask.
@@ -44,6 +44,7 @@ export function MprToolDock({ column = false }: { column?: boolean } = {}): JSX.
               { value: 'erase', label: toolIcon(IconErase, 'Erase'), title: 'Erase mask' },
               { value: 'grow', label: toolIcon(IconGrow, 'Grow'), title: 'Region grow' },
               { value: 'measure', label: toolIcon(IconMeasure, 'Measure'), title: 'Measure' },
+              { value: 'curve', label: toolIcon(IconCurve, 'Curve'), title: 'Click points along a vessel or spine: the straightened view follows them' },
             ]}
           />
         </div>
