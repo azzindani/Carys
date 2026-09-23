@@ -1,9 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { extractBoundary } from '../surface.js';
-import { surfaceNets } from '../surface-nets.js';
+import { maskNets, surfaceNets } from '../surface-nets.js';
 import {
-  ellipsoid, erf, sampleIntensity, sampleMask, scoreMesh, sphere, torus,
+  box, capsule, ellipsoid, erf, sampleIntensity, sampleMask, scoreMesh, sphere, torus,
   type Phantom, type SurfaceScore, type V3,
 } from './phantoms.js';
 
@@ -23,8 +23,8 @@ const CASES: Case[] = [
   { id: 'torus-iso', ph: torus([20, 20, 10], 11, 4), dims: [40, 40, 20], sp: [1, 1, 1] },
 ];
 
-/** The four paths the app has today (extract worker: threshold T, smooth
- *  iso T + 0.5; masks at 0 / 0.5). */
+/** The four paths the app runs (extract worker: threshold T, smooth iso
+ *  T + 0.5; a mask binarized at 0, its smooth surface relaxed by maskNets). */
 const THRESHOLD = 500;
 function paths(c: Case): Record<string, { positions: Float32Array; indices: Uint32Array }> {
   const [nx, ny, nz] = c.dims;
@@ -34,32 +34,32 @@ function paths(c: Case): Record<string, { positions: Float32Array; indices: Uint
     'blocky-image': extractBoundary(f, nx, ny, nz, THRESHOLD),
     'smooth-image': surfaceNets(f, nx, ny, nz, THRESHOLD + 0.5),
     'blocky-mask': extractBoundary(m, nx, ny, nz, 0),
-    'smooth-mask': surfaceNets(m, nx, ny, nz, 0.5),
+    'smooth-mask': maskNets(m, nx, ny, nz),
   };
 }
 
 type Row = [meanErr: number, maxErr: number, volErrPct: number, normalDevDeg: number];
 
 /** mm, mm, %, degrees. Blocky rows: the F1 baseline (2026-09-23). Smooth
- *  rows: after F2 — on the 1 mm sphere F1 measured 0.430 mm / −1.87% /
- *  5.4° for the image and 0.444 mm / −0.19% / 12.6° for the mask, half a
- *  voxel off the voxel-centre convention. */
+ *  image rows: after F2 (the 1 mm sphere was 0.430 mm / −1.87% / 5.4°, half
+ *  a voxel off the voxel-centre convention). Smooth mask rows: after F3
+ *  (plain nets on the mask measured 0.145 mm / −0.04% / 16.1° there). */
 const MEASURED: Record<string, Record<string, Row>> = {
   'sphere-iso': {
     'blocky-image': [0.342, 0.770, 0.84, 45.0], 'smooth-image': [0.026, 0.067, -0.92, 3.3],
-    'blocky-mask': [0.342, 0.770, 0.84, 45.0], 'smooth-mask': [0.145, 0.338, -0.04, 16.1],
+    'blocky-mask': [0.342, 0.770, 0.84, 45.0], 'smooth-mask': [0.076, 0.193, 0.65, 5.4],
   },
   'sphere-thick': {
     'blocky-image': [0.927, 2.500, -4.98, 43.3], 'smooth-image': [0.452, 1.409, -8.06, 14.9],
-    'blocky-mask': [0.927, 2.500, -4.98, 43.3], 'smooth-mask': [0.672, 2.500, -7.99, 23.5],
+    'blocky-mask': [0.927, 2.500, -4.98, 43.3], 'smooth-mask': [0.586, 2.499, -6.53, 17.4],
   },
   'ellipsoid-aniso': {
     'blocky-image': [0.619, 1.493, 1.05, 44.4], 'smooth-image': [0.180, 0.486, -1.47, 10.8],
-    'blocky-mask': [0.619, 1.493, 1.05, 44.4], 'smooth-mask': [0.396, 1.083, -0.81, 24.3],
+    'blocky-mask': [0.619, 1.493, 1.05, 44.4], 'smooth-mask': [0.299, 0.951, -0.13, 16.0],
   },
   'torus-iso': {
     'blocky-image': [0.320, 0.835, 2.24, 41.3], 'smooth-image': [0.025, 0.083, -1.84, 3.8],
-    'blocky-mask': [0.320, 0.835, 2.24, 41.3], 'smooth-mask': [0.138, 0.407, 0.53, 14.7],
+    'blocky-mask': [0.320, 0.835, 2.24, 41.3], 'smooth-mask': [0.082, 0.234, 1.65, 5.5],
   },
 };
 
@@ -148,6 +148,42 @@ describe('F1 accuracy harness', () => {
     for (const d of [-0.5, 0.5]) {
       const moved = { positions: mesh.positions.map((x) => x + d), indices: mesh.indices };
       assert.ok(scoreMesh(moved, c.sp, c.ph).meanErr > 0.3, `a ${d} voxel shift should be worse`);
+    }
+  });
+
+  it('F3: a binary mask surface is sub-voxel and terrace-free, and thin parts survive', () => {
+    // Acceptance: the 1 mm sphere mask within 0.25 voxel (mean) and under 8°
+    // of staircase; plain nets on the same mask measure 0.145 mm and 16.1°.
+    const c = CASES[0]!;
+    const s = scoreMesh(paths(c)['smooth-mask']!, c.sp, c.ph);
+    assert.ok(s.meanErr < 0.25, `mean error ${s.meanErr.toFixed(3)} mm`);
+    assert.ok(s.normalDevDeg < 8, `staircase ${s.normalDevDeg.toFixed(1)}°`);
+    // A one-voxel plate and a thin tube (a vessel) keep their volume: a
+    // blur-and-threshold smoother measured −88% on this plate.
+    const thin: [Phantom, V3][] = [
+      [box([16, 16, 16.5], [8, 8, 0.5]), [32, 32, 32]],
+      [capsule([6, 16.5, 16.5], [26, 16.5, 16.5], 1.2), [32, 32, 32]],
+    ];
+    for (const [ph, dims] of thin) {
+      const m = sampleMask(ph, dims, [1, 1, 1]);
+      const relaxed = scoreMesh(maskNets(m, ...dims), [1, 1, 1], ph);
+      const plain = scoreMesh(surfaceNets(m, ...dims, 0.5), [1, 1, 1], ph);
+      assert.ok(relaxed.meanErr < 0.1, `${ph.name}: mean error ${relaxed.meanErr.toFixed(3)} mm`);
+      assert.ok(relaxed.volErrPct > plain.volErrPct - 1, `${ph.name}: volume ${relaxed.volErrPct.toFixed(2)}% vs ${plain.volErrPct.toFixed(2)}% unrelaxed`);
+    }
+  });
+
+  it('F3: relaxation keeps every vertex inside its cell', () => {
+    const c = CASES[3]!;
+    const m = sampleMask(c.ph, c.dims, c.sp);
+    const plain = surfaceNets(m, ...c.dims, 0.5);
+    const relaxed = maskNets(m, ...c.dims);
+    assert.equal(relaxed.positions.length, plain.positions.length, 'same vertices');
+    assert.deepEqual(relaxed.indices.length, plain.indices.length, 'same triangles');
+    for (let i = 0; i < plain.positions.length; i++) {
+      // the unrelaxed vertex is in the cell; the relaxed one may not leave it
+      const cell = Math.min(Math.floor(plain.positions[i]! - 0.5), c.dims[i % 3]! - 2) + 0.5;
+      assert.ok(relaxed.positions[i]! >= cell - 1e-6 && relaxed.positions[i]! <= cell + 1 + 1e-6, `vertex ${Math.floor(i / 3)} left its cell`);
     }
   });
 });

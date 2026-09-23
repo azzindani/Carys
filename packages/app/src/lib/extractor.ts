@@ -1,4 +1,4 @@
-import { extractBoundary, renderVolume, surfaceNets } from '@carys/render-cpu';
+import { extractBoundary, maskNets, renderVolume, surfaceNets } from '@carys/render-cpu';
 import type { TF } from '@carys/render-cpu';
 import { toMask } from './loaders';
 import type { Mesh } from './types';
@@ -90,6 +90,8 @@ export function createExtractor() {
    * (Uint8). A mask used to be widened to Float64 first — 8 bytes a voxel,
    * 72 MB for a 240×240×155 brain, copied again to reach the worker; it now
    * travels at 1 byte a voxel, and the worker reads it by its own dtype.
+   * The dtype also picks the smooth surface: a mask's is relaxed inside its
+   * cells (maskNets, no terraces), an image's sits on the field itself.
    */
   async function extract(data: Float64Array | Uint8Array, dims: [number, number, number], t: number, smooth: boolean): Promise<Mesh> {
     const w = getWorker();
@@ -107,9 +109,11 @@ export function createExtractor() {
         workerDead = true;
       }
     }
-    const mesh = smooth
-      ? surfaceNets(data, dims[0], dims[1], dims[2], t + 0.5)
-      : extractBoundary(toMask(data, t), dims[0], dims[1], dims[2]);
+    const mesh = !smooth
+      ? extractBoundary(toMask(data, t), dims[0], dims[1], dims[2])
+      : data instanceof Uint8Array
+        ? maskNets(toMask(data, t), dims[0], dims[1], dims[2])
+        : surfaceNets(data, dims[0], dims[1], dims[2], t + 0.5);
     usedWorker = false;
     return { ...mesh, tris: mesh.indices.length / 3 };
   }

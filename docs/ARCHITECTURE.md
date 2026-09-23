@@ -67,7 +67,8 @@ frame the same physical box.
 - MIP: thick-slab axial/coronal/sagittal (`slab.ts`: mip/minip/mean) +
   rotating oblique MIP (`mip-rotate.ts`: same orbit/tilt as the raycaster).
 - 3D surfaces: surface nets (smooth, the default: vertices on the
-  voxel-centre convention, projected onto each cell's trilinear surface) +
+  voxel-centre convention, projected onto each cell's trilinear surface; a
+  binary mask's relaxed inside its cells instead, `maskNets`) +
   cuberille boundary faces (blocky, an option), orthographic + Lambert +
   z-buffer rasterizer → RGBA. The image and the mask keep separate
   thresholds (`session.thresholds`).

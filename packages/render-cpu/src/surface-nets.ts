@@ -16,6 +16,14 @@
 //
 // Memory is two cell slices of vertex ids, not a map over the grid: a
 // 512×512×58 mask no longer allocates per cell.
+//
+// Binary masks (F3) have no in-between values to place a vertex from, so
+// their surface terraces. maskNets relaxes it instead — constrained elastic
+// surface nets (Gibson 1998): each vertex moves toward its neighbours but
+// never leaves its cell — the cube between the inside and outside voxel
+// centres it separates — so thin parts keep their thickness instead of
+// melting away as they do under a blur. Taubin's λ/μ pair keeps convex
+// shapes from shrinking against the inner faces of their cells.
 import type { TriMesh } from './surface.js';
 
 /** Newton steps onto the trilinear surface: 3 converge to < 1e-4 voxel. */
@@ -28,14 +36,15 @@ const EDGES: [number, number][] = [
   [0, 4], [1, 5], [2, 6], [3, 7],
 ];
 
-export function surfaceNets(
-  field: ArrayLike<number>,
-  nx: number, ny: number, nz: number,
-  iso: number,
-): TriMesh {
+/** Vertices (voxel-centre coordinates), each vertex's cell, and the quads
+ *  as a, b, c, d, outward axis (±1..±3). */
+interface Nets { positions: number[]; cells: number[]; quads: number[] }
+
+function buildNets(field: ArrayLike<number>, nx: number, ny: number, nz: number, iso: number): Nets {
   const cx = nx - 1, cy = ny - 1;
   const sxy = nx * ny;
   const positions: number[] = [];
+  const cells: number[] = [];
   const quads: number[] = []; // a, b, c, d, then the outward axis (±1..±3)
   // vertex id per cell, for the current and previous z slice of cells
   const slice = cx * cy;
@@ -85,6 +94,7 @@ export function surfaceNets(
         const id = positions.length / 3;
         cur[y * cx + x] = id;
         positions.push(x + u + 0.5, y + v + 0.5, z + w + 0.5);
+        cells.push(x, y, z);
 
         // Quads for the three grid edges leaving this cell's low corner:
         // their other three cells have lower y or z, so they are placed.
@@ -108,6 +118,15 @@ export function surfaceNets(
     }
     const t = prev; prev = cur; cur = t;
   }
+  return { positions, cells, quads };
+}
+
+/** Wind, split and shade the quads into a triangle mesh. */
+function finishNets(
+  positions: ArrayLike<number>, quads: number[],
+  field: ArrayLike<number>, nx: number, ny: number, nz: number, iso: number,
+): TriMesh {
+  const sxy = nx * ny;
 
   // The field at a mesh position (voxel-centre coordinates), trilinear.
   const sample = (px: number, py: number, pz: number): number => {
@@ -159,4 +178,71 @@ export function surfaceNets(
     nn[i] = normals[i]! / l; nn[i + 1] = normals[i + 1]! / l; nn[i + 2] = normals[i + 2]! / l;
   }
   return { positions: Float32Array.from(P), normals: nn, indices };
+}
+
+export function surfaceNets(
+  field: ArrayLike<number>,
+  nx: number, ny: number, nz: number,
+  iso: number,
+): TriMesh {
+  const n = buildNets(field, nx, ny, nz, iso);
+  return finishNets(n.positions, n.quads, field, nx, ny, nz, iso);
+}
+
+export interface MaskNetsOpts {
+  /** Taubin rounds (a λ step and a μ step each) */
+  iterations?: number;
+  lambda?: number;
+  mu?: number;
+}
+
+/**
+ * The surface of a binary mask (values 0 / 1), relaxed inside its cells.
+ * Measured (test/accuracy.test.ts, F3): a 1 mm sphere mask from 0.15 mm and
+ * 16° of staircase to 0.07 mm and 5°, and a one-voxel plate keeps its
+ * thickness where a blur-and-threshold collapsed it.
+ */
+export function maskNets(
+  mask: ArrayLike<number>, nx: number, ny: number, nz: number, opts: MaskNetsOpts = {},
+): TriMesh {
+  const { iterations = 20, lambda = 0.5, mu = -0.53 } = opts;
+  const n = buildNets(mask, nx, ny, nz, 0.5);
+  const nv = n.positions.length / 3;
+  // Neighbours from the quad edges, as CSR. A closed surface lists every
+  // edge twice (once per quad), which weights all neighbours equally.
+  const deg = new Uint32Array(nv + 1);
+  const Q = n.quads;
+  for (let q = 0; q < Q.length; q += 5) for (let e = 0; e < 4; e++) { deg[Q[q + e]!]! += 2; }
+  const start = new Uint32Array(nv + 1);
+  for (let i = 0; i < nv; i++) start[i + 1] = start[i]! + deg[i]!;
+  const adj = new Uint32Array(start[nv]!);
+  const fill = start.slice(0, nv);
+  for (let q = 0; q < Q.length; q += 5) {
+    for (let e = 0; e < 4; e++) {
+      const a = Q[q + e]!, b = Q[q + ((e + 1) % 4)]!;
+      adj[fill[a]!++] = b;
+      adj[fill[b]!++] = a;
+    }
+  }
+  let P = Float64Array.from(n.positions);
+  let next = new Float64Array(P.length);
+  const C = n.cells;
+  // Uniform averaging and axis-aligned clamping both commute with scaling
+  // each axis, so relaxing in voxel units is relaxing in millimetres.
+  const step = (f: number): void => {
+    for (let i = 0; i < nv; i++) {
+      const s0 = start[i]!, s1 = start[i + 1]!;
+      for (let k = 0; k < 3; k++) {
+        const p = P[i * 3 + k]!;
+        if (s1 === s0) { next[i * 3 + k] = p; continue; }
+        let m = 0;
+        for (let j = s0; j < s1; j++) m += P[adj[j]! * 3 + k]!;
+        const lo = C[i * 3 + k]! + 0.5;
+        next[i * 3 + k] = Math.min(lo + 1, Math.max(lo, p + f * (m / (s1 - s0) - p)));
+      }
+    }
+    const t = P; P = next; next = t;
+  };
+  for (let it = 0; it < iterations; it++) { step(lambda); step(mu); }
+  return finishNets(P, n.quads, mask, nx, ny, nz, 0.5);
 }
