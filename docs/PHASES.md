@@ -1180,9 +1180,30 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   volume mode now ends it (a late pass could paint over the surface).
   Wire leg 41c: passes accumulate, an orbit restarts at pass 1, the
   surface is not overwritten.
-- OPEN — **F11. Level of detail.** Quadric-error decimation into an LOD
+- DONE — **F11. Level of detail.** Quadric-error decimation into an LOD
   chain; the coarse level draws while orbiting, the full one when still.
   Accept: decimated mesh within 0.2 mm of the full one on the phantoms.
+  `render-cpu/decimate.ts`: Garland–Heckbert edge collapse, cheapest
+  first, stopping where a vertex would stray more than a bound (mm) from
+  the original planes it stands for; collapses that pinch (link
+  condition), flip a face, or join two border vertices across the inside
+  are refused; borders carry heavy quadrics; vertices on non-manifold
+  edges, of needle faces (area under 0.02 × longest edge², extraction
+  noise on 5 mm slices) and of pieces under 100 triangles stay put.
+  `lodChain` snapshots one run at each quarter of the full count. Phantoms
+  (sphere, ellipsoid on 0.8×0.8×2.5 mm, torus, box, capsule; image and
+  mask surfaces), 16× asked at the app's bound of 0.5: kept 5.5–16× fewer
+  triangles, worst distance either way 0.149 mm (torus), under 0.2 on
+  all ten (`decimate.test.ts`). Real surfaces: skull CT 117,602 → 66,831
+  tris in 1.2 s (the bound stops it: noisy trabecular bone); chest CT bone
+  1,463,710 → 424,378 in 16 s; on a slab of it 28 of 365k vertices are over
+  0.3 mm, none over 1 mm (worst 0.65 mm; before the needle and small-piece
+  locks, whole specks moved over 3 mm). The app decimates on its own
+  worker after extraction (surfaces over 100k tris), attaches the level to
+  the cached mesh and draws it on 1× orbit frames; the readout says
+  `117,602 tris (orbit 66,835)`. Orbit frames at 560² with depth cues:
+  skull 90 → 71 ms, chest bone 158 → 90 ms — the rasterizer is mostly
+  fill-bound, so fewer triangles buy less than their count suggests.
 - OPEN — **F12. 3D → 2D picking.** Click the surface or the volume render
   and the panes jump to that point. Accept: e2e on a real sample lands the
   crosshair inside the clicked structure.

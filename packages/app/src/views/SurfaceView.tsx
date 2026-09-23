@@ -232,7 +232,8 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       zoom: session.zoom3d, center: mc0 ? toMm(mc0, sp) : undefined,
     };
     if (session.mesh) {
-      const out = renderMesh(physicalMesh(session.mesh, sp), box, {
+      // orbit frames draw the coarse level when there is one (F11)
+      const out = renderMesh(physicalMesh(ss === 1 && session.mesh.lod ? session.mesh.lod : session.mesh, sp), box, {
         ...view, color: SERIES[getUi().series]?.color ?? [225, 215, 200], supersample: ss,
         ao: cuesRef.current, outline: cuesRef.current,
       });
@@ -249,7 +250,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     if (z) z.textContent = `${Math.round(session.zoom3d * 100)}%`;
     const ro = document.getElementById('ro-3d');
     if (ro) {
-      const tris = session.mesh?.tris ? `${session.mesh.tris.toLocaleString()} tris · ` : '';
+      const tris = session.mesh?.tris ? `${session.mesh.tris.toLocaleString()} tris${session.mesh.lod ? ` (orbit ${session.mesh.lod.tris.toLocaleString()})` : ''} · ` : '';
       const n = session.fibers?.count ?? 0;
       const fib = n > 0 ? `${n.toLocaleString()} tract${n === 1 ? '' : 's'} · ` : '';
       const scal = session.fibers?.scalarName ? `scal ${session.fibers.scalarName} · ` : '';
@@ -309,6 +310,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       if (mine !== session.paintToken || getUi().series !== s0) return;
       session.mesh = mesh;
       session.cacheMesh(key, mesh);
+      if (u.method === 'smooth') void extractor.lod(mesh, img.spacing ?? [1, 1, 1]).then((l) => { if (l) { mesh.lod = l; if (session.mesh === mesh) paintOrbit(); } });
       setAmbientStatus(`${mesh.tris.toLocaleString()} tris via ${extractor.usedWorker ? 'worker' : 'main thread'} · ${u.series}`);
     }
     if (!session.mesh) return;

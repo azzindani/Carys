@@ -2841,6 +2841,16 @@ try {
   await page25b.waitForTimeout(3000);
   const after = await ro3d();
   if (!/tris/.test(after ?? '')) fail(`a volume pass painted over the surface: ${after}`);
+
+  // ---- 41d. F11 level of detail: a surface over the orbit budget gets a
+  // decimated level for orbit frames (the skull CT's bone, ~118k tris).
+  await page25b.click('#openpal'); await page25b.fill('#palinput', 'skull-ct-bone');
+  await page25b.waitForSelector('#pallist li'); await page25b.click('#pallist li');
+  await page25b.waitForFunction(() => /\(orbit [\d,]+\)/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 180000 });
+  const lodText = await ro3d();
+  const [full, orbit] = (lodText?.match(/([\d,]+) tris \(orbit ([\d,]+)\)/) ?? []).slice(1).map((n) => Number(n.replace(/,/g, '')));
+  if (!(full > 100000 && orbit > 0 && orbit * 3 <= full * 2)) fail(`orbit level: ${lodText}`);
+  else console.log(`level of detail: ${lodText}`);
   await page25b.close();
 
   // ---- 42. G3 radiomics CSV import: hand-rolled pyradiomics-shaped CSV

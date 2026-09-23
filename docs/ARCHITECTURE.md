@@ -79,6 +79,9 @@ frame the same physical box.
   render. The image and the mask keep separate
   thresholds (`session.thresholds`). Optional smoothing (`mesh-smooth.ts`):
   windowed-sinc filtering, then each closed piece restored to its volume.
+  Level of detail (`decimate.ts`): quadric-error decimation bounded in mm;
+  a surface over 100k triangles gets an orbit level on its own worker
+  (`lib/extractor.ts` `lod`), drawn on 1× orbit frames.
 - Surface accuracy is measured, not eyeballed: analytic phantoms (sphere,
   ellipsoid, torus; `test/phantoms.ts`) sampled on isotropic and thick-slice
   grids score every extraction path in mm — vertex distance to the true
