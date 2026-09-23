@@ -915,3 +915,64 @@ after. What the images showed, and what changed:
   pane; crosshairs were anti-aliased smears. Tests that asserted since-edited
   text or waited 1.5 s for the details drawer (a slow mount read as "no
   drawer") were corrected against the app, not the other way round.
+
+## 3D fidelity (queued 2026-09-23)
+
+The 3D view looked built from blocks, for four reasons found in the code:
+the default surface method was cuberille faces (`method: 'blocky'`), masks
+are binary so even surface nets terrace, thick slices make 5 mm steps, and
+the rasterizer lights each triangle flat. This queue fixes that on the CPU,
+one item per delivery, in order. Each item lands with its tests and docs,
+passes `npm run ci` and the e2e suites it touches, and is pushed on
+`claude/3d-fidelity` with CI green before the next starts. Accuracy is
+measured, not eyeballed: analytic phantoms have known surfaces and volumes.
+
+- OPEN — **F1. Accuracy harness.** Analytic phantoms (sphere, ellipsoid,
+  torus) sampled on isotropic and anisotropic grids (e.g. 1×1×5 mm), as
+  intensity fields and as binary masks. Metrics: mean and max distance of
+  mesh vertices to the true surface in mm, mesh volume (divergence theorem)
+  vs the analytic volume, and a staircase score (normal deviation from the
+  true normal). Baseline numbers for today's blocky and smooth paths are
+  recorded in the test so every later item has to beat them.
+- OPEN — **F2. Sub-voxel surfaces by default.** Image-source extraction at
+  the threshold on the intensity field (interpolated crossings), `smooth`
+  the default method, blocky kept as an option. Accept: sphere at 1 mm has
+  mean error < 0.1 mm and volume within 1%.
+- OPEN — **F3. Anti-aliased masks.** Masks become a signed distance field
+  (or a narrow smoothing) before extraction at the midpoint. Accept: a
+  binary sphere mask's mesh is within 0.25 voxel of the true surface, with
+  no terraces by the staircase score.
+- OPEN — **F4. Volume-preserving mesh smoothing.** Taubin λ/μ or
+  windowed-sinc, a strength control in the 3D dock. Accept: volume change
+  < 1% on the phantoms, staircase score better than F3 alone.
+- OPEN — **F5. Thick slices.** Shape-based (distance-field) interpolation
+  between slices for masks, cubic along z for intensity, before extraction.
+  Accept: the ellipsoid on a 1×1×5 mm grid meets the F2/F3 bounds; the
+  covid chest CT surface shows no 5 mm terraces (eyeballed screenshot).
+- OPEN — **F6. Per-pixel shading.** Interpolated normals, Blinn-Phong with a
+  soft specular, 2× supersampled edges. Surface goldens re-frozen only after
+  the PNGs are looked at.
+- OPEN — **F7. Ambient occlusion and outlines.** Screen-space AO from the
+  z-buffer and silhouette edges, as a post-pass. Accept: a deterministic
+  golden, and a crevice phantom darker than its rim.
+- OPEN — **F8. Volume render quality.** Jittered ray starts refined while
+  the view is still (no wood-grain rings), opacity corrected for step size,
+  smoother sampling. Accept: a slab phantom rendered at two step sizes has
+  the same opacity; unit spacing stays bit-identical when refinement is off.
+- OPEN — **F9. Volume render speed.** Empty-space skipping (min/max bricks)
+  and the image split across workers. Accept: identical pixels to the
+  unskipped render; full quality on the chest CT at least 2× faster.
+- OPEN — **F10. Cinematic lighting, progressive.** Soft shadows and ambient
+  light accumulating while idle, cancelled by any interaction.
+- OPEN — **F11. Level of detail.** Quadric-error decimation into an LOD
+  chain; the coarse level draws while orbiting, the full one when still.
+  Accept: decimated mesh within 0.2 mm of the full one on the phantoms.
+- OPEN — **F12. 3D → 2D picking.** Click the surface or the volume render
+  and the panes jump to that point. Accept: e2e on a real sample lands the
+  crosshair inside the clicked structure.
+- OPEN — **F13. Clip planes and crop box** for both 3D modes.
+- OPEN — **F14. Segmentation outlines** in the 2D panes, a colour per label.
+- OPEN — **F15. Slice interpolation for editing.** Paint every few slices,
+  fill between with the F5 distance-field interpolation, one undo step.
+- OPEN — **F16. Curved reformat, usable.** A centreline tool on the panes,
+  a straightened view from `cpr.ts`, e2e on a real vessel or spine series.
