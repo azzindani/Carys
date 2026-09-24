@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ATLAS_ATTRIBUTION } from '@carys/volume-core';
-import { BODY_SYSTEMS, unpackBody } from '../body-pack.js';
+import { BODY_SYSTEMS, unpackBody, validateBodyIndex } from '../body-pack.js';
 
 // H1 (docs/PHASES.md): the committed whole-body digest, as built by
 // scripts/build-body-atlas.mjs from BodyParts3D. The build measures each
@@ -43,6 +43,16 @@ describe('the whole-body digest (H1)', () => {
       }
     }
     assert.equal(seen.size, index.elements);
+  });
+
+  it('lists every part in its index, in each file\'s order (H2 finds before it fetches)', () => {
+    const rows = validateBodyIndex(index).parts;
+    for (const { system, pack } of packs) {
+      assert.deepEqual(pack.parts.map((p) => [p.element, p.fma, p.name, p.system]), rows.filter((r) => r[3] === system), system);
+      assert.deepEqual([pack.min, pack.max], [validateBodyIndex(index).min, validateBodyIndex(index).max]);
+    }
+    // the liver is an organ, whatever "hepatovenous" says (H2 found it under the vessels)
+    for (const r of rows.filter((x) => /liver|hepatovenous segment/.test(x[2]))) assert.equal(r[3], 'digestive', r[2]);
   });
 
   it('fits the budget: 2 M triangles, 25 MB', () => {

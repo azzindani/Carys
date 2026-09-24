@@ -162,3 +162,63 @@ export function unpackBody(src: ArrayBuffer | Uint8Array): BodyPack {
   });
   return { min, max, parts };
 }
+
+/** One system file in the digest's index. */
+export interface BodySystemFile {
+  file: string;
+  parts: number;
+  tris: number;
+  sourceTris: number;
+  bytes: number;
+  worstErrorMm: number;
+}
+
+/** A part without its mesh: element, FMA concept, name, system. */
+export type BodyIndexRow = [element: string, fma: string, name: string, system: BodySystem];
+
+/** The digest's index.json ("carys-body-index/1"): its systems' files and
+ *  every part, so a structure is found before its file is fetched. */
+export interface BodyIndex {
+  pin: string;
+  attribution: string;
+  /** the grid every system file is quantized on (BodyParts3D frame, mm) */
+  min: V3;
+  max: V3;
+  systems: Partial<Record<BodySystem, BodySystemFile>>;
+  tris: number;
+  bytes: number;
+  worstErrorMm: number;
+  /** in element order; each system file holds its rows in this order */
+  parts: BodyIndexRow[];
+}
+
+/** Check a parsed index.json. Throws `body-index: …` on anything off:
+ *  a count that disagrees, an unknown system, a repeated element. */
+export function validateBodyIndex(raw: unknown): BodyIndex {
+  const bad = (why: string): RangeError => new RangeError(`body-index: ${why}`);
+  if (!raw || typeof raw !== 'object') throw bad('not an object');
+  const r = raw as Record<string, unknown>;
+  if (r['format'] !== 'carys-body-index/1') throw bad(`format ${String(r['format'])}`);
+  for (const k of ['pin', 'attribution'] as const) if (typeof r[k] !== 'string' || !r[k]) throw bad(`${k} missing`);
+  const v3 = (x: unknown): x is V3 => Array.isArray(x) && x.length === 3 && x.every((n) => Number.isFinite(n));
+  if (!v3(r['min']) || !v3(r['max']) || ![0, 1, 2].every((k) => (r['min'] as V3)[k]! < (r['max'] as V3)[k]!)) throw bad('bounds');
+  const systems = r['systems'] as Record<string, BodySystemFile> | undefined;
+  if (!systems || typeof systems !== 'object') throw bad('systems missing');
+  const rows = r['parts'];
+  if (!Array.isArray(rows) || rows.length !== r['elements']) throw bad(`${Array.isArray(rows) ? rows.length : 'no'} part rows for ${String(r['elements'])} elements`);
+  const count = new Map<string, number>(), seen = new Set<string>();
+  for (const row of rows as unknown[]) {
+    if (!Array.isArray(row) || row.length !== 4 || !row.every((x) => typeof x === 'string' && x)) throw bad(`row ${JSON.stringify(row)}`);
+    const [element, , , system] = row as string[];
+    if (seen.has(element!)) throw bad(`element ${element} twice`);
+    seen.add(element!);
+    if (!systems[system!]) throw bad(`${element} in system ${system}, which has no file`);
+    count.set(system!, (count.get(system!) ?? 0) + 1);
+  }
+  for (const [s, f] of Object.entries(systems)) {
+    if (!(BODY_SYSTEMS as readonly string[]).includes(s)) throw bad(`unknown system ${s}`);
+    if (f.file !== `${s}.cbdy` || !Number.isInteger(f.parts) || !(f.tris > 0)) throw bad(`system ${s} file entry`);
+    if (count.get(s) !== f.parts) throw bad(`system ${s}: ${count.get(s) ?? 0} rows, file has ${f.parts} parts`);
+  }
+  return r as unknown as BodyIndex;
+}

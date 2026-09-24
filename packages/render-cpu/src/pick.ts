@@ -16,6 +16,8 @@ export interface PickHit {
   point: Vec3;
   /** unit direction into the screen, voxel axes */
   dir: Vec3;
+  /** a surface pick's triangle (its first index / 3) */
+  tri?: number;
 }
 
 export interface SurfacePickView {
@@ -54,7 +56,7 @@ export function pickSurface(mesh: TriMesh, dims: Vec3, view: SurfacePickView, x:
     Z[v] = py * sx + z1 * cx;
     NZ[v] = N[v * 3 + 1]! * sx + (-N[v * 3]! * sy + N[v * 3 + 2]! * cy) * cx;
   }
-  let best = -Infinity, hit: Vec3 | null = null;
+  let best = -Infinity, hit: Vec3 | null = null, tri = -1;
   for (let t = 0; t < I.length; t += 3) {
     const a = I[t]!, b = I[t + 1]!, c = I[t + 2]!;
     if (!view.clip && NZ[a]! <= 0 && NZ[b]! <= 0 && NZ[c]! <= 0) continue;
@@ -72,9 +74,10 @@ export function pickSurface(mesh: TriMesh, dims: Vec3, view: SurfacePickView, x:
     if (view.clip && !inClip(view.clip, p[0], p[1], p[2])) continue;
     best = z;
     hit = p;
+    tri = t / 3;
   }
   // into the screen: minus the view's third axis, in the mesh's axes
-  return hit ? { point: hit, dir: [sy * cx, -sx, -cy * cx] } : null;
+  return hit ? { point: hit, dir: [sy * cx, -sx, -cy * cx], tri } : null;
 }
 
 /**

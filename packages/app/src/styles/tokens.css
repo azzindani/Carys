@@ -114,6 +114,8 @@
   --tap: 26px;
   /* the 3D-tool numeric field: label inside, fill bar, value right-aligned */
   --field-h: 22px;
+  /* a portrait render (the whole-body atlas) keeps its head and feet on screen */
+  --tall-canvas-max-h: 72vh;
 
   /* elevation: restrained. The old sheet stacked 50px blurs on every
      surface, which reads as mud. Two levels, both tight. */

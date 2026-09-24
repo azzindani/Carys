@@ -102,6 +102,12 @@ export function searchTerms(query: string, limit = 25): OntologyTerm[] {
   return hits;
 }
 
+/** Every concept with this element file among its PART-OF members, in
+ *  FMA-id order. */
+export function termsWithMember(element: string): OntologyTerm[] {
+  return Object.keys(TABLE).sort().filter((fma) => TABLE[fma]![2].includes(element)).map((fma) => rowToTerm(fma, TABLE[fma]!));
+}
+
 /** Renderable concepts only (non-empty PART-OF members). Count, not rows. */
 export function renderableCount(): number {
   return Object.values(TABLE).filter((r) => r[2].length > 0).length;

@@ -1,43 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 import {
   ATLAS_ATTRIBUTION, ATLAS_BOUNDS, ATLAS_DIGEST_ID, ATLAS_DIGEST_PIN,
   ATLAS_STRUCTURES, atlasById, BRAIN_ATTRIBUTION, BRAIN_DIGEST_ID, BRAIN_DIGEST_PIN,
-  glossaryCard, installBrainTable, installTermTable, installTreeTable,
-  isaAncestors, isaChildren, partofChildren, searchBrainLabels, searchTerms, structureTerm,
-  termByFma, treeName, validateBrainTable,
-  TERMS_DIGEST_ID, TERMS_DIGEST_PIN, validateTermTable, validateTreeTable,
+  glossaryCard, isaAncestors, isaChildren, partofChildren, searchBrainLabels, searchTerms, structureTerm,
+  termByFma, treeName, TERMS_DIGEST_ID, TERMS_DIGEST_PIN,
 } from '@carys/volume-core';
 import { EDUCATION_BADGE, validateKnowledgeEntry, type KnowledgeEntry } from '@carys/study';
 import { fitMeshToBox, parseMz3, renderMesh } from '@carys/render-cpu';
+import { ensureTerms } from '../lib/atlasTerms';
 import { session } from '../lib/session';
 import { setAmbientStatus, setStatus } from '../lib/status';
 import { toast } from '../lib/toasts';
 import { bump } from '../lib/version';
-import { Chip, DarkSelect, IconBtn, SliderRow } from '../ui/primitives';
+import { Chip, DarkSelect, IconBtn, Seg, SliderRow } from '../ui/primitives';
+import { BodyAtlasView } from './BodyAtlasView';
 
 const W = 560, H = 560;
 /** Bone tint on near-black (quarantine: never the measurement grayscale). */
 const BONE: [number, number, number] = [224, 213, 184];
 const BG: [number, number, number] = [16, 16, 17];
-
-// Term table install (module scope, once): labels resolve through K1.
-// fetch failures stay loud on the status — the picker still works off the
-// hand-authored A1 entries via the structureTerm fallback.
-let termsReady = false;
-async function ensureTerms(): Promise<void> {
-  if (termsReady) return;
-  const r = await fetch('/digests/bodyparts3d-terms/terms.json');
-  if (!r.ok) throw new Error(`terms fetch failed (${r.status})`);
-  installTermTable(validateTermTable(await r.json()));
-  const tr = await fetch('/digests/bodyparts3d-terms/tree.json');
-  if (!tr.ok) throw new Error(`tree fetch failed (${tr.status})`);
-  installTreeTable(validateTreeTable(await tr.json()));
-  const br = await fetch('/digests/openanatomy-brain/labels.json');
-  if (!br.ok) throw new Error(`brain labels fetch failed (${br.status})`);
-  installBrainTable(validateBrainTable(await br.json()));
-  termsReady = true;
-}
 
 // Load + validate state per structure id (module-ephemeral, like cine
 // playing flags: the mesh itself is the cache, keyed by structure id).
@@ -143,9 +125,26 @@ function GlossaryCard({ fma, onClose }: { fma: string; onClose: () => void }): J
   );
 }
 
+type AtlasMode = 'bones' | 'body';
+
+/** The Atlas route: the bone atlas or the whole body (H2), one switch. */
+export function AtlasView(): JSX.Element {
+  const [mode, setMode] = useState<AtlasMode>('bones');
+  const modeSwitch = (
+    <div className="grp">
+      <Seg<AtlasMode> id="atlas-mode" dataKey="atlas-mode" ariaLabel="Atlas mode" value={mode} onChange={setMode}
+        options={[
+          { value: 'bones', label: 'Bones', title: '47 bone structures with the FMA term tree' },
+          { value: 'body', label: 'Body', title: 'The whole body by system: 2,234 BodyParts3D structures' },
+        ]} />
+    </div>
+  );
+  return mode === 'body' ? <BodyAtlasView modeSwitch={modeSwitch} /> : <BonesAtlasView modeSwitch={modeSwitch} />;
+}
+
 /** A1 anatomy overlay: BodyParts3D long-bone digest on the CPU rasterizer.
  *  Education pixels only (badged) — measurement canvases never import this. */
-export function AtlasView(): JSX.Element {
+function BonesAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Element {
   const [sel, setSel] = useState('femur-r');
   const [orbit, setOrbit] = useState(0.7);
   const [tilt, setTilt] = useState(0.3);
@@ -298,6 +297,7 @@ export function AtlasView(): JSX.Element {
         <p>BodyParts3D skeleton (47 structures) · FMA terms · {EDUCATION_BADGE}</p>
       </div>
       <div className="dock" id="dock-atlas">
+        {modeSwitch}
         <div className="grp">
           <span className="lbl">Bone</span>
           <DarkSelect value={sel} title="Atlas structure (BodyParts3D PART-OF skeleton)" ariaLabel="Atlas structure"

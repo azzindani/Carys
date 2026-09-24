@@ -29,3 +29,4 @@ export * from './slice-fill.js';
 export * from './mesh-distance.js';
 export * from './body-pack.js';
 export * from './thick-slices.js';
+export * from './body-scene.js';

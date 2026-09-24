@@ -1381,7 +1381,7 @@ order, each with its tests, docs and measured numbers, pushed on
   moved out of the test helpers), trying looser bounds first.
   Measured: 6.44 M source triangles → **1,943,916** (skeletal 373 parts,
   346,960 · muscular 383, 869,402 · nervous 147, 123,078 · cardiovascular
-  1,081, 386,049 · respiratory 105 · digestive 86 · sensory 31 ·
+  1,057, 359,430 · digestive 110, 103,104 · respiratory 105 · sensory 31 ·
   reproductive 12 · urinary 6 · integumentary 4 · lymphatic 3 · endocrine
   3), **22.39 MB**, worst part **0.500 mm** from its source (per system
   0.29–0.50). Every one of the 2,234 elements present once; the format
@@ -1391,14 +1391,67 @@ order, each with its tests, docs and measured numbers, pushed on
   draws in 418 ms at 360×900 on one CPU thread (skeleton 69 ms). The
   licence page grants CC BY 4.0; the OBJ files still carry the older CC
   BY-SA 2.1 JP header, recorded in the DIGESTS.json row's licence note.
-  Build: 6.5 min, the same bytes every run.
-- OPEN — **H2. The body by system in the Atlas.** The whole body in the
+  Build: 6.5 min, the same bytes every run. (Rebuilt in H2: the liver's
+  24 parts — its Couinaud "hepatovenous" segments, the caudate lobe, the
+  biliary tree — had landed with the vessels; each element is now named by
+  its most specific concept, "body of sternum" not "body of organ"; the
+  index lists every part.)
+- DONE — **H2. The body by system in the Atlas.** The whole body in the
   Atlas route with system toggles (skeletal, muscular, nervous,
   cardiovascular, respiratory, digestive, urinary, reproductive,
   endocrine, lymphatic, sensory, skin), LOD while orbiting, a tap names
   the structure (FMA card), search isolates and frames it, hide/show.
   Accept: e2e taps land on the named structures (femur, heart, liver,
   brain); orbit and settled frame times measured on the full body.
+  The Atlas route gains a Bones | Body switch. Body
+  (`views/BodyAtlasView.tsx`, `lib/bodyAtlas.ts`) has a switch per system
+  with its part count and tint (muscle and skin start off: they cover the
+  rest) and fetches a system's file the first time it is shown. The parts
+  go to the renderer's frame and merge into one mesh that knows each
+  triangle's part (`render-cpu/body-scene.ts`); `renderMesh` takes a
+  colour per triangle (`triColor`; without it every render is
+  bit-identical, and a test draws the same pixels both ways) and
+  `pickSurface` returns the triangle it hit. Drag, sliders, wheel and
+  pinch orbit and zoom. Moving frames are drawn at half size, one sample a
+  pixel, on a vertex-clustered copy (cells of two of those pixels, 8 mm at
+  zoom 1). Clusters split by part and by normal octant: without the octant
+  a thin shell's two sheets merged and the skin came out spotted. The
+  full mesh at 2×2 samples follows 250 ms after the last move. A tap
+  lights the structure in the accent and opens a card: name and FMA id,
+  what it is part of (the K1 PART-OF concepts holding it, smallest first;
+  the 976 IS-A-only meshes, the ventricle wall among them, are in none,
+  and the card says so), system, and its mesh against the source. Find
+  (`volume-core/body-search.ts`) takes a name, FMA id or element id. A K1
+  concept brings all its pieces ("heart": 83); their systems are switched
+  on and they are isolated and framed (their box's diagonal across 0.8 of
+  the frame at any orbit). Hide drops the tapped structure; Show all
+  brings everything back.
+  Wiring the taps exposed two H1 faults, fixed by rebuilding the digest.
+  The liver's 24 parts were filed with the vessels (the "hepatovenous"
+  segments matched the vein rule). Elements were named by the first of
+  several equally small concepts ("body of organ" for the body of the
+  sternum). `index.json` now lists every part, so Find needs no system
+  file.
+  Measured (wire leg 34b, one CPU thread):
+  - Taps name the right femur (FJ3365, FMA24474), the right superior
+    frontal gyrus (… › brain), the wall of the right atrium (… › heart)
+    and hepatovenous segment VIII (… › liver).
+  - Hiding that segment, the same tap finds the left portal vein behind
+    it.
+  - "heart" isolates 83 structures, and a tap at the frame's centre lands
+    on one of them (the cavity of the right ventricle).
+  Frame times over three runs of the leg (load average 6–7 on the 4 cores):
+  - The opening view (10 systems, 1,003,549 triangles) settles in
+    **267–472 ms**.
+  - The full body (12 systems, 1,943,916 triangles) settles in
+    **637–736 ms**; moving frames take **106–131 ms**, on 719,430
+    triangles.
+  - The clustered copy is made once per shown set and zoom step, on the
+    first moving frame: 575–632 ms for the full body.
+  - Half-size frames of the full body, median of 5 in one run: unclustered
+    206 ms; 4 mm cells 155 ms (1.07 M triangles); 8 mm 80 ms; 16 mm 78 ms.
+    Past 8 mm, fill, not triangles, is the cost.
+  - axe finds nothing in Body mode, desktop or mobile.
 - OPEN — **H3. Lymphatic layer from the HuBMAP reference organs.** Lymph
   nodes, spleen, thymus and the organs BodyParts3D lacks, from the HRA 3D
   reference objects (GLB, CC BY 4.0), placed in the BodyParts3D frame by

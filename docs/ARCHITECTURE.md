@@ -115,7 +115,21 @@ frame the same physical box.
   indices, a JSON header of parts with FMA id, name, system and the error
   the build measured), built by `scripts/build-body-atlas.mjs` (system from
   the IS-A and PART-OF trees, F11 decimation to 0.5 mm of the source,
-  measured with `mesh-distance.ts`).
+  measured with `mesh-distance.ts`). Its `index.json` lists every part
+  (element, FMA id, name, system; `validateBodyIndex`), so a structure is
+  found before its system file is fetched.
+- Whole-body scene (`body-scene.ts`, H2): parts turned to the renderer's
+  frame (BodyParts3D z-up to y-up, the body's front toward orbit 0), the
+  shown ones merged into one mesh that knows each triangle's part
+  (`pickSurface` returns the triangle, so a tap names the part), a colour
+  per triangle (`renderMesh`'s `triColor`), a vertex-clustered copy for
+  moving frames (clusters split by part and by normal octant, so a thin
+  shell's two sheets never merge) and the view that frames a few parts.
+  The Atlas route's Body mode (`views/BodyAtlasView.tsx`,
+  `lib/bodyAtlas.ts`) switches systems, draws moving frames at half size
+  on the clustered copy and the full mesh anti-aliased once still, and
+  finds structures through the K1 PART-OF concepts
+  (`volume-core/body-search.ts`).
 - Curved reformat (`cpr.ts`): the Curve tool's clicks (voxels) become a
   centripetal Catmull-Rom spline in mm; the straightened view samples
   across it, perpendicular to the curve and to the pane it was drawn on
