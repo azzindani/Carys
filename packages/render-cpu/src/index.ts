@@ -30,3 +30,5 @@ export * from './mesh-distance.js';
 export * from './body-pack.js';
 export * from './thick-slices.js';
 export * from './body-scene.js';
+export * from './glb.js';
+export * from './organ-fit.js';
