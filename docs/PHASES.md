@@ -1459,6 +1459,67 @@ merged into main 2026-09-24; work is on main only since).
   reference objects (GLB, CC BY 4.0), placed in the BodyParts3D frame by
   a fit on the organs both have. Accept: after the fit, the shared organs'
   surfaces within 5 mm mean of each other; each added organ attributed.
+  Landed: `render-cpu/glb.ts` reads the GLBs (node transforms applied;
+  Draco, sparse accessors and non-triangle primitives refused) and winds
+  each piece outward, judged about the piece's own centre: half the lung
+  and cord segments face in, and the cord's are tubes open at both ends.
+  `render-cpu/organ-fit.ts` has area-uniform surface samples, a k-d tree
+  whose subtree boxes prune far queries (3.9 ms → 0.4 µs a query), Horn's
+  similarity, ICP (one way where the HRA model covers part of its match),
+  a field that blends the anchors' fits by 1/(d² + 5²)², an inside test
+  and `holeCentre`. `scripts/build-body-hra.mjs` builds
+  `digests/hra-organs/` from 25 HRA organ datasets (18 used only as
+  anchors, 7 added; Visible Human male, CC BY 4.0, pinned versions, each
+  cited in `SOURCES.json`; mesh names from the HRA crosswalk at a pinned
+  commit). There are 40 anchors: 19 organs
+  and bones both bodies have, plus 21 intervertebral disks. Each is fitted
+  by its own ICP, started from one similarity on all of them (scale
+  0.9453). Spleen and thymus are anchors, since BodyParts3D has them. Added:
+  three lymph-node models, both palatine tonsils, the lung's 20
+  bronchopulmonary segments and the spinal cord's 30 segments. That is
+  **70 parts, 38,589 triangles, 0.37 MB**, worst 0.456 mm from the placed
+  source, on the H1 body's grid. The disks set the cord's heights. Placed
+  by the field alone, 20% of the cord's vertices lay inside bone, all from
+  C1 to T2 (the spines curve differently). Each of BodyParts3D's 24 vertebrae gives its canal
+  centre (clearance 7.5–13.0 mm), and the cord moves across onto that
+  line, by up to 18.6 mm. `lib/bodyAtlas.ts` merges both digests (2,304
+  structures). A tapped HRA structure's card cites its organ (authors,
+  version, DOI, CC BY 4.0) and how it was placed, and the footers
+  attribute both sources. Find reaches the new rows ("lung", "lymph
+  node", "palatine tonsil").
+  Measured:
+  - Each anchor's own fit (mean surface distance, both ways; one way
+    for the liver and knees, whose HRA models cover part of their match):
+    35 of 40 within 5 mm. The disks are at 0.81–4.64 mm; kidneys 2.02 and
+    2.03, spleen 4.00, liver 3.65, pancreas 3.95, bladder 2.17, thymus
+    3.22, pelvis 3.67, heart 3.40, trachea 1.80, larynx 1.07,
+    submandibular glands 1.46 and 1.48, duodenum 2.72.
+  - Leave one out (an anchor placed from the others, as an added organ
+    is): median 6.1 mm, from 1.23 mm (a thoracic disk) to 65 mm (the
+    knees, far from every other anchor).
+  - The digest tests check the placement: no cord vertex lies inside a
+    vertebra, and no added organ's vertex lies outside BodyParts3D's skin
+    (its reach per 5 mm of height and 5° sector).
+  - Left out: the omentum and the transverse colon's epiploic appendages.
+    They hang on the bowel, whose anchors fit to 10–11 mm, and 8.1% of the
+    placed omentum lay outside the skin, by up to 21.8 mm.
+  - Build: 12 min, the same bytes every run (83 min before the tree's
+    boxes, samples by area rather than per triangle, and capped sample
+    counts).
+  - Wire leg 34b: a tap on the right chest names the right anterior
+    bronchopulmonary segment and cites the HRA lung. A "lymph node" find
+    isolates 12 structures, and a tap names the capsule of a lymph node
+    (lymph-node-male v1.4, cited). With the lungs off, the heart and liver
+    taps land as in H2. The opening view (1,042,138 triangles) settles in
+    418 ms. The full body (1,982,505) settles in 711 ms, and moving frames
+    take 154 ms on 736,419 triangles (load average 9 on the 4 cores).
+  Blocked: 5 of the 40 anchors fit worse than 5 mm even on their own:
+  main bronchi 7.15, jejunum and ileum 10.64, colon 11.22, left knee 5.83,
+  right knee 5.76 mm. A similarity (a rotation, one scale and a shift)
+  cannot bend one body's bowel loops or knee flexion onto another's, and
+  the two bodies' bronchi branch at different angles. Unblock: a non-rigid
+  fit per organ (a thin-plate spline or coherent point drift on the ICP
+  matches), with leave-one-out kept as the measure.
 - OPEN — **H4. See-through layers.** Order-independent transparency in
   the rasterizer (weighted blended) with an opacity per system, so nerves
   and vessels show inside muscle and skin. Accept: an inner sphere seen

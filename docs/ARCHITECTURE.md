@@ -135,9 +135,17 @@ frame the same physical box.
   primitives refused). `organ-fit.ts` fits organs both bodies have
   ("anchors"): deterministic area-uniform surface samples, a k-d tree for
   nearest points, Horn's closed-form similarity, ICP (both ways, or one way
-  where a model covers only part of its match), and a field that moves a
-  point by the anchors' fits blended by nearness. `scripts/build-body-hra.mjs`
-  uses them to place the HuBMAP reference organs in the BodyParts3D body.
+  where a model covers only part of its match), a field that moves a
+  point by the anchors' fits blended by nearness, an inside test (ray
+  parity, three rays voting) and `holeCentre`, the middle of a hole
+  through a mesh (a vertebra's canal). `scripts/build-body-hra.mjs`
+  uses them to place the HuBMAP reference organs in the BodyParts3D body,
+  the spinal cord then centred in the canal:
+  `digests/hra-organs/` holds them as `carys-body/1` files on the H1 body's
+  grid, with `fit.json` (every anchor's fit, alone, shared and from the
+  others) and a citation per organ in `SOURCES.json`. `lib/bodyAtlas.ts`
+  merges both digests into one atlas (same grid or it fails loud); a tapped
+  HRA structure's card cites its organ.
 - Curved reformat (`cpr.ts`): the Curve tool's clicks (voxels) become a
   centripetal Catmull-Rom spline in mm; the straightened view samples
   across it, perpendicular to the curve and to the pane it was drawn on

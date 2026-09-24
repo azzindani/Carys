@@ -36,20 +36,21 @@ export function fitScale(f: Similarity): number {
 
 /**
  * Points spread evenly over a triangle mesh, about `step` apart: each
- * triangle is cut into n² equal pieces (n from its longest edge) and each
- * piece gives its centroid. Deterministic, area-uniform.
+ * triangle is cut into n² equal pieces, each no bigger than an equilateral
+ * triangle of side `step`, and each piece gives its centroid.
+ * Deterministic, area-uniform. (n from the longest edge instead gave a
+ * decimated mesh's slivers hundreds of points each on no area.)
  */
 export function surfaceSamples(mesh: { positions: ArrayLike<number>; indices: ArrayLike<number> }, step: number): Float64Array {
   if (!(step > 0)) throw new RangeError(`organ-fit-step: ${step}`);
   const P = mesh.positions, I = mesh.indices, out: number[] = [];
+  const piece = (Math.sqrt(3) / 4) * step * step;
   for (let t = 0; t < I.length; t += 3) {
     const a = I[t]! * 3, b = I[t + 1]! * 3, c = I[t + 2]! * 3;
-    const e = Math.max(
-      Math.hypot(P[b]! - P[a]!, P[b + 1]! - P[a + 1]!, P[b + 2]! - P[a + 2]!),
-      Math.hypot(P[c]! - P[b]!, P[c + 1]! - P[b + 1]!, P[c + 2]! - P[b + 2]!),
-      Math.hypot(P[a]! - P[c]!, P[a + 1]! - P[c + 1]!, P[a + 2]! - P[c + 2]!),
-    );
-    const n = Math.max(1, Math.ceil(e / step));
+    const ux = P[b]! - P[a]!, uy = P[b + 1]! - P[a + 1]!, uz = P[b + 2]! - P[a + 2]!;
+    const vx = P[c]! - P[a]!, vy = P[c + 1]! - P[a + 1]!, vz = P[c + 2]! - P[a + 2]!;
+    const area = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) / 2;
+    const n = Math.max(1, Math.ceil(Math.sqrt(area / piece)));
     // barycentric (u, v) of each piece's centroid: n(n+1)/2 upright, n(n−1)/2 inverted
     const put = (u: number, v: number): void => {
       const w = 1 - u - v;
@@ -65,20 +66,40 @@ export function surfaceSamples(mesh: { positions: ArrayLike<number>; indices: Ar
   return Float64Array.from(out);
 }
 
-/** Nearest-point queries over a fixed point set (a k-d tree). */
+/**
+ * Nearest-point queries over a fixed point set: a k-d tree whose every
+ * subtree keeps its bounding box, so a query far from the set (a spinal
+ * cord point asking the knee) skips whole subtrees instead of walking them.
+ */
 export class PointTree {
+  /** the points' coordinates in tree order, and each one's input index */
   private readonly p: Float64Array;
   private readonly order: Uint32Array;
+  /** per subtree (keyed by its median's slot): min x y z, max x y z */
+  private readonly box: Float64Array;
+  // the query in flight (one at a time: no closure per call)
+  private qx = 0;
+  private qy = 0;
+  private qz = 0;
+  private best = -1;
+  private bd = Infinity;
+
   constructor(points: Float64Array) {
     if (points.length % 3 || !points.length) throw new RangeError(`organ-fit-points: ${points.length} coordinates`);
-    this.p = points;
-    this.order = Uint32Array.from({ length: points.length / 3 }, (_, i) => i);
-    this.build(0, this.order.length, 0);
+    const o = Uint32Array.from({ length: points.length / 3 }, (_, i) => i);
+    PointTree.build(points, o, 0, o.length, 0);
+    this.order = o;
+    this.p = new Float64Array(points.length);
+    for (let k = 0; k < o.length; k++) {
+      this.p[k * 3] = points[o[k]! * 3]!; this.p[k * 3 + 1] = points[o[k]! * 3 + 1]!; this.p[k * 3 + 2] = points[o[k]! * 3 + 2]!;
+    }
+    this.box = new Float64Array(o.length * 6);
+    this.bound(0, o.length);
   }
 
-  private build(lo: number, hi: number, axis: number): void {
+  private static build(p: Float64Array, o: Uint32Array, lo: number, hi: number, axis: number): void {
     if (hi - lo <= 1) return;
-    const mid = (lo + hi) >> 1, p = this.p, o = this.order;
+    const mid = (lo + hi) >> 1;
     // quickselect the median on this axis into o[mid]
     let l = lo, r = hi - 1;
     while (l < r) {
@@ -91,25 +112,43 @@ export class PointTree {
       }
       if (mid <= j) r = j; else if (mid >= i) l = i; else break;
     }
-    this.build(lo, mid, (axis + 1) % 3);
-    this.build(mid + 1, hi, (axis + 1) % 3);
+    PointTree.build(p, o, lo, mid, (axis + 1) % 3);
+    PointTree.build(p, o, mid + 1, hi, (axis + 1) % 3);
+  }
+
+  /** Fill the box of the subtree over [lo, hi), kept at its median's slot. */
+  private bound(lo: number, hi: number): void {
+    const mid = (lo + hi) >> 1, b = this.box, p = this.p, at = mid * 6;
+    for (let k = 0; k < 3; k++) { b[at + k] = p[mid * 3 + k]!; b[at + 3 + k] = p[mid * 3 + k]!; }
+    for (const [l, h] of [[lo, mid], [mid + 1, hi]] as const) {
+      if (l >= h) continue;
+      this.bound(l, h);
+      const c = ((l + h) >> 1) * 6;
+      for (let k = 0; k < 3; k++) { b[at + k] = Math.min(b[at + k]!, b[c + k]!); b[at + 3 + k] = Math.max(b[at + 3 + k]!, b[c + 3 + k]!); }
+    }
+  }
+
+  private walk(lo: number, hi: number, axis: number): void {
+    if (lo >= hi) return;
+    const mid = (lo + hi) >> 1, p = this.p, i = mid * 3, b = this.box, at = mid * 6;
+    // the subtree's box is farther than the best so far: nothing in it helps
+    const bx = Math.max(b[at]! - this.qx, 0, this.qx - b[at + 3]!);
+    const by = Math.max(b[at + 1]! - this.qy, 0, this.qy - b[at + 4]!);
+    const bz = Math.max(b[at + 2]! - this.qz, 0, this.qz - b[at + 5]!);
+    if (bx * bx + by * by + bz * bz >= this.bd) return;
+    const dx = p[i]! - this.qx, dy = p[i + 1]! - this.qy, dz = p[i + 2]! - this.qz;
+    const d2 = dx * dx + dy * dy + dz * dz;
+    if (d2 < this.bd) { this.bd = d2; this.best = mid; }
+    const diff = axis === 0 ? -dx : axis === 1 ? -dy : -dz, next = axis === 2 ? 0 : axis + 1;
+    if (diff < 0) { this.walk(lo, mid, next); if (diff * diff < this.bd) this.walk(mid + 1, hi, next); }
+    else { this.walk(mid + 1, hi, next); if (diff * diff < this.bd) this.walk(lo, mid, next); }
   }
 
   /** The index of the point nearest (x, y, z), and its squared distance. */
   nearest(x: number, y: number, z: number): { index: number; d2: number } {
-    const p = this.p, o = this.order, q = [x, y, z];
-    let best = -1, bd = Infinity;
-    const walk = (lo: number, hi: number, axis: number): void => {
-      if (lo >= hi) return;
-      const mid = (lo + hi) >> 1, i = o[mid]! * 3;
-      const d2 = (p[i]! - x) ** 2 + (p[i + 1]! - y) ** 2 + (p[i + 2]! - z) ** 2;
-      if (d2 < bd) { bd = d2; best = o[mid]!; }
-      const diff = q[axis]! - p[i + axis]!, next = (axis + 1) % 3;
-      if (diff < 0) { walk(lo, mid, next); if (diff * diff < bd) walk(mid + 1, hi, next); }
-      else { walk(mid + 1, hi, next); if (diff * diff < bd) walk(lo, mid, next); }
-    };
-    walk(0, o.length, 0);
-    return { index: best, d2: bd };
+    this.qx = x; this.qy = y; this.qz = z; this.best = -1; this.bd = Infinity;
+    this.walk(0, this.order.length, 0);
+    return { index: this.order[this.best]!, d2: this.bd };
   }
 }
 
@@ -239,13 +278,15 @@ export interface FieldAnchor {
   near: PointTree;
 }
 
-/** How far (mm) the blend weights 1/(d² + SOFT²) stay finite at d = 0. */
+/** How far (mm) the blend weights 1/(d² + SOFT²)² stay finite at d = 0. */
 export const FIELD_SOFT_MM = 5;
 
 /**
  * Move points (in the source body's frame) by the anchors' fits blended by
- * nearness: a point on or in an anchor moves (almost) as that anchor does,
- * one between anchors by their mix. Smooth: the weights are.
+ * nearness, weights 1/(d² + SOFT²)²: a point on or in an anchor moves
+ * (almost) as that anchor does, one between anchors mostly as the nearest
+ * do. Squared, so a far anchor with an odd fit (a gland ICP shrank by 40%)
+ * does not drag a spinal cord 3 cm away. Smooth: the weights are.
  */
 export function blendField(anchors: readonly FieldAnchor[], points: ArrayLike<number>): Float64Array {
   if (!anchors.length) throw new RangeError('organ-fit-field: no anchors');
@@ -255,7 +296,7 @@ export function blendField(anchors: readonly FieldAnchor[], points: ArrayLike<nu
     const x = points[i]!, y = points[i + 1]!, z = points[i + 2]!;
     let sw = 0, ax = 0, ay = 0, az = 0;
     for (const a of anchors) {
-      const w = 1 / (a.near.nearest(x, y, z).d2 + soft), m = a.fit.m, t = a.fit.t;
+      const q = a.near.nearest(x, y, z).d2 + soft, w = 1 / (q * q), m = a.fit.m, t = a.fit.t;
       sw += w;
       ax += w * (m[0]! * x + m[1]! * y + m[2]! * z + t[0]);
       ay += w * (m[3]! * x + m[4]! * y + m[5]! * z + t[1]);
@@ -264,4 +305,72 @@ export function blendField(anchors: readonly FieldAnchor[], points: ArrayLike<nu
     out[i] = ax / sw; out[i + 1] = ay / sw; out[i + 2] = az / sw;
   }
   return out;
+}
+
+/** Rays for the inside test: off-axis, so they rarely graze an edge exactly. */
+const INSIDE_RAYS: readonly V3[] = [[1, 0.013, 0.007], [0.011, 1, 0.017], [0.019, 0.005, 1]];
+
+type Mesh = { positions: ArrayLike<number>; indices: ArrayLike<number> };
+
+/** How many times the line through (x, y, z) along d crosses a mesh's
+ *  surface: [ahead of the point, behind it] (Möller–Trumbore). */
+function crossings(mesh: Mesh, x: number, y: number, z: number, [dx, dy, dz]: V3): [number, number] {
+  const P = mesh.positions, I = mesh.indices;
+  let ahead = 0, behind = 0;
+  for (let t = 0; t < I.length; t += 3) {
+    const a = I[t]! * 3, b = I[t + 1]! * 3, c = I[t + 2]! * 3;
+    const e1x = P[b]! - P[a]!, e1y = P[b + 1]! - P[a + 1]!, e1z = P[b + 2]! - P[a + 2]!;
+    const e2x = P[c]! - P[a]!, e2y = P[c + 1]! - P[a + 1]!, e2z = P[c + 2]! - P[a + 2]!;
+    const hx = dy * e2z - dz * e2y, hy = dz * e2x - dx * e2z, hz = dx * e2y - dy * e2x;
+    const det = e1x * hx + e1y * hy + e1z * hz;
+    if (Math.abs(det) < 1e-12) continue;
+    const f = 1 / det, sx = x - P[a]!, sy = y - P[a + 1]!, sz = z - P[a + 2]!;
+    const u = f * (sx * hx + sy * hy + sz * hz);
+    if (u < 0 || u > 1) continue;
+    const qx = sy * e1z - sz * e1y, qy = sz * e1x - sx * e1z, qz = sx * e1y - sy * e1x;
+    const v = f * (dx * qx + dy * qy + dz * qz);
+    if (v < 0 || u + v > 1) continue;
+    const s = f * (e2x * qx + e2y * qy + e2z * qz);
+    if (s > 0) ahead++;
+    else if (s < 0) behind++;
+  }
+  return [ahead, behind];
+}
+
+/**
+ * Whether a point lies inside a closed triangle mesh: a ray from it crosses
+ * the surface an odd number of times. Three rays vote, so a ray that grazes
+ * an edge (counted twice or not at all) is outvoted.
+ */
+export function insideMesh(mesh: Mesh, x: number, y: number, z: number): boolean {
+  let votes = 0;
+  for (const d of INSIDE_RAYS) if (crossings(mesh, x, y, z, d)[0] % 2) votes++;
+  return votes >= 2;
+}
+
+/**
+ * The middle of a hole through a mesh, on the lines given (each from a to b):
+ * of the points along them every `step` mm that lie outside the mesh with
+ * its surface both ahead and behind along their line, the one farthest from
+ * the surface (sampled `step` apart). A vertebra is a ring of bone: across
+ * its midline from front to back, at heights through the ring, this is the
+ * centre of the spinal canal. Null when no line passes through a hole.
+ */
+export function holeCentre(mesh: Mesh, lines: readonly (readonly [V3, V3])[], step: number): { at: V3; clearance: number } | null {
+  if (!(step > 0)) throw new RangeError(`organ-fit-hole: step ${step}`);
+  const near = new PointTree(surfaceSamples(mesh, step));
+  let best: { at: V3; clearance: number } | null = null;
+  for (const [a, b] of lines) {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    if (!(len > 0)) throw new RangeError('organ-fit-hole: a line has no length');
+    const d: V3 = [(b[0] - a[0]) / len, (b[1] - a[1]) / len, (b[2] - a[2]) / len];
+    for (let s = 0; s <= len; s += step) {
+      const at: V3 = [a[0] + d[0] * s, a[1] + d[1] * s, a[2] + d[2] * s];
+      const [ahead, behind] = crossings(mesh, at[0], at[1], at[2], d);
+      if (!ahead || !behind || insideMesh(mesh, at[0], at[1], at[2])) continue;
+      const clearance = Math.sqrt(near.nearest(at[0], at[1], at[2]).d2);
+      if (!best || clearance > best.clearance) best = { at, clearance };
+    }
+  }
+  return best;
 }

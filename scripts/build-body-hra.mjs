@@ -15,6 +15,7 @@
 // started from one fitted on all of them, and an added organ moves by the
 // anchors' fits blended by nearness. Every anchor is also placed from the
 // others alone (leave one out): that is how far an added organ can be off.
+// The spinal cord is then centred in BodyParts3D's spinal canal (VERTEBRAE).
 // Added meshes are welded, decimated to 0.5 mm of their placed source both
 // ways (as H1) and packed on the H1 body's grid. Deterministic.
 import { execFileSync } from 'node:child_process';
@@ -22,8 +23,8 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  applyFit, BODY_SYSTEMS, blendField, decimate, fitScale, icpSimilarity, packBody, parseGlb, PointTree,
-  surfaceDistance, surfaceSamples, unpackBody, vertexNormals,
+  applyFit, BODY_SYSTEMS, blendField, decimate, fitScale, holeCentre, icpSimilarity, packBody, parseGlb, PointTree,
+  surfaceDistance, surfaceSamples, unpackBody, vertexNormals, windOutward,
 } from '../packages/render-cpu/dist/index.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -38,6 +39,11 @@ const BOUND_MM = 0.5;
 const TRIES = [0.95, 0.75, 0.55, 0.4, 0.3, 0.15, 0.075];
 /** Sample spacing (mm): ICP source and target, and the distances reported. */
 const ICP_SRC = 2, ICP_DST = 1.5, MEASURE = 1;
+/** Most samples an anchor gives ICP, per side (every k-th, evenly). The
+ *  distances reported use all of them. */
+const ICP_MAX_SRC = 20000, ICP_MAX_DST = 40000;
+/** Most samples a reported distance averages, per side (every k-th). */
+const MEASURE_MAX = 60000;
 
 // ---- what is used -----------------------------------------------------------
 const is = (...names) => (n) => names.includes(n);
@@ -66,24 +72,52 @@ const ANCHORS = [
   { id: 'larynx', organ: 'larynx-male', version: 'v1.1', nodes: is('VH_M_thyroid_cartilage', 'VH_M_cricoid_cartilage'), bp: ['thyroid cartilage', 'cricoid cartilage'], both: true },
   { id: 'left submandibular gland', organ: 'mouth-male', version: 'v1.0', nodes: is('VH_M_submandibular_gland_L'), bp: ['left submandibular gland'], both: true },
   { id: 'right submandibular gland', organ: 'mouth-male', version: 'v1.0', nodes: is('VH_M_submandibular_gland_R'), bp: ['right submandibular gland'], both: true },
-  // the disks both name alike (HRA's twelfth thoracic has no BodyParts3D twin)
-  { id: 'intervertebral disks', organ: 'intervertebral-disk-male', version: 'v1.0', nodes: (n) => !n.includes('nucleus'), bp: 'same-names', both: true },
+  { id: 'duodenum', organ: 'small-intestine-male', version: 'v1.2', nodes: is('VH_M_duodenum_superior', 'VH_M_duodenum_descending', 'VH_M_duodenum_horizonal', 'VH_M_duodenum_ascending'), bp: ['duodenum'], both: true },
+  {
+    id: 'jejunum and ileum', organ: 'small-intestine-male', version: 'v1.2', nodes: is('VH_M_jejunum', 'VH_M_ileum', 'VH_M_ileum_terminal'), both: true,
+    bp: ['proximal', 'middle', 'distal'].flatMap((w) => [`${w} part of jejunum`, `${w} part of ileum`]),
+  },
+  {
+    id: 'colon', organ: 'large-intestine-male', version: 'v1.3', both: true, bp: ['ascending colon', 'transverse colon', 'descending colon'],
+    nodes: is('VH_M_ascending_colon', 'VH_M_hepatic_flexure_of_colon', 'VH_M_transverse_colon', 'VH_M_splenic_flexure_of_colon', 'VH_M_descending_colon'),
+  },
   { id: 'left knee', organ: 'knee-male-left', version: 'v1.2', nodes: is('VH_M_femur_L', 'VH_M_tibia_L', 'VH_M_fibula_L', 'VH_M_patella_L'), bp: ['left femur', 'left tibia', 'left fibula', 'left patella'], both: false },
   { id: 'right knee', organ: 'knee-male-right', version: 'v1.2', nodes: is('VH_M_femur_R', 'VH_M_tibia_R', 'VH_M_fibula_R', 'VH_M_patella_R'), bp: ['right femur', 'right tibia', 'right fibula', 'right patella'], both: false },
 ];
+/** And each intervertebral disk both bodies name alike, an anchor of its
+ *  own, so the spinal cord follows the vertebrae beside it (HRA's twelfth
+ *  thoracic disk has no BodyParts3D twin). */
+const DISKS = { organ: 'intervertebral-disk-male', version: 'v1.0' };
 /** Organs BodyParts3D lacks, and the body system each joins. */
 const ADDED = [
-  { organ: 'lymph-node-male', version: 'v1.4', system: 'lymphatic', nodes: (n) => n !== 'Yao_blood_vasculature' },
-  { organ: 'lymph-node-male-left', version: 'v1.0', system: 'lymphatic', nodes: (n) => n !== 'Yao_vasculature_a' },
-  { organ: 'lymph-node-male-right', version: 'v1.0', system: 'lymphatic', nodes: (n) => n !== 'Yao_vasculature_a' },
+  // a node's own blood vessels are most of its triangles and none of the lymphatic layer
+  { organ: 'lymph-node-male', version: 'v1.4', system: 'lymphatic', nodes: (n) => !n.includes('vasculature') },
+  { organ: 'lymph-node-male-left', version: 'v1.0', system: 'lymphatic', nodes: (n) => !n.includes('vasculature') },
+  { organ: 'lymph-node-male-right', version: 'v1.0', system: 'lymphatic', nodes: (n) => !n.includes('vasculature') },
   { organ: 'palatine-tonsil-male-left', version: 'v1.2', system: 'lymphatic', nodes: () => true },
   { organ: 'palatine-tonsil-male-right', version: 'v1.2', system: 'lymphatic', nodes: () => true },
   // the lung's surface, as its bronchopulmonary segments tile it (BodyParts3D has the airways)
   { organ: 'lung-male', version: 'v1.4', system: 'respiratory', nodes: (n) => n.includes('bronchopulmonary_segment') },
-  { organ: 'spinal-cord-male', version: 'v1.1', system: 'nervous', nodes: () => true },
-  { organ: 'omentum-male', version: 'v1.0', system: 'digestive', nodes: () => true },
-  { organ: 'epiploic-appendage-of-transverse-colon-male', version: 'v1.0', system: 'digestive', nodes: () => true },
+  // the disks carry it down the spine, then it is centred in BodyParts3D's canal (see VERTEBRAE)
+  { organ: 'spinal-cord-male', version: 'v1.1', system: 'nervous', nodes: () => true, canal: true },
+  // Left out: the omentum and the transverse colon's fat tags (omentum-male,
+  // epiploic-appendage-of-transverse-colon-male). They hang on the bowel,
+  // whose anchors fit to 10–11 mm only, and 8% of the placed omentum lay
+  // outside BodyParts3D's skin, up to 22 mm.
 ];
+/** BodyParts3D's vertebrae, top down. The disks place the cord at the right
+ *  heights, but the two spines curve differently: placed, 20% of the cord's
+ *  vertices lay inside bone, all from C1 to T2. Each vertebra's canal
+ *  centre (render-cpu holeCentre, across its midline at heights through its
+ *  middle half) makes a line down the spine, and every cord vertex moves
+ *  across by that line less the cord's own centre line at its height;
+ *  heights stay. */
+const VERTEBRAE = [
+  'atlas', 'axis', ...['third', 'fourth', 'fifth', 'sixth', 'seventh'].map((n) => `${n} cervical vertebra`),
+  ...['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth'].map((n) => `${n} thoracic vertebra`),
+  ...['first', 'second', 'third', 'fourth', 'fifth'].map((n) => `${n} lumbar vertebra`),
+];
+const CANAL_STEP = 0.5, CANAL_HEIGHT_STEP = 1;
 
 // ---- inputs -----------------------------------------------------------------
 mkdirSync(CACHE, { recursive: true });
@@ -116,8 +150,8 @@ function organ(name, version) {
 }
 
 /** HRA (metres; y up, z to the front) → BodyParts3D (mm; z up, y to the back),
- *  welded: vertices at one position become one (the GLBs split them where
- *  their normals do). */
+ *  welded (vertices at one position become one: the GLBs split them where
+ *  their normals do) and wound outward (they do not all: see windOutward). */
 function toBody(mesh) {
   const at = new Map(), P = [], I = new Uint32Array(mesh.indices.length);
   const remap = new Uint32Array(mesh.positions.length / 3);
@@ -134,7 +168,17 @@ function toBody(mesh) {
     if (a === b || b === c || a === c) continue;
     I[n++] = a; I[n++] = b; I[n++] = c;
   }
-  return { positions: Float64Array.from(P), indices: I.slice(0, n) };
+  const positions = Float64Array.from(P);
+  return { positions, indices: windOutward(positions, I.subarray(0, n)) };
+}
+
+/** Every k-th point of a sample set, at most `max` of them. */
+function thin(samples, max) {
+  const n = samples.length / 3, k = Math.ceil(n / max);
+  if (k <= 1) return samples;
+  const out = new Float64Array(Math.ceil(n / k) * 3);
+  for (let i = 0, j = 0; i < n; i += k, j++) out.set(samples.subarray(i * 3, i * 3 + 3), j * 3);
+  return out;
 }
 
 const join3 = (meshes) => {
@@ -179,22 +223,21 @@ function bodyparts(list) {
 }
 
 // ---- anchors and the fit ----------------------------------------------------
-const anchors = ANCHORS.map((a) => {
+const bpNames = new Set([...bpParts.values()].map((p) => p.name));
+const disks = organ(DISKS.organ, DISKS.version).meshes
+  .filter((m) => !m.name.includes('nucleus') && bpNames.has(tidy(m.name)))
+  .map((m) => ({ ...DISKS, id: tidy(m.name), nodes: is(m.name), bp: [tidy(m.name)], both: true }));
+const anchors = [...ANCHORS, ...disks].map((a) => {
   const o = organ(a.organ, a.version);
-  let hra = pick(o, a.nodes);
-  let bp = a.bp;
-  if (bp === 'same-names') {
-    hra = hra.filter((m) => [...bpParts.values()].some((p) => p.name === tidy(m.name)));
-    bp = hra.map((m) => tidy(m.name));
-  }
+  const hra = pick(o, a.nodes), bp = a.bp;
   const src = join3(hra.map(toBody)), dst = bodyparts(bp);
   return {
     ...a, bpNames: bp, hraNodes: hra.map((m) => m.name), src, dst,
-    pair: { src: surfaceSamples(src, ICP_SRC), dst: surfaceSamples(dst, ICP_DST), both: a.both },
-    measure: { src: surfaceSamples(src, MEASURE), dst: surfaceSamples(dst, MEASURE) },
+    pair: { src: thin(surfaceSamples(src, ICP_SRC), ICP_MAX_SRC), dst: thin(surfaceSamples(dst, ICP_DST), ICP_MAX_DST), both: a.both },
+    measure: { src: thin(surfaceSamples(src, MEASURE), MEASURE_MAX), dst: thin(surfaceSamples(dst, MEASURE), MEASURE_MAX) },
   };
 });
-console.log(`${anchors.length} anchors`);
+console.log(`${anchors.length} anchors: ${anchors.reduce((n, a) => n + a.pair.src.length / 3, 0)} HRA and ${anchors.reduce((n, a) => n + a.pair.dst.length / 3, 0)} BodyParts3D samples`);
 
 /** Mean distance, mm, between an anchor's placed HRA samples and its
  *  BodyParts3D ones: both ways averaged, or HRA → BodyParts3D alone. */
@@ -221,6 +264,7 @@ const start = { m: [1, 0, 0, 0, 1, 0, 0, 0, 1], t: [cd[0] - cs[0], cd[1] - cs[1]
 const global = icpSimilarity(anchors.map((a) => a.pair), start, 40);
 console.log(`global similarity: scale ${fitScale(global).toFixed(4)}`);
 for (const a of anchors) {
+  console.log(`  fitting ${a.id}`);
   a.fit = icpSimilarity([a.pair], global, 40);
   a.near = new PointTree(a.pair.src);
   a.globalMm = gap(a, applyFit(global, a.measure.src));
@@ -232,19 +276,68 @@ for (const a of anchors) {
 }
 const field = anchors.map((a) => ({ fit: a.fit, near: a.near }));
 
+// ---- the spinal canal -------------------------------------------------------
+const boxOf = (P) => {
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < P.length; i += 3) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], P[i + k]); hi[k] = Math.max(hi[k], P[i + k]); }
+  return { lo, hi, mid: lo.map((v, k) => (v + hi[k]) / 2) };
+};
+const canal = VERTEBRAE.map((name) => {
+  const v = [...bpParts.values()].find((p) => p.name === name);
+  if (!v) throw new Error(`build-body-hra: BodyParts3D has no "${name}"`);
+  const { lo, hi, mid } = boxOf(v.positions), q = (hi[2] - lo[2]) / 4, lines = [];
+  for (let z = lo[2] + q; z <= hi[2] - q; z += CANAL_HEIGHT_STEP) lines.push([[mid[0], lo[1], z], [mid[0], hi[1], z]]);
+  const hole = holeCentre(v, lines, CANAL_STEP);
+  if (!hole) throw new Error(`build-body-hra: no canal found in the ${name}`);
+  return { name, at: hole.at, clearanceMm: hole.clearance };
+});
+/** A line through points, linear in height between them, held past its ends. */
+function byHeight(points) {
+  const s = [...points].sort((a, b) => a[2] - b[2]);
+  return (z) => {
+    const j = s.findIndex((p) => p[2] >= z);
+    if (j === 0) return s[0];
+    if (j < 0) return s[s.length - 1];
+    const a = s[j - 1], b = s[j], f = (z - a[2]) / (b[2] - a[2]);
+    return [a[0] + f * (b[0] - a[0]), a[1] + f * (b[1] - a[1])];
+  };
+}
+const canalAt = byHeight(canal.map((c) => c.at));
+/** Moves placed meshes (in place) across onto the canal line, each vertex by
+ *  the canal less the meshes' own centre line (their box centres) at its
+ *  height. The most any moved, mm. */
+function intoCanal(meshes) {
+  const ownAt = byHeight(meshes.map((m) => boxOf(m.positions).mid));
+  let most = 0;
+  for (const m of meshes) {
+    const P = m.positions;
+    for (let i = 0; i < P.length; i += 3) {
+      const c = canalAt(P[i + 2]), k = ownAt(P[i + 2]), dx = c[0] - k[0], dy = c[1] - k[1];
+      P[i] += dx; P[i + 1] += dy;
+      most = Math.max(most, Math.hypot(dx, dy));
+    }
+  }
+  return most;
+}
+
 // ---- the added organs, placed, decimated, packed ----------------------------
 const bounds = { min: bodyIndex.min, max: bodyIndex.max };
 const twoWay = (a, b) => Math.max(surfaceDistance(a, b, [1, 1, 1], 4 * BOUND_MM).max, surfaceDistance(b, a, [1, 1, 1], 4 * BOUND_MM).max);
 const shipped = (p) => unpackBody(packBody([p], bounds)).parts[0];
 const parts = [], cited = [];
+let canalShiftMm = null;
 for (const add of ADDED) {
   const o = organ(add.organ, add.version);
   cited.push(o);
-  for (const m of pick(o, add.nodes)) {
-    const w = toBody(m);
-    const placed = { positions: Float32Array.from(blendField(field, w.positions)), indices: w.indices };
+  const got = pick(o, add.nodes).map((m) => { const w = toBody(m); return { node: m.name, positions: blendField(field, w.positions), indices: w.indices }; });
+  if (add.canal) {
+    canalShiftMm = intoCanal(got);
+    console.log(`  ${o.name} moved into the canal, up to ${canalShiftMm.toFixed(1)} mm`);
+  }
+  for (const g of got) {
+    const placed = { positions: Float32Array.from(g.positions), indices: g.indices };
     const src = { ...placed, normals: Float32Array.from(vertexNormals(placed.positions, placed.indices)) };
-    const meta = { ...label(m.name), element: `${o.name}/${m.name}`, system: add.system, sourceTris: placed.indices.length / 3 };
+    const meta = { ...label(g.node), element: `${o.name}/${g.node}`, system: add.system, sourceTris: placed.indices.length / 3 };
     let chosen = null;
     for (const e of TRIES) {
       const d = decimate(src, { targetTris: 1, maxError: e });
@@ -258,6 +351,7 @@ for (const add of ADDED) {
   }
   console.log(`  placed ${o.name} ${o.version}`);
 }
+if (canalShiftMm === null) throw new Error('build-body-hra: the canal was found for no organ');
 parts.sort((a, b) => (a.element < b.element ? -1 : 1));
 
 // ---- output -----------------------------------------------------------------
@@ -287,13 +381,18 @@ const r2 = (v) => Math.round(v * 100) / 100;
 writeFileSync(join(OUT, 'fit.json'), JSON.stringify({
   format: 'carys-body-fit/1',
   frame: 'HRA (x, y, z) m → BodyParts3D (1000 x, −1000 z, 1000 y) mm, then the fit',
-  method: 'per-anchor similarity by ICP (both ways where both surfaces are whole), started from one similarity on all anchors; added organs move by the anchors\' fits blended by 1/(d² + 5²), d the distance (mm) to each anchor',
-  measure: `mean distance between surfaces sampled ${MEASURE} mm apart`,
+  method: 'per-anchor similarity by ICP (both ways where both surfaces are whole), started from one similarity on all anchors; added organs move by the anchors\' fits blended by 1/(d² + 5²)², d the distance (mm) to each anchor',
+  measure: `mean distance between surfaces sampled ${MEASURE} mm apart (at most ${MEASURE_MAX} samples a side, evenly strided)`,
   global: { scale: +fitScale(global).toFixed(4), m: global.m.map((v) => +v.toFixed(6)), t: global.t.map((v) => +v.toFixed(3)) },
   anchors: anchors.map((a) => ({
     id: a.id, hra: `${a.organ}@${a.version}`, nodes: a.hraNodes, bodyparts3d: a.bpNames, both: a.both,
     scale: +fitScale(a.fit).toFixed(4), globalMm: r2(a.globalMm), ownMm: r2(a.ownMm), leaveOneOutMm: r2(a.looMm),
   })),
+  canal: {
+    method: `the spinal cord moved across (heights kept) onto the line through each BodyParts3D vertebra's canal centre: the point on its midline, front to back every ${CANAL_STEP} mm at heights ${CANAL_HEIGHT_STEP} mm apart through its middle half, outside the bone with bone ahead and behind, farthest from it`,
+    vertebrae: canal.map((c) => ({ name: c.name, at: c.at.map(r2), clearanceMm: r2(c.clearanceMm) })),
+    cordShiftMaxMm: r2(canalShiftMm),
+  },
 }, null, 1) + '\n');
 const used = [...new Map([...anchors.map((a) => organ(a.organ, a.version)), ...cited].map((o) => [`${o.name}@${o.version}`, o])).values()]
   .sort((a, b) => (a.name < b.name ? -1 : 1));

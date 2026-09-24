@@ -48,4 +48,17 @@ describe('whole-body search (H2)', () => {
     // an IS-A-only mesh sits in no PART-OF tree
     assert.deepEqual(conceptsOfElement('FJ2428', 'FMA13884'), []);
   });
+
+  it('finds the HRA organs by name or by the organ their element names (H3)', () => {
+    const hra = JSON.parse(readFileSync(join(ROOT, 'digests', 'hra-organs', 'index.json'), 'utf8')) as { parts: [string, string, string, string][] };
+    const all: BodyRow[] = [...rows, ...hra.parts.map(([element, fma, name, system]) => ({ element, fma, name, system }))];
+    // no segment is named for the lung: its organ is in the element id
+    const lung = findBodyStructures(all, 'lung')!;
+    assert.ok(lung.elements.length >= 10 && lung.elements.every((e) => e.startsWith('lung-male/')), lung.label);
+    const tonsils = findBodyStructures(all, 'palatine tonsil')!;
+    assert.deepEqual(tonsils.elements.map((e) => e.split('/')[0]).sort(), ['palatine-tonsil-male-left', 'palatine-tonsil-male-right']);
+    // BodyParts3D's own structures still come first
+    assert.deepEqual(findBodyStructures(all, 'right femur')!.elements, ['FJ3365']);
+  });
 });
+

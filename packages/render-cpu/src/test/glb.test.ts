@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseGlb } from '../glb.js';
+import { parseGlb, windOutward } from '../glb.js';
 
 // H3 (docs/PHASES.md): the HRA reference organs are GLB files.
 
@@ -84,5 +84,47 @@ describe('GLB meshes (H3)', () => {
         { bufferView: 1, componentType: 5123, count: 4, type: 'SCALAR' },
       ],
     })), /glb-accessor: 1 runs past its buffer view/);
+  });
+
+  it('winds each closed piece outward, leaving outward ones alone', () => {
+    // two tetrahedra: one wound outward, one inward (every triangle flipped)
+    const tet = [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1];
+    const out = [0, 2, 1, 0, 1, 3, 0, 3, 2, 1, 2, 3];
+    const P = [...tet, ...tet.map((v, i) => v + (i % 3 === 0 ? 5 : 0))];
+    const I = [...out, ...out.map((v, i) => (i % 3 === 1 ? out[i + 1]! : i % 3 === 2 ? out[i - 1]! : v) + 4)];
+    const signed = (idx: ArrayLike<number>, from: number): number => {
+      let v = 0;
+      for (let t = from; t < from + 12; t += 3) {
+        const [a, b, c] = [idx[t]! * 3, idx[t + 1]! * 3, idx[t + 2]! * 3];
+        v += P[a]! * (P[b + 1]! * P[c + 2]! - P[b + 2]! * P[c + 1]!) - P[a + 1]! * (P[b]! * P[c + 2]! - P[b + 2]! * P[c]!) + P[a + 2]! * (P[b]! * P[c + 1]! - P[b + 1]! * P[c]!);
+      }
+      return v / 6;
+    };
+    assert.ok(signed(I, 0) > 0 && signed(I, 12) < 0);
+    const w = windOutward(P, I);
+    assert.deepEqual([...w.subarray(0, 12)], out);
+    assert.ok(signed(w, 12) > 0);
+  });
+
+  it('winds an open tube outward wherever it sits', () => {
+    // a tapering tube open at both ends (radius 5 to 2 over 10), a metre
+    // below the origin: about the origin its signed volume is negative
+    const n = 16, P: number[] = [], I: number[] = [];
+    for (const [r, z] of [[5, -1000], [2, -990]] as const) {
+      for (let i = 0; i < n; i++) P.push(r * Math.cos((2 * Math.PI * i) / n), r * Math.sin((2 * Math.PI * i) / n), z);
+    }
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      I.push(i, j, n + j, i, n + j, n + i); // around then up: faces out
+    }
+    let aboutOrigin = 0;
+    for (let t = 0; t < I.length; t += 3) {
+      const [a, b, c] = [I[t]! * 3, I[t + 1]! * 3, I[t + 2]! * 3];
+      aboutOrigin += P[a]! * (P[b + 1]! * P[c + 2]! - P[b + 2]! * P[c + 1]!) - P[a + 1]! * (P[b]! * P[c + 2]! - P[b + 2]! * P[c]!) + P[a + 2]! * (P[b]! * P[c + 1]! - P[b + 1]! * P[c]!);
+    }
+    assert.ok(aboutOrigin < 0);
+    assert.deepEqual([...windOutward(P, I)], I);
+    const inward = I.map((v, k) => I[k - (k % 3) + [0, 2, 1][k % 3]!]!);
+    assert.deepEqual([...windOutward(P, inward)], I);
   });
 });
