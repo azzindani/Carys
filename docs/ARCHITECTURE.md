@@ -130,6 +130,18 @@ frame the same physical box.
   on the clustered copy and the full mesh anti-aliased once still, and
   finds structures through the K1 PART-OF concepts
   (`volume-core/body-search.ts`).
+- See-through layers (H4): `renderMesh`'s `triAlpha` gives each triangle
+  an opacity. Opaque ones draw first, z-buffered, exactly as without it.
+  See-through ones then draw only their front faces (by screen winding),
+  hidden by the opaque depth but not by each other, into weighted blended
+  order-independent transparency (McGuire & Bavoil 2013; weight
+  opacity × 3e3·(1 − d)³ over the scene's depth). The opaque sample shows
+  by the product of their transparencies. `pickSurface` takes the same
+  opacities: a tap goes through see-through triangles to the nearest
+  opaque one, or lands on the nearest see-through one where nothing is
+  behind it. `sceneAlpha` maps a system's opacity to its triangles (null
+  when all are opaque), set from the Body dock's See-through picker and
+  Opacity slider.
 - Placing another body's organs (H3): `glb.ts` reads glTF binary meshes
   (node transforms applied; Draco, sparse accessors and non-triangle
   primitives refused). `organ-fit.ts` fits organs both bodies have

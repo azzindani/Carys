@@ -2444,8 +2444,9 @@ try {
   // ---- 34b. H2 whole-body atlas: systems switch, taps name the structure
   // under them (femur, brain, heart, liver), a find isolates, a structure
   // hides, and the frame times on the full body are measured. H3: the HRA
-  // lung and a lymph node are tapped and cited. Tap points are canvas
-  // pixels (480×800) of the default front view.
+  // lung and a lymph node are tapped and cited. H4: skin and muscle
+  // see-through, a tap reaches the femur. Tap points are canvas pixels
+  // (480×800) of the default front view.
   const pageB = await browser.newPage({ viewport: { width: 1440, height: 1500 } });
   pageB.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await pageB.goto(`${BASE}#/atlas`, { waitUntil: 'networkidle' });
@@ -2554,6 +2555,25 @@ try {
   }
   const bodyFull = await bodyRo();
   if (!bodyFull.startsWith('1,982,505 tris')) fail(`full body not all shown: ${bodyFull}`);
+  // H4: skin and muscle see-through (14 steps of 0.05 down to 30%), keys as
+  // a user nudges the slider: the femur shows, and a tap on the thigh
+  // reaches it through both. The tap's repaint is the settled frame timed.
+  const opacityTo = async (sys, key, times) => {
+    await pageB.selectOption('#body-see-system', { label: sys });
+    await pageB.locator('#body-opacity').focus();
+    for (let k = 0; k < times; k++) await pageB.keyboard.press(key);
+  };
+  await opacityTo('Skin', 'ArrowLeft', 14);
+  await opacityTo('Muscular', 'ArrowLeft', 14);
+  await pageB.waitForFunction(() => /see-through skin 30%, muscular 30%/.test(document.getElementById('ro-body')?.textContent ?? ''), null, { timeout: 120000 });
+  const through = await tapBody(190, 470);
+  const seeRo = await bodyRo();
+  if (!/right femur · FMA24474/.test(through.part) || !seeRo.includes('see-through skin 30%, muscular 30%')) fail(`see-through tap on the thigh: ${through.part} / ${seeRo}`);
+  else console.log('see-through', seeRo, '→ tap', through.part);
+  // opaque again (End: the slider's top), for the full-body frame times below
+  await opacityTo('Skin', 'End', 1);
+  await opacityTo('Muscular', 'End', 1);
+  await pageB.waitForFunction(() => !/see-through/.test(document.getElementById('ro-body')?.textContent ?? ''), null, { timeout: 120000 });
   const fb = await pageB.locator('#c-body').boundingBox();
   await pageB.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
   await pageB.mouse.down();

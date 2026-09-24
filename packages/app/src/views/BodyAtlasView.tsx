@@ -3,12 +3,14 @@
 // rasterizer. Systems switch on and off, a drag
 // orbits (a clustered copy at half size while moving, the full mesh
 // anti-aliased once it settles), a tap names the structure, a search
-// isolates and frames it, a structure hides. Education pixels only (badged).
+// isolates and frames it, a structure hides. A system can be made
+// see-through (H4): nerves and vessels show inside muscle and skin, and a
+// tap reaches through it. Education pixels only (badged).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX, ReactNode } from 'react';
 import type React from 'react';
 import {
-  assembleScene, clusterScene, frameParts, pickSurface, renderMesh, sceneColors, sceneDims,
+  assembleScene, clusterScene, frameParts, pickSurface, renderMesh, sceneAlpha, sceneColors, sceneDims,
   type BodyScene, type BodySystem, type ScenePart,
 } from '@carys/render-cpu';
 import { conceptsOfElement, findBodyStructures, TERMS_DIGEST_ID, TERMS_DIGEST_PIN, type BodyRow } from '@carys/volume-core';
@@ -21,7 +23,7 @@ import { BODY_BG, BODY_PICK_COLOR, BODY_SYSTEM_COLORS, bodyCss } from '../lib/pa
 import { session } from '../lib/session';
 import { setAmbientStatus, setStatus } from '../lib/status';
 import { bump } from '../lib/version';
-import { Chip, IconBtn, SliderRow, Switch } from '../ui/primitives';
+import { Chip, DarkSelect, IconBtn, SliderRow, Switch } from '../ui/primitives';
 import { useOrbitPointer } from './orbitPointer';
 
 type V3 = [number, number, number];
@@ -53,6 +55,10 @@ const OPEN_SYSTEMS: readonly BodySystem[] = [
   'skeletal', 'nervous', 'cardiovascular', 'respiratory', 'digestive', 'urinary',
   'reproductive', 'endocrine', 'lymphatic', 'sensory',
 ];
+/** The system the see-through slider starts on: the one that covers most. */
+const SEE_FIRST: BodySystem = 'muscular';
+const OPACITY_MIN = 0.1;
+type Opacities = Partial<Record<BodySystem, number>>;
 
 interface Picked {
   part: ScenePart;
@@ -63,8 +69,10 @@ interface Frame { ms: number; tris: number }
 interface Scene {
   full: BodyScene;
   colors: Uint8Array;
+  /** per triangle, when a shown system is see-through */
+  alpha: Float32Array | null;
   /** the clustered copy for moving frames, made on the first one */
-  lod: { cell: number; scene: BodyScene; colors: Uint8Array } | null;
+  lod: { cell: number; scene: BodyScene; colors: Uint8Array; alpha: Float32Array | null } | null;
 }
 
 /** The clustering cell for a moving frame: ORBIT_CELL_PX of its pixels,
@@ -106,6 +114,8 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
   const [settled, setSettled] = useState<Frame | null>(null);
   const [moving, setMoving] = useState<Frame | null>(null);
   const [err, setErr] = useState('');
+  const [see, setSee] = useState<Opacities>({});
+  const [seeSys, setSeeSys] = useState<BodySystem>(SEE_FIRST);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const offRef = useRef<HTMLCanvasElement | null>(null);
@@ -118,7 +128,7 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
   /** what should show: the latest, whatever load is still in flight */
   const want = useRef({
     on: new Set(OPEN_SYSTEMS) as ReadonlySet<BodySystem>, hidden: new Set<string>() as ReadonlySet<string>,
-    isolate: null as ReadonlySet<string> | null, pick: null as string | null,
+    isolate: null as ReadonlySet<string> | null, pick: null as string | null, see: {} as Opacities,
   });
   const angles = useRef({ orbit: 0, tilt: 0 });
   const zoomRef = useRef(1);
@@ -132,6 +142,7 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
     const p = parts.current[i]!;
     return p.element === want.current.pick ? BODY_PICK_COLOR : BODY_SYSTEM_COLORS[p.system];
   };
+  const alphaOf = (i: number): number => want.current.see[parts.current[i]!.system] ?? 1;
 
   const viewOf = (w: number, h: number): { width: number; height: number; angleY: number; tiltX: number; zoom: number; center?: V3 } => ({
     width: w, height: h, angleY: angles.current.orbit, tiltX: angles.current.tilt,
@@ -144,7 +155,7 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
       const p = P[i]!;
       return w.on.has(p.system) && !w.hidden.has(p.element) && (!w.isolate || w.isolate.has(p.element));
     });
-    scene.current = { full, colors: sceneColors(full, colorOf), lod: null };
+    scene.current = { full, colors: sceneColors(full, colorOf), alpha: sceneAlpha(full, alphaOf), lod: null };
   };
 
   const recolor = (): void => {
@@ -154,6 +165,13 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
     if (s.lod) s.lod.colors = sceneColors(s.lod.scene, colorOf);
   };
 
+  const realpha = (): void => {
+    const s = scene.current;
+    if (!s) return;
+    s.alpha = sceneAlpha(s.full, alphaOf);
+    if (s.lod) s.lod.alpha = sceneAlpha(s.lod.scene, alphaOf);
+  };
+
   const paint = (kind: 'settled' | 'moving'): void => {
     const cv = canvasRef.current, s = scene.current, ix = idxRef.current;
     if (!cv || !s || !ix) return;
@@ -161,7 +179,9 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
     const g = cv.getContext('2d')!;
     if (kind === 'settled') {
       const t0 = performance.now();
-      const px = renderMesh(s.full.mesh, dims, { ...viewOf(W, H), color: BODY_SYSTEM_COLORS.skeletal, bg: BODY_BG, triColor: s.colors });
+      const px = renderMesh(s.full.mesh, dims, {
+        ...viewOf(W, H), color: BODY_SYSTEM_COLORS.skeletal, bg: BODY_BG, triColor: s.colors, triAlpha: s.alpha ?? undefined,
+      });
       g.putImageData(new ImageData(new Uint8ClampedArray(px), W, H), 0, 0);
       setSettled({ ms: performance.now() - t0, tris: s.full.triPart.length });
       return;
@@ -170,11 +190,11 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
     const cell = lodCell(dims, w, h, FIT * zoomRef.current);
     if (!s.lod || s.lod.cell !== cell) {
       const lod = clusterScene(s.full, cell);
-      s.lod = { cell, scene: lod, colors: sceneColors(lod, colorOf) };
+      s.lod = { cell, scene: lod, colors: sceneColors(lod, colorOf), alpha: sceneAlpha(lod, alphaOf) };
     }
     const t0 = performance.now();
     const px = renderMesh(s.lod.scene.mesh, dims, {
-      ...viewOf(w, h), color: BODY_SYSTEM_COLORS.skeletal, bg: BODY_BG, triColor: s.lod.colors, supersample: 1,
+      ...viewOf(w, h), color: BODY_SYSTEM_COLORS.skeletal, bg: BODY_BG, triColor: s.lod.colors, triAlpha: s.lod.alpha ?? undefined, supersample: 1,
     });
     const off = (offRef.current ??= document.createElement('canvas'));
     off.width = w; off.height = h;
@@ -271,7 +291,8 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
       const cv = canvasRef.current, s = scene.current, ix = idxRef.current;
       if (!cv || !s || !ix) return;
       const r = cv.getBoundingClientRect();
-      const hit = pickSurface(s.full.mesh, sceneDims(ix), viewOf(W, H), (x - r.left) * (W / r.width), (y - r.top) * (H / r.height));
+      const view = { ...viewOf(W, H), triAlpha: s.alpha ?? undefined };
+      const hit = pickSurface(s.full.mesh, sceneDims(ix), view, (x - r.left) * (W / r.width), (y - r.top) * (H / r.height));
       choose(hit?.tri !== undefined ? parts.current[s.full.triPart[hit.tri]!]! : null);
     },
   });
@@ -288,6 +309,17 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
     want.current.on = next;
     setOn(next);
     void sync();
+  };
+
+  /** A system's opacity: redrawn as a moving frame while the slider slides,
+   *  then settled. */
+  const setOpacity = (s: BodySystem, v: number): void => {
+    const next = { ...want.current.see };
+    if (v < 1) next[s] = v; else delete next[s];
+    want.current.see = next;
+    setSee(next);
+    realpha();
+    queueMove();
   };
 
   const hide = (): void => {
@@ -348,6 +380,16 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
         ))}
         <div className="sep" />
         <div className="grp">
+          <span className="lbl">See-through</span>
+          <DarkSelect id="body-see-system" value={seeSys} onChange={(v) => setSeeSys(v as BodySystem)}
+            title="The system the opacity slider sets">
+            {systems.map((s) => <option key={s} value={s}>{SYSTEM_LABEL[s]}</option>)}
+          </DarkSelect>
+        </div>
+        <SliderRow id="body-opacity" label="Opacity" min={OPACITY_MIN} max={1} step={0.05} value={see[seeSys] ?? 1}
+          onInput={(v) => setOpacity(seeSys, v)} />
+        <div className="sep" />
+        <div className="grp">
           <span className="lbl">Find</span>
           <input id="body-search" className="urlinput" value={query} placeholder="heart, liver, FMA7088…"
             title="Find a structure by name, FMA id or element id: it is isolated and framed"
@@ -374,6 +416,8 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
             ? `${settled.tris.toLocaleString()} tris · settled ${Math.round(settled.ms)} ms`
               + (moving ? ` · moving ${Math.round(moving.ms)} ms at ${moving.tris.toLocaleString()} tris, half size` : '')
               + (hidden ? ` · ${hidden} hidden` : '')
+              + (Object.keys(see).length ? ` · see-through ${(Object.entries(see) as [BodySystem, number][])
+                .map(([s, v]) => `${SYSTEM_LABEL[s].toLowerCase()} ${Math.round(v * 100)}%`).join(', ')}` : '')
             : 'loading…')}</span></Chip>
         </div>
       </div>

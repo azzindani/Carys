@@ -85,6 +85,24 @@ export function sceneColors(scene: BodyScene, colorOf: (part: number) => RGB): U
   return out;
 }
 
+/** renderMesh's `triAlpha`: each triangle its part's opacity (H4). Null
+ *  when all are opaque, so the render is exactly the one without. */
+export function sceneAlpha(scene: BodyScene, alphaOf: (part: number) => number): Float32Array | null {
+  const out = new Float32Array(scene.triPart.length);
+  let last = -1, a = 1, any = false;
+  for (let t = 0; t < scene.triPart.length; t++) {
+    const p = scene.triPart[t]!;
+    if (p !== last) {
+      a = alphaOf(p);
+      if (!(a >= 0 && a <= 1)) throw new RangeError(`body-scene-alpha: part ${p} opacity ${a}`);
+      last = p;
+    }
+    out[t] = a;
+    if (a < 1) any = true;
+  }
+  return any ? out : null;
+}
+
 /**
  * A coarse copy by vertex clustering: a part's vertices in one `cell` (mm)
  * whose normals point into the same octant merge to their mean, their

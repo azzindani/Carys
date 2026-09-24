@@ -11,6 +11,14 @@
 //
 // Depth cues (F7): ambient occlusion and silhouette outlines, opt-in, as a
 // post-pass over the depth and normal buffers (screen-space.ts).
+//
+// See-through layers (H4): triangles given an opacity under 1 are drawn
+// after the opaque ones, hidden by them but not by each other, into
+// weighted blended order-independent transparency (McGuire & Bavoil,
+// JCGT 2013): every layer adds its colour weighted by opacity and
+// nearness, and the opaque colour behind shows by the product of their
+// transparencies. One layer composites exactly as "over"; more are
+// approximate, nearer ones counting most. No sorting.
 import { ambientOcclusion, silhouettes, type GBuffer } from './screen-space.js';
 import { inClip, outcode, type Clip } from './clip.js';
 import type { TriMesh } from './surface.js';
@@ -39,6 +47,9 @@ export interface RasterOpts {
   /** a colour per triangle, RGB at the triangle's first index (so as long
    *  as `indices`); `color` then goes unused (H2: body systems) */
   triColor?: Uint8Array;
+  /** an opacity per triangle in [0, 1]: 1 drawn as ever, 0 not drawn, in
+   *  between see-through (H4). Without it every render is as before. */
+  triAlpha?: Float32Array;
 }
 
 // Light rig, view space. Ambient + diffuse match the old per-face shader.
@@ -63,6 +74,15 @@ const OUTLINE_GAP = 10;
 const OUTLINE_SHADE = 0.6;
 /** The inside of a clipped surface, lit from its own side, this much darker. */
 const INSIDE_SHADE = 0.55;
+/** A see-through layer's weight: opacity × max(OIT_FLOOR, OIT_GAIN·(1 − d)³),
+ *  d its depth from the scene's front (0) to back (1) (McGuire & Bavoil's
+ *  eq. 10, for a linear depth). */
+const OIT_GAIN = 3e3;
+const OIT_FLOOR = 1e-2;
+
+/** The see-through layers' sums per sample: colour × weight, weight, and
+ *  the product of their transparencies (1 where there are none). */
+interface Oit { rgb: Float32Array; w: Float32Array; reveal: Float32Array }
 
 export function renderMesh(
   mesh: TriMesh,
@@ -111,6 +131,23 @@ export function renderMesh(
   const clip = opts.clip ?? null;
   const tc = opts.triColor ?? null;
   if (tc && tc.length !== I.length) throw new RangeError(`raster-tricolor: ${tc.length} values for ${I.length} indices`);
+  const ta = opts.triAlpha ?? null;
+  let seeThrough = false;
+  if (ta) {
+    if (ta.length !== I.length / 3) throw new RangeError(`raster-trialpha: ${ta.length} values for ${I.length / 3} triangles`);
+    for (const a of ta) {
+      if (!(a >= 0 && a <= 1)) throw new RangeError(`raster-trialpha: opacity ${a}`);
+      if (a > 0 && a < 1) seeThrough = true;
+    }
+  }
+  // the see-through layers' sums, and the scene's depth span their weights use
+  let oit: Oit | null = null, zFront = 0, zSpan = 1;
+  if (seeThrough) {
+    oit = { rgb: new Float32Array(SW * SH * 3), w: new Float32Array(SW * SH), reveal: new Float32Array(SW * SH).fill(1) };
+    let lo = Infinity, hi = -Infinity;
+    for (let v = 0; v < nv; v++) { lo = Math.min(lo, Z[v]!); hi = Math.max(hi, Z[v]!); }
+    zFront = hi; zSpan = hi - lo || 1;
+  }
   // a triangle wholly outside the clip is skipped, one wholly inside is
   // drawn without the per-pixel test
   let code: Uint8Array | null = null;
@@ -118,7 +155,10 @@ export function renderMesh(
     code = new Uint8Array(P.length / 3);
     for (let v = 0; v < code.length; v++) code[v] = outcode(clip, P[v * 3]!, P[v * 3 + 1]!, P[v * 3 + 2]!);
   }
-  for (let t = 0; t < I.length; t += 3) {
+  // the opaque triangles, z-buffered; then the see-through ones over them
+  for (let pass = 0; pass < (oit ? 2 : 1); pass++) for (let t = 0; t < I.length; t += 3) {
+    const alpha = ta ? ta[t / 3]! : 1;
+    if (pass === 0 ? alpha < 1 : alpha === 1 || alpha === 0) continue;
     const i0 = I[t]!, i1 = I[t + 1]!, i2 = I[t + 2]!;
     let test = false;
     if (code) {
@@ -133,7 +173,12 @@ export function renderMesh(
     const x0 = X[i0]!, y0 = Y[i0]!, x1 = X[i1]!, y1 = Y[i1]!, x2 = X[i2]!, y2 = Y[i2]!;
     // outward winding is clockwise on screen (y down): the other way is the
     // triangle's back
-    const inside = clip !== null && (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0) > 0;
+    const back = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0) > 0;
+    // a see-through surface shows its front only, one layer however its
+    // normals lean (at a silhouette the cull above keeps some of the back,
+    // which the opaque pass hides behind the front and blending would not)
+    if (pass === 1 && !clip && back) continue;
+    const inside = clip !== null && back;
     const cr = tc ? tc[t]! : color[0], cg = tc ? tc[t + 1]! : color[1], cb = tc ? tc[t + 2]! : color[2];
     const denom = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
     if (Math.abs(denom) < 1e-9) continue;
@@ -157,21 +202,30 @@ export function renderMesh(
           w0 * P[i0 * 3]! + w1 * P[i1 * 3]! + w2 * P[i2 * 3]!,
           w0 * P[i0 * 3 + 1]! + w1 * P[i1 * 3 + 1]! + w2 * P[i2 * 3 + 1]!,
           w0 * P[i0 * 3 + 2]! + w1 * P[i1 * 3 + 2]! + w2 * P[i2 * 3 + 2]!)) continue;
-        depth[o] = z;
+        if (pass === 0) depth[o] = z;
         // the surface normal at this pixel (turned to face us on the inside)
         let ex = w0 * NX[i0]! + w1 * NX[i1]! + w2 * NX[i2]!;
         let ey = w0 * NY[i0]! + w1 * NY[i1]! + w2 * NY[i2]!;
         let ez = w0 * NZ[i0]! + w1 * NZ[i1]! + w2 * NZ[i2]!;
         const l = (inside ? -1 : 1) / (Math.sqrt(ex * ex + ey * ey + ez * ez) || 1);
         ex *= l; ey *= l; ez *= l;
-        if (G) { G.nx[o] = ex; G.ny[o] = ey; G.nz[o] = ez; }
+        if (G && pass === 0) { G.nx[o] = ex; G.ny[o] = ey; G.nz[o] = ez; }
         const d = Math.max(0, ex * Lx + ey * Ly + ez * Lz);
         const h = ex * Hx + ey * Hy + ez * Hz;
         const shade = (AMBIENT + DIFFUSE * d) * (inside ? INSIDE_SHADE : 1);
         const spec = !inside && d > 0 && h > SPEC_CUT ? SPECULAR * 255 * h ** SHININESS : 0;
-        acc[o * 3] = cr * shade + spec;
-        acc[o * 3 + 1] = cg * shade + spec;
-        acc[o * 3 + 2] = cb * shade + spec;
+        if (pass === 0) {
+          acc[o * 3] = cr * shade + spec;
+          acc[o * 3 + 1] = cg * shade + spec;
+          acc[o * 3 + 2] = cb * shade + spec;
+          continue;
+        }
+        const f = 1 - (zFront - z) / zSpan, wt = alpha * Math.max(OIT_FLOOR, OIT_GAIN * f * f * f);
+        oit!.rgb[o * 3]! += Math.min(255, cr * shade + spec) * wt;
+        oit!.rgb[o * 3 + 1]! += Math.min(255, cg * shade + spec) * wt;
+        oit!.rgb[o * 3 + 2]! += Math.min(255, cb * shade + spec) * wt;
+        oit!.w[o]! += wt;
+        oit!.reveal[o]! *= 1 - alpha;
       }
     }
   }
@@ -191,6 +245,18 @@ export function renderMesh(
       for (let j = 0; j < ss; j++) {
         for (let i = 0; i < ss; i++) {
           const o = (y * ss + j) * SW + x * ss + i, s = o * 3;
+          if (oit && oit.reveal[o]! < 1) {
+            // the opaque sample (or the background) behind the see-through layers
+            let or = acc[s]!, og = acc[s + 1]!, ob = acc[s + 2]!;
+            if (depth[o] !== -Infinity) {
+              const f = occ ? occ[Math.floor((y * ss + j) / AO_BLOCK) * AW + Math.floor((x * ss + i) / AO_BLOCK)]! : 1;
+              const m = edge?.[o] ? f * OUTLINE_SHADE : f;
+              or = Math.min(255, or) * m; og = Math.min(255, og) * m; ob = Math.min(255, ob) * m;
+            }
+            const rv = oit.reveal[o]!, q = (1 - rv) / oit.w[o]!;
+            r += or * rv + oit.rgb[s]! * q; g += og * rv + oit.rgb[s + 1]! * q; b += ob * rv + oit.rgb[s + 2]! * q;
+            continue;
+          }
           if (depth[o] === -Infinity) { r += acc[s]!; g += acc[s + 1]!; b += acc[s + 2]!; continue; }
           const f = occ ? occ[Math.floor((y * ss + j) / AO_BLOCK) * AW + Math.floor((x * ss + i) / AO_BLOCK)]! : 1;
           const m = edge?.[o] ? f * OUTLINE_SHADE : f;
