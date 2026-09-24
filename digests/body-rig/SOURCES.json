@@ -1,0 +1,22 @@
+{
+ "digest": "body-rig",
+ "format": "carys-sources/1",
+ "sources": [
+  {
+   "entry_count": 2234,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html",
+   "version_pin": "BP3D-4.0-isa-obj99",
+   "role": "fitted from digests/bodyparts3d-body (the committed digest, itself cited in its SOURCES.json)"
+  },
+  {
+   "entry_count": 70,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://humanatlas.io/3d-reference-library",
+   "version_pin": "HRA-ref-organ-VHM-2026-06",
+   "role": "fitted from digests/hra-organs (the committed digest, itself cited in its SOURCES.json)"
+  }
+ ]
+}
