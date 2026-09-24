@@ -40,6 +40,16 @@
    "source_url": "https://humanatlas.io/3d-reference-library"
   },
   {
+   "id": "body-rig",
+   "kind": "digest",
+   "license_spdx": "CC-BY-4.0",
+   "license_note": "fitted from the committed BodyParts3D body digest and the HRA organs digest (both CC BY 4.0, each cited in its own SOURCES.json): joint centres, segments and skin weights, no new source data",
+   "mode": "digest",
+   "lane": "H5",
+   "status": "shipped",
+   "source_url": "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html"
+  },
+  {
    "id": "rcsb-pathogens",
    "kind": "digest",
    "license_spdx": "CC0-1.0",

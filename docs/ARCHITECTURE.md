@@ -142,6 +142,19 @@ frame the same physical box.
   behind it. `sceneAlpha` maps a system's opacity to its triangles (null
   when all are opaque), set from the Body dock's See-through picker and
   Opacity slider.
+- A rigged skeleton (H5): `rig.ts` holds segments of rigid bones joined at
+  fitted centres (`fitSphere`, `fitCircle`), `segmentTransforms` for a
+  pose (flexion, abduction, twist per joint about axes the rig carries,
+  the spine and neck each spread over their disks), `poseMesh` (a bone
+  rigid, anything else blended by up to three segments' weights; an
+  unmoved segment leaves its vertices bit for bit) and the
+  `carys-body-weights/1` file. `mesh-grid.ts` tests whether a segment
+  crosses a surface. `scripts/build-body-rig.mjs` fits the joints to the
+  body digest's bones and weights every other vertex of both body
+  digests into `digests/body-rig/` (`rig.json` and a weights file per
+  digest and system). `lib/bodyRig.ts` fetches them with the first pose
+  and refuses a rig fitted to other digest pins; the Body dock's Pose
+  joint and sliders set the angles.
 - Placing another body's organs (H3): `glb.ts` reads glTF binary meshes
   (node transforms applied; Draco, sparse accessors and non-triangle
   primitives refused). `organ-fit.ts` fits organs both bodies have

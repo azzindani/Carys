@@ -1558,13 +1558,81 @@ merged into main 2026-09-24; work is on main only since).
     a tap on the thigh names the right femur through both. The full body
     settles in 1,028 ms see-through and 880 ms opaque; moving frames take
     124 and 128 ms. geometry.mjs passes unchanged.
-- OPEN — **H5. A rigged skeleton.** A joint hierarchy (spine, neck,
+- DONE — **H5. A rigged skeleton.** A joint hierarchy (spine, neck,
   shoulders, elbows, wrists, hips, knees, ankles), joint centres fitted
   from the bones (a hip at the femoral head's sphere fit), bones rigid,
   muscles and skin skinned to them; pose by joint angles. Accept: the
   rest pose renders bit-identical to H2; bone lengths constant under any
   pose (under 0.01 mm); the hip centre within 5 mm of the femoral head
   fit; muscle ends stay on their bones (within 2 mm).
+  `render-cpu/rig.ts` has the fits, the pose, the skinning and the weights
+  file; `mesh-grid.ts` tests a segment against a surface.
+  `scripts/build-body-rig.mjs` builds `digests/body-rig/` from the two
+  body digests (CC BY 4.0, cited at their pins) in about 1.5 min,
+  deterministic.
+  - Segments: 234 bones in 25 segments by a rule per segment: the pelvis
+    (the root), each lumbar vertebra, the trunk (thoracic spine, ribs,
+    sternum, shoulder girdle), C3–C7 each, the head (skull, C1–C2, hyoid,
+    teeth), and on each side upper arm, forearm, hand, thigh (with the
+    patella), shank and foot. A skeletal part with a bone's name that no
+    rule places fails the build. The cartilages, ligaments, disks and the
+    back muscles BodyParts3D files as skeletal are soft.
+  - 24 joints: the spine is spread over its 6 disks from L5/S1 to T12/L1,
+    and the neck over 6 from C7/T1 to C2/C3, a sixth of the angle each.
+    The rest are sphere fits to where two bones meet:
+    - hips on the femoral heads: r 23.2 mm, rms 0.60 and 0.43 mm;
+    - shoulders: r 20.0 and 19.2 mm, rms 0.49 and 0.45 mm;
+    - wrists on the scaphoid and lunate: r 16.7 and 17.5 mm, rms about 1 mm;
+    - ankles on the talar domes: r 22.0 and 19.6 mm, rms 1.6 and 1.4 mm.
+    The elbow is a circle along the hinge on the ulna's trochlear notch
+    (r 14.6 and 13.9 mm, rms 2.6 and 2.5 mm). The knee is the midpoint of a
+    sphere on each posterior femoral condyle (r 16.4–18.2 mm, rms 1.5 mm);
+    where femur and tibia meet is too flat to fit (the circle came out at
+    9 mm to 680 m).
+  - Joint angles are flexion, abduction and twist, signed anatomically
+    (knee, elbow and ankle are hinges; the wrist also takes radial
+    deviation). A child segment turns about its joint in its parent's
+    frame.
+  - Weights: 1,641,572 vertices of every other part follow their three
+    nearest segments by 1/d⁴. A muscle vertex within 1 mm of a bone is an
+    attachment and follows that bone alone (268,932 of them).
+  - Straight-line nearness was not enough. The inner arm's skin is nearer
+    the ribs across the armpit than its humerus, so raising the arm
+    dragged a sheet of skin from the flank; the thighs beside the hanging
+    hands followed the hands. So a vertex counts no bone it could reach
+    only by crossing the skin's outer sheet (6,780 follow a farther
+    bone). A vertex that sees no bone at all takes its part's nearest
+    sighted vertex's weights (4,430 muscle vertices poking out through
+    the skin). The skin's weights are then averaged with its neighbours'
+    8 times.
+  - Two rules were tried first and dropped. "Only bones behind the
+    surface" broke every closed muscle, whose underside faces its own
+    bone, and the skin's inner sheet. A 2× distance guard on it brought
+    the flank flaps back.
+  - The weights are 8.24 MB in 15 files, fetched with the first pose.
+    `lib/bodyRig.ts` refuses a rig fitted to other digest pins. The Body
+    dock has a Pose joint picker, a slider per angle it takes, and Rest.
+  Measured:
+  - Rest pose: every part of both digests comes back bit for bit (an
+    unmoved segment leaves its vertices as they are, and the app draws the
+    unposed parts), so the atlas renders as in H2.
+  - Bone lengths under a pose bending every joint: the largest change is
+    **0.00011 mm** over the 234 bones (float32 rounding).
+  - The hip centres lie **2.44 and 1.88 mm** from the acetabula's own
+    sphere fits, left and right.
+  - Muscle ends: all 268,932 lie within 1.00 mm of their bone at rest, and
+    under the bent pose they leave it by at most **0.00007 mm**.
+  - Posing all 1,737,889 vertices takes 215 ms in node. In the app, the
+    first pose (rig and weights fetched) comes back in 0.7–1.4 s, and the
+    full body settles in 0.5–0.9 s.
+  - Wire leg 34b: the right shoulder abducted 90° by keys on its slider,
+    and a tap beside the body that missed at rest lands on the raised
+    arm's skin. The full body posed settles in 490 ms, and Rest brings the
+    miss back. geometry.mjs passes unchanged.
+  - Screenshots checked: a step with the arm raised (skeleton, muscle,
+    skin) and arms out with the head turned. What is left is linear blend
+    skinning's own stretch at the armpit, and the BodyParts3D muscles
+    that show through its skin at rest too.
 - OPEN — **H6. Motion playback.** BVH import retargeted onto the H5 rig,
   walk and run from a CC BY motion source (CMU mocap is not CC BY; if no
   CC BY source exists this item is Blocked), muscles coloured by how far

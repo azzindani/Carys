@@ -2445,8 +2445,9 @@ try {
   // under them (femur, brain, heart, liver), a find isolates, a structure
   // hides, and the frame times on the full body are measured. H3: the HRA
   // lung and a lymph node are tapped and cited. H4: skin and muscle
-  // see-through, a tap reaches the femur. Tap points are canvas pixels
-  // (480×800) of the default front view.
+  // see-through, a tap reaches the femur. H5: a posed shoulder puts the
+  // arm under a tap that missed. Tap points are canvas pixels (480×800) of
+  // the default front view.
   const pageB = await browser.newPage({ viewport: { width: 1440, height: 1500 } });
   pageB.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await pageB.goto(`${BASE}#/atlas`, { waitUntil: 'networkidle' });
@@ -2574,6 +2575,25 @@ try {
   await opacityTo('Skin', 'End', 1);
   await opacityTo('Muscular', 'End', 1);
   await pageB.waitForFunction(() => !/see-through/.test(document.getElementById('ro-body')?.textContent ?? ''), null, { timeout: 120000 });
+  // H5: the right shoulder abducted 90° by keys (the rig and weights load
+  // then): a tap beside the body that missed at rest lands on the raised
+  // arm, and Rest brings the miss back
+  const besideRest = await tapBody(60, 155);
+  await pageB.selectOption('#body-pose-joint', { label: 'right shoulder' });
+  await pageB.locator('#body-pose-abduct').focus();
+  for (let k = 0; k < 90; k++) await pageB.keyboard.press('ArrowRight');
+  await pageB.waitForFunction(() => /posed right shoulder 0°\/90°\/0°/.test(document.getElementById('ro-body')?.textContent ?? ''), null, { timeout: 120000 });
+  await bodySettles(await bodyRo());
+  const posedRo = await bodyRo();
+  const besidePosed = await tapBody(60, 155);
+  bodyBefore = await bodyRo();
+  await pageB.click('#body-pose-rest');
+  await pageB.waitForFunction(() => !/posed/.test(document.getElementById('ro-body')?.textContent ?? ''), null, { timeout: 120000 });
+  await bodySettles(bodyBefore);
+  const besideBack = await tapBody(60, 155);
+  if (besideRest.part !== 'tap a structure' || !/^skin · /.test(besidePosed.part) || besideBack.part !== 'tap a structure') {
+    fail(`pose: beside the body ${besideRest.part} → posed ${besidePosed.part} → rest ${besideBack.part}`);
+  } else console.log('pose', posedRo, '→ a tap beside the body lands on', besidePosed.part.split(' · ')[0]);
   const fb = await pageB.locator('#c-body').boundingBox();
   await pageB.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
   await pageB.mouse.down();

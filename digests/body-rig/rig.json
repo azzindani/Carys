@@ -1,0 +1,1304 @@
+{
+ "format": "carys-body-rig/1",
+ "pin": "body-rig-1",
+ "frame": "BodyParts3D (mm; x to the body's left, y to its back, z up), as digests/bodyparts3d-body",
+ "digests": {
+  "bodyparts3d-body": "BP3D-4.0-isa-obj99",
+  "hra-organs": "HRA-ref-organ-VHM-2026-06"
+ },
+ "segments": [
+  "pelvis",
+  "L5",
+  "L4",
+  "L3",
+  "L2",
+  "L1",
+  "trunk",
+  "C7",
+  "C6",
+  "C5",
+  "C4",
+  "C3",
+  "head",
+  "left upper arm",
+  "left forearm",
+  "left hand",
+  "left thigh",
+  "left shank",
+  "left foot",
+  "right upper arm",
+  "right forearm",
+  "right hand",
+  "right thigh",
+  "right shank",
+  "right foot"
+ ],
+ "bones": {
+  "FJ1254": 12,
+  "FJ1255": 12,
+  "FJ1256": 12,
+  "FJ1257": 12,
+  "FJ1258": 12,
+  "FJ1259": 12,
+  "FJ1260": 12,
+  "FJ1261": 12,
+  "FJ1262": 12,
+  "FJ1263": 12,
+  "FJ1264": 12,
+  "FJ1265": 12,
+  "FJ1266": 12,
+  "FJ1267": 12,
+  "FJ1268": 12,
+  "FJ1269": 12,
+  "FJ1270": 12,
+  "FJ1271": 12,
+  "FJ1272": 12,
+  "FJ1273": 12,
+  "FJ1274": 12,
+  "FJ1275": 12,
+  "FJ1276": 12,
+  "FJ1277": 12,
+  "FJ1278": 12,
+  "FJ1279": 12,
+  "FJ1280": 12,
+  "FJ1281": 12,
+  "FJ2772": 12,
+  "FJ3152": 0,
+  "FJ3153": 6,
+  "FJ3154": 6,
+  "FJ3155": 6,
+  "FJ3156": 6,
+  "FJ3157": 5,
+  "FJ3158": 6,
+  "FJ3159": 4,
+  "FJ3160": 6,
+  "FJ3161": 11,
+  "FJ3162": 3,
+  "FJ3163": 6,
+  "FJ3164": 10,
+  "FJ3165": 2,
+  "FJ3166": 6,
+  "FJ3167": 9,
+  "FJ3168": 1,
+  "FJ3169": 6,
+  "FJ3170": 8,
+  "FJ3171": 6,
+  "FJ3172": 7,
+  "FJ3173": 6,
+  "FJ3174": 6,
+  "FJ3175": 6,
+  "FJ3176": 12,
+  "FJ3177": 12,
+  "FJ3178": 6,
+  "FJ3179": 18,
+  "FJ3180": 18,
+  "FJ3181": 18,
+  "FJ3182": 18,
+  "FJ3183": 15,
+  "FJ3184": 15,
+  "FJ3185": 18,
+  "FJ3186": 15,
+  "FJ3187": 15,
+  "FJ3188": 15,
+  "FJ3189": 24,
+  "FJ3190": 24,
+  "FJ3191": 24,
+  "FJ3192": 24,
+  "FJ3193": 21,
+  "FJ3194": 21,
+  "FJ3195": 24,
+  "FJ3196": 21,
+  "FJ3197": 21,
+  "FJ3198": 21,
+  "FJ3199": 12,
+  "FJ3200": 12,
+  "FJ3201": 12,
+  "FJ3225": 6,
+  "FJ3226": 6,
+  "FJ3227": 6,
+  "FJ3228": 6,
+  "FJ3229": 6,
+  "FJ3230": 6,
+  "FJ3231": 6,
+  "FJ3232": 6,
+  "FJ3233": 6,
+  "FJ3234": 6,
+  "FJ3235": 6,
+  "FJ3236": 6,
+  "FJ3237": 6,
+  "FJ3240": 15,
+  "FJ3241": 18,
+  "FJ3243": 15,
+  "FJ3244": 18,
+  "FJ3246": 15,
+  "FJ3247": 18,
+  "FJ3249": 15,
+  "FJ3250": 18,
+  "FJ3252": 15,
+  "FJ3253": 18,
+  "FJ3256": 18,
+  "FJ3257": 15,
+  "FJ3258": 18,
+  "FJ3259": 16,
+  "FJ3260": 17,
+  "FJ3261": 15,
+  "FJ3262": 13,
+  "FJ3263": 12,
+  "FJ3264": 18,
+  "FJ3265": 12,
+  "FJ3266": 18,
+  "FJ3267": 18,
+  "FJ3268": 15,
+  "FJ3269": 12,
+  "FJ3270": 18,
+  "FJ3271": 18,
+  "FJ3272": 12,
+  "FJ3273": 12,
+  "FJ3274": 12,
+  "FJ3275": 16,
+  "FJ3276": 15,
+  "FJ3277": 14,
+  "FJ3278": 15,
+  "FJ3279": 6,
+  "FJ3280": 18,
+  "FJ3281": 12,
+  "FJ3282": 17,
+  "FJ3283": 15,
+  "FJ3284": 15,
+  "FJ3285": 15,
+  "FJ3286": 14,
+  "FJ3287": 12,
+  "FJ3288": 0,
+  "FJ3289": 12,
+  "FJ3290": 6,
+  "FJ3291": 15,
+  "FJ3292": 21,
+  "FJ3293": 18,
+  "FJ3294": 18,
+  "FJ3295": 18,
+  "FJ3296": 15,
+  "FJ3297": 15,
+  "FJ3298": 18,
+  "FJ3299": 15,
+  "FJ3300": 24,
+  "FJ3301": 24,
+  "FJ3302": 24,
+  "FJ3303": 21,
+  "FJ3304": 21,
+  "FJ3305": 24,
+  "FJ3306": 21,
+  "FJ3307": 18,
+  "FJ3308": 24,
+  "FJ3309": 12,
+  "FJ3310": 24,
+  "FJ3311": 18,
+  "FJ3312": 18,
+  "FJ3313": 15,
+  "FJ3314": 15,
+  "FJ3315": 18,
+  "FJ3316": 15,
+  "FJ3317": 15,
+  "FJ3318": 15,
+  "FJ3319": 24,
+  "FJ3320": 24,
+  "FJ3321": 24,
+  "FJ3322": 21,
+  "FJ3323": 21,
+  "FJ3324": 24,
+  "FJ3325": 21,
+  "FJ3326": 21,
+  "FJ3327": 21,
+  "FJ3328": 18,
+  "FJ3329": 18,
+  "FJ3330": 6,
+  "FJ3331": 6,
+  "FJ3332": 6,
+  "FJ3334": 6,
+  "FJ3336": 6,
+  "FJ3338": 6,
+  "FJ3340": 6,
+  "FJ3342": 6,
+  "FJ3344": 6,
+  "FJ3346": 6,
+  "FJ3347": 6,
+  "FJ3348": 6,
+  "FJ3349": 20,
+  "FJ3350": 21,
+  "FJ3351": 24,
+  "FJ3352": 21,
+  "FJ3353": 24,
+  "FJ3354": 21,
+  "FJ3355": 24,
+  "FJ3356": 21,
+  "FJ3357": 24,
+  "FJ3358": 21,
+  "FJ3359": 24,
+  "FJ3360": 24,
+  "FJ3361": 21,
+  "FJ3362": 6,
+  "FJ3364": 24,
+  "FJ3365": 22,
+  "FJ3366": 23,
+  "FJ3367": 21,
+  "FJ3368": 19,
+  "FJ3369": 12,
+  "FJ3370": 24,
+  "FJ3371": 12,
+  "FJ3372": 24,
+  "FJ3373": 24,
+  "FJ3374": 21,
+  "FJ3375": 12,
+  "FJ3376": 24,
+  "FJ3377": 24,
+  "FJ3378": 12,
+  "FJ3379": 12,
+  "FJ3380": 12,
+  "FJ3381": 22,
+  "FJ3382": 21,
+  "FJ3383": 21,
+  "FJ3384": 6,
+  "FJ3385": 24,
+  "FJ3386": 12,
+  "FJ3387": 23,
+  "FJ3388": 21,
+  "FJ3389": 21,
+  "FJ3390": 21,
+  "FJ3391": 20,
+  "FJ3392": 12,
+  "FJ3393": 0,
+  "FJ3394": 12,
+  "FJ3395": 12
+ },
+ "joints": [
+  {
+   "pose": "spine",
+   "share": 0.16666666666666666,
+   "parent": 0,
+   "child": 1,
+   "centre": [
+    -0.611,
+    -72.514,
+    909.286
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "disk centre"
+   }
+  },
+  {
+   "pose": "left hip",
+   "share": 1,
+   "parent": 0,
+   "child": 16,
+   "centre": [
+    87.39,
+    -78.911,
+    811.111
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     -1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "sphere: femur where it meets the hip bone",
+    "radiusMm": 23.221,
+    "rmsMm": 0.599,
+    "points": 91
+   }
+  },
+  {
+   "pose": "right hip",
+   "share": 1,
+   "parent": 0,
+   "child": 22,
+   "centre": [
+    -87.326,
+    -78.896,
+    811.141
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ]
+   ],
+   "fit": {
+    "method": "sphere: femur where it meets the hip bone",
+    "radiusMm": 23.191,
+    "rmsMm": 0.428,
+    "points": 81
+   }
+  },
+  {
+   "pose": "spine",
+   "share": 0.16666666666666666,
+   "parent": 1,
+   "child": 2,
+   "centre": [
+    -0.683,
+    -83.568,
+    942.111
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "disk centre"
+   }
+  },
+  {
+   "pose": "left knee",
+   "share": 1,
+   "parent": 16,
+   "child": 17,
+   "centre": [
+    72.376,
+    -69.43,
+    389.036
+   ],
+   "dof": 1,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     -1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "midpoint of a sphere on each posterior femoral condyle",
+    "condyles": [
+     {
+      "centre": [
+       48.932,
+       -68.262,
+       387.838
+      ],
+      "method": "sphere",
+      "radiusMm": 18.093,
+      "rmsMm": 1.484,
+      "points": 61
+     },
+     {
+      "centre": [
+       95.82,
+       -70.599,
+       390.233
+      ],
+      "method": "sphere",
+      "radiusMm": 16.662,
+      "rmsMm": 1.525,
+      "points": 48
+     }
+    ]
+   }
+  },
+  {
+   "pose": "right knee",
+   "share": 1,
+   "parent": 22,
+   "child": 23,
+   "centre": [
+    -72.521,
+    -69.285,
+    388.989
+   ],
+   "dof": 1,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ]
+   ],
+   "fit": {
+    "method": "midpoint of a sphere on each posterior femoral condyle",
+    "condyles": [
+     {
+      "centre": [
+       -95.786,
+       -70.203,
+       389.924
+      ],
+      "method": "sphere",
+      "radiusMm": 16.405,
+      "rmsMm": 1.479,
+      "points": 51
+     },
+     {
+      "centre": [
+       -49.256,
+       -68.368,
+       388.054
+      ],
+      "method": "sphere",
+      "radiusMm": 18.168,
+      "rmsMm": 1.555,
+      "points": 60
+     }
+    ]
+   }
+  },
+  {
+   "pose": "spine",
+   "share": 0.16666666666666666,
+   "parent": 2,
+   "child": 3,
+   "centre": [
+    -0.724,
+    -93.691,
+    971.91
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "disk centre"
+   }
+  },
+  {
+   "pose": "left ankle",
+   "share": 1,
+   "parent": 17,
+   "child": 18,
+   "centre": [
+    71.827,
+    -71.97,
+    -16.803
+   ],
+   "dof": 1,
+   "axes": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     -1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "sphere: talus where it meets the tibia",
+    "radiusMm": 22.035,
+    "rmsMm": 1.601,
+    "points": 28
+   }
+  },
+  {
+   "pose": "right ankle",
+   "share": 1,
+   "parent": 23,
+   "child": 24,
+   "centre": [
+    -70.737,
+    -72.246,
+    -13.089
+   ],
+   "dof": 1,
+   "axes": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ]
+   ],
+   "fit": {
+    "method": "sphere: talus where it meets the tibia",
+    "radiusMm": 19.633,
+    "rmsMm": 1.405,
+    "points": 33
+   }
+  },
+  {
+   "pose": "spine",
+   "share": 0.16666666666666666,
+   "parent": 3,
+   "child": 4,
+   "centre": [
+    -0.647,
+    -97.053,
+    1006.792
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "disk centre"
+   }
+  },
+  {
+   "pose": "spine",
+   "share": 0.16666666666666666,
+   "parent": 4,
+   "child": 5,
+   "centre": [
+    -0.673,
+    -93.428,
+    1040.613
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "disk centre"
+   }
+  },
+  {
+   "pose": "spine",
+   "share": 0.16666666666666666,
+   "parent": 5,
+   "child": 6,
+   "centre": [
+    -0.683,
+    -85.432,
+    1070.159
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "disk centre"
+   }
+  },
+  {
+   "pose": "neck",
+   "share": 0.16666666666666666,
+   "parent": 6,
+   "child": 7,
+   "centre": [
+    -0.709,
+    -78.708,
+    1365.85
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "disk centre"
+   }
+  },
+  {
+   "pose": "left shoulder",
+   "share": 1,
+   "parent": 6,
+   "child": 13,
+   "centre": [
+    159.587,
+    -75.232,
+    1313.711
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     -1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "sphere: humerus where it meets the scapula",
+    "radiusMm": 19.988,
+    "rmsMm": 0.493,
+    "points": 58
+   }
+  },
+  {
+   "pose": "right shoulder",
+   "share": 1,
+   "parent": 6,
+   "child": 19,
+   "centre": [
+    -158.84,
+    -74.668,
+    1313.847
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ]
+   ],
+   "fit": {
+    "method": "sphere: humerus where it meets the scapula",
+    "radiusMm": 19.2,
+    "rmsMm": 0.448,
+    "points": 87
+   }
+  },
+  {
+   "pose": "neck",
+   "share": 0.16666666666666666,
+   "parent": 7,
+   "child": 8,
+   "centre": [
+    -0.761,
+    -81.895,
+    1382.004
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "disk centre"
+   }
+  },
+  {
+   "pose": "left elbow",
+   "share": 1,
+   "parent": 13,
+   "child": 14,
+   "centre": [
+    206.295,
+    -69.601,
+    1040.845
+   ],
+   "dof": 1,
+   "axes": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     -1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "circle along x: ulna where it meets the humerus",
+    "radiusMm": 14.59,
+    "rmsMm": 2.583,
+    "points": 68
+   }
+  },
+  {
+   "pose": "right elbow",
+   "share": 1,
+   "parent": 19,
+   "child": 20,
+   "centre": [
+    -206.043,
+    -69.415,
+    1040.872
+   ],
+   "dof": 1,
+   "axes": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ]
+   ],
+   "fit": {
+    "method": "circle along x: ulna where it meets the humerus",
+    "radiusMm": 13.899,
+    "rmsMm": 2.492,
+    "points": 74
+   }
+  },
+  {
+   "pose": "neck",
+   "share": 0.16666666666666666,
+   "parent": 8,
+   "child": 9,
+   "centre": [
+    -0.637,
+    -83.679,
+    1398.025
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "disk centre"
+   }
+  },
+  {
+   "pose": "left wrist",
+   "share": 1,
+   "parent": 14,
+   "child": 15,
+   "centre": [
+    258.476,
+    -124.049,
+    795.045
+   ],
+   "dof": 2,
+   "axes": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     -1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "sphere: scaphoid and lunate where they meet the radius",
+    "radiusMm": 16.715,
+    "rmsMm": 1.011,
+    "points": 45
+   }
+  },
+  {
+   "pose": "right wrist",
+   "share": 1,
+   "parent": 20,
+   "child": 21,
+   "centre": [
+    -258.249,
+    -124.72,
+    794.221
+   ],
+   "dof": 2,
+   "axes": [
+    [
+     -1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     -1
+    ]
+   ],
+   "fit": {
+    "method": "sphere: scaphoid and lunate where they meet the radius",
+    "radiusMm": 17.513,
+    "rmsMm": 1.107,
+    "points": 48
+   }
+  },
+  {
+   "pose": "neck",
+   "share": 0.16666666666666666,
+   "parent": 9,
+   "child": 10,
+   "centre": [
+    -0.693,
+    -82.78,
+    1414.072
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "disk centre"
+   }
+  },
+  {
+   "pose": "neck",
+   "share": 0.16666666666666666,
+   "parent": 10,
+   "child": 11,
+   "centre": [
+    -0.642,
+    -80.665,
+    1429.974
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "disk centre"
+   }
+  },
+  {
+   "pose": "neck",
+   "share": 0.16666666666666666,
+   "parent": 11,
+   "child": 12,
+   "centre": [
+    -0.823,
+    -78.169,
+    1446.207
+   ],
+   "dof": 3,
+   "axes": [
+    [
+     1,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0
+    ],
+    [
+     0,
+     0,
+     1
+    ]
+   ],
+   "fit": {
+    "method": "disk centre"
+   }
+  }
+ ],
+ "hipCheck": [
+  {
+   "side": "left",
+   "femoralHead": {
+    "centre": [
+     87.39,
+     -78.911,
+     811.111
+    ],
+    "method": "sphere",
+    "radiusMm": 23.221,
+    "rmsMm": 0.599,
+    "points": 91
+   },
+   "acetabulum": {
+    "centre": [
+     89.151,
+     -80.374,
+     810.26
+    ],
+    "method": "sphere",
+    "radiusMm": 27.56,
+    "rmsMm": 1.403,
+    "points": 87
+   },
+   "apartMm": 2.443
+  },
+  {
+   "side": "right",
+   "femoralHead": {
+    "centre": [
+     -87.326,
+     -78.896,
+     811.141
+    ],
+    "method": "sphere",
+    "radiusMm": 23.191,
+    "rmsMm": 0.428,
+    "points": 81
+   },
+   "acetabulum": {
+    "centre": [
+     -88.725,
+     -80.118,
+     810.857
+    ],
+    "method": "sphere",
+    "radiusMm": 27.421,
+    "rmsMm": 1.504,
+    "points": 93
+   },
+   "apartMm": 1.879
+  }
+ ],
+ "weights": {
+  "method": "each vertex follows its three nearest segments by 1/d⁴, d its distance (mm) to their bones' surfaces sampled 1 mm apart (segments beyond 3× the nearest not counted); a segment counts only if the straight line to its nearest bone point crosses no triangle of the skin's outer sheet (past 1.5 mm from the vertex); a vertex that sees none takes the weights of its part's nearest vertex that does (all segments counted when none in its part does); the skin's weights are then averaged with its neighbours' 8 times; a muscle vertex within 1 mm of a bone follows that bone alone",
+  "attachments": 268932,
+  "vertices": 1641572,
+  "acrossSkin": 6780,
+  "seeingNoneCopied": 4430,
+  "seeingNone": 0,
+  "files": [
+   {
+    "digest": "bodyparts3d-body",
+    "system": "skeletal",
+    "file": "bodyparts3d-body.skeletal.cbrw",
+    "parts": 139,
+    "vertices": 213093,
+    "bytes": 1067689
+   },
+   {
+    "digest": "bodyparts3d-body",
+    "system": "muscular",
+    "file": "bodyparts3d-body.muscular.cbrw",
+    "parts": 383,
+    "vertices": 843793,
+    "bytes": 4225101
+   },
+   {
+    "digest": "bodyparts3d-body",
+    "system": "nervous",
+    "file": "bodyparts3d-body.nervous.cbrw",
+    "parts": 147,
+    "vertices": 84198,
+    "bytes": 423234
+   },
+   {
+    "digest": "bodyparts3d-body",
+    "system": "cardiovascular",
+    "file": "bodyparts3d-body.cardiovascular.cbrw",
+    "parts": 1057,
+    "vertices": 246255,
+    "bytes": 1246895
+   },
+   {
+    "digest": "bodyparts3d-body",
+    "system": "lymphatic",
+    "file": "bodyparts3d-body.lymphatic.cbrw",
+    "parts": 3,
+    "vertices": 867,
+    "bytes": 4435
+   },
+   {
+    "digest": "bodyparts3d-body",
+    "system": "respiratory",
+    "file": "bodyparts3d-body.respiratory.cbrw",
+    "parts": 105,
+    "vertices": 20498,
+    "bytes": 104078
+   },
+   {
+    "digest": "bodyparts3d-body",
+    "system": "digestive",
+    "file": "bodyparts3d-body.digestive.cbrw",
+    "parts": 110,
+    "vertices": 109259,
+    "bytes": 547983
+   },
+   {
+    "digest": "bodyparts3d-body",
+    "system": "urinary",
+    "file": "bodyparts3d-body.urinary.cbrw",
+    "parts": 6,
+    "vertices": 2316,
+    "bytes": 11728
+   },
+   {
+    "digest": "bodyparts3d-body",
+    "system": "reproductive",
+    "file": "bodyparts3d-body.reproductive.cbrw",
+    "parts": 12,
+    "vertices": 3326,
+    "bytes": 16862
+   },
+   {
+    "digest": "bodyparts3d-body",
+    "system": "endocrine",
+    "file": "bodyparts3d-body.endocrine.cbrw",
+    "parts": 3,
+    "vertices": 600,
+    "bytes": 3100
+   },
+   {
+    "digest": "bodyparts3d-body",
+    "system": "sensory",
+    "file": "bodyparts3d-body.sensory.cbrw",
+    "parts": 31,
+    "vertices": 41257,
+    "bytes": 206801
+   },
+   {
+    "digest": "bodyparts3d-body",
+    "system": "integumentary",
+    "file": "bodyparts3d-body.integumentary.cbrw",
+    "parts": 4,
+    "vertices": 56517,
+    "bytes": 282709
+   },
+   {
+    "digest": "hra-organs",
+    "system": "nervous",
+    "file": "hra-organs.nervous.cbrw",
+    "parts": 30,
+    "vertices": 1586,
+    "bytes": 9902
+   },
+   {
+    "digest": "hra-organs",
+    "system": "lymphatic",
+    "file": "hra-organs.lymphatic.cbrw",
+    "parts": 20,
+    "vertices": 13790,
+    "bytes": 70050
+   },
+   {
+    "digest": "hra-organs",
+    "system": "respiratory",
+    "file": "hra-organs.respiratory.cbrw",
+    "parts": 20,
+    "vertices": 4217,
+    "bytes": 22445
+   }
+  ]
+ }
+}

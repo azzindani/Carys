@@ -5,13 +5,15 @@
 // anti-aliased once it settles), a tap names the structure, a search
 // isolates and frames it, a structure hides. A system can be made
 // see-through (H4): nerves and vessels show inside muscle and skin, and a
-// tap reaches through it. Education pixels only (badged).
+// tap reaches through it. A pose bends the joints (H5): bones rigid, the
+// rest skinned to them, rig and weights fetched with the first pose.
+// Education pixels only (badged).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX, ReactNode } from 'react';
 import type React from 'react';
 import {
-  assembleScene, clusterScene, frameParts, pickSurface, renderMesh, sceneAlpha, sceneColors, sceneDims,
-  type BodyScene, type BodySystem, type ScenePart,
+  assembleScene, clusterScene, frameParts, pickSurface, POSE_DOF, POSE_JOINTS, poseMesh, renderMesh, sceneAlpha, sceneColors,
+  sceneDims, segmentTransforms, type BodyScene, type BodySystem, type Pose, type PoseJoint, type ScenePart, type SkinWeights,
 } from '@carys/render-cpu';
 import { conceptsOfElement, findBodyStructures, TERMS_DIGEST_ID, TERMS_DIGEST_PIN, type BodyRow } from '@carys/volume-core';
 import { EDUCATION_BADGE } from '@carys/study';
@@ -19,6 +21,7 @@ import { ensureTerms } from '../lib/atlasTerms';
 import {
   BODY_DIGEST_ID, HRA_DIGEST_ID, hraOrganOf, loadBodyAtlas, loadBodySystem, type BodyAtlas,
 } from '../lib/bodyAtlas';
+import { loadBodyRig, loadRigWeights, RIG_DIGEST_ID, type BodyRig } from '../lib/bodyRig';
 import { BODY_BG, BODY_PICK_COLOR, BODY_SYSTEM_COLORS, bodyCss } from '../lib/palette';
 import { session } from '../lib/session';
 import { setAmbientStatus, setStatus } from '../lib/status';
@@ -59,6 +62,14 @@ const OPEN_SYSTEMS: readonly BodySystem[] = [
 const SEE_FIRST: BodySystem = 'muscular';
 const OPACITY_MIN = 0.1;
 type Opacities = Partial<Record<BodySystem, number>>;
+/** A pose slider's idle time before the body is posed and drawn (ms): a
+ *  pose moves every vertex, so it is not redrawn per step of a drag. */
+const POSE_SETTLE_MS = 150;
+/** The pose sliders' ranges, degrees: flexion, abduction, twist. */
+const POSE_RANGE: readonly [number, number][] = [[-90, 150], [-60, 180], [-90, 90]];
+const POSE_LABEL = ['Flex', 'Abduct', 'Twist'] as const;
+const DEG = Math.PI / 180;
+const isRest = (p: Pose): boolean => Object.values(p).every((a) => a.every((v) => v === 0));
 
 interface Picked {
   part: ScenePart;
@@ -116,6 +127,8 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
   const [err, setErr] = useState('');
   const [see, setSee] = useState<Opacities>({});
   const [seeSys, setSeeSys] = useState<BodySystem>(SEE_FIRST);
+  const [pose, setPose] = useState<Pose>({});
+  const [poseJoint, setPoseJoint] = useState<PoseJoint>('left knee');
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const offRef = useRef<HTMLCanvasElement | null>(null);
@@ -128,8 +141,15 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
   /** what should show: the latest, whatever load is still in flight */
   const want = useRef({
     on: new Set(OPEN_SYSTEMS) as ReadonlySet<BodySystem>, hidden: new Set<string>() as ReadonlySet<string>,
-    isolate: null as ReadonlySet<string> | null, pick: null as string | null, see: {} as Opacities,
+    isolate: null as ReadonlySet<string> | null, pick: null as string | null, see: {} as Opacities, pose: {} as Pose,
   });
+  /** the rig and the skin weights of the loaded systems, once a pose is set */
+  const rigRef = useRef<BodyRig | null>(null);
+  const skin = useRef(new Map<string, SkinWeights>());
+  const skinned = useRef(new Set<BodySystem>());
+  /** the parts posed (same order as `parts`), null at rest */
+  const posed = useRef<ScenePart[] | null>(null);
+  const poseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const angles = useRef({ orbit: 0, tilt: 0 });
   const zoomRef = useRef(1);
   const centerRef = useRef<V3 | null>(null);
@@ -150,7 +170,7 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
   });
 
   const build = (): void => {
-    const w = want.current, P = parts.current;
+    const w = want.current, P = posed.current ?? parts.current;
     const full = assembleScene(P, (i) => {
       const p = P[i]!;
       return w.on.has(p.system) && !w.hidden.has(p.element) && (!w.isolate || w.isolate.has(p.element));
@@ -203,8 +223,38 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
     setMoving({ ms: performance.now() - t0, tris: s.lod.scene.triPart.length });
   };
 
-  /** Fetch what the shown systems need, then frame (on a find), rebuild
-   *  and paint. */
+  /** Every loaded part posed as `want.pose` says (the rig and the weights
+   *  fetched first), or none at rest: the parts as loaded, drawn as in H2. */
+  const posePartsNow = async (ix: BodyAtlas): Promise<void> => {
+    const p = want.current.pose;
+    if (isRest(p)) { posed.current = null; return; }
+    if (!rigRef.current) {
+      rigRef.current = await loadBodyRig(ix);
+      session.digestPins = { ...session.digestPins, [RIG_DIGEST_ID]: rigRef.current.pin };
+    }
+    const r = rigRef.current;
+    const need = [...loaded.current].filter((s) => !skinned.current.has(s));
+    if (need.length) {
+      setLoading(`loading the rig for ${need.map((s) => SYSTEM_LABEL[s].toLowerCase()).join(', ')}…`);
+      try {
+        const got = await Promise.all(need.map((s) => loadRigWeights(r, s)));
+        need.forEach((s, k) => { skinned.current.add(s); for (const [e, w] of got[k]!) skin.current.set(e, w); });
+      } finally {
+        setLoading('');
+      }
+    }
+    if (want.current.pose !== p) return; // a newer pose is on its way
+    const T = segmentTransforms(r.rig, p);
+    posed.current = parts.current.map((part) => {
+      const bind = r.bones.get(part.element) ?? skin.current.get(part.element);
+      if (bind === undefined) throw new Error(`${part.name} (${part.element}) is in no rig segment and has no weights`);
+      const m = poseMesh(part.positions, part.normals, T, bind);
+      return m.positions === part.positions ? part : { ...part, positions: m.positions, normals: m.normals };
+    });
+  };
+
+  /** Fetch what the shown systems need, pose, then frame (on a find),
+   *  rebuild and paint. */
   const sync = async (frame = false): Promise<void> => {
     const ix = idxRef.current;
     if (!ix) return;
@@ -226,9 +276,16 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
         setLoading('');
       }
     }
+    try {
+      await posePartsNow(ix);
+    } catch (e) {
+      setErr((e as Error).message);
+      setStatus(`body pose failed: ${(e as Error).message}`, 'error');
+      return;
+    }
     const iso = want.current.isolate;
     if (frame && iso) {
-      const f = frameParts(parts.current, [...iso].map((e) => at.current.get(e)!), sceneDims(ix));
+      const f = frameParts(posed.current ?? parts.current, [...iso].map((e) => at.current.get(e)!), sceneDims(ix));
       if (f) {
         centerRef.current = f.center;
         zoomRef.current = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, f.zoom / FIT));
@@ -258,7 +315,11 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
         setStatus(`body atlas failed: ${(e as Error).message}`, 'error');
       }
     })();
-    return () => { live = false; if (settle.current) clearTimeout(settle.current); };
+    return () => {
+      live = false;
+      if (settle.current) clearTimeout(settle.current);
+      if (poseTimer.current) clearTimeout(poseTimer.current);
+    };
     // once on mount: sync reads the refs, which hold the latest state
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -320,6 +381,25 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
     setSee(next);
     realpha();
     queueMove();
+  };
+
+  /** One angle of the chosen joint (degrees); the body is posed and drawn
+   *  once the slider rests. */
+  const setAngle = (k: 0 | 1 | 2, deg: number): void => {
+    const a = [...(want.current.pose[poseJoint] ?? [0, 0, 0])] as [number, number, number];
+    a[k] = deg * DEG;
+    const next = { ...want.current.pose, [poseJoint]: a };
+    if (a.every((v) => v === 0)) delete next[poseJoint];
+    want.current.pose = next;
+    setPose(next);
+    if (poseTimer.current) clearTimeout(poseTimer.current);
+    poseTimer.current = setTimeout(() => { poseTimer.current = null; void sync(); }, POSE_SETTLE_MS);
+  };
+
+  const restPose = (): void => {
+    want.current.pose = {};
+    setPose({});
+    void sync();
   };
 
   const hide = (): void => {
@@ -390,6 +470,20 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
           onInput={(v) => setOpacity(seeSys, v)} />
         <div className="sep" />
         <div className="grp">
+          <span className="lbl">Pose</span>
+          <DarkSelect id="body-pose-joint" value={poseJoint} onChange={(v) => setPoseJoint(v as PoseJoint)}
+            title="The joint the pose sliders bend: centres fitted from the bones">
+            {POSE_JOINTS.map((j) => <option key={j} value={j}>{j}</option>)}
+          </DarkSelect>
+          <IconBtn id="body-pose-rest" title="Back to the rest pose (the anatomical position)" onClick={restPose}>Rest</IconBtn>
+        </div>
+        {POSE_LABEL.slice(0, POSE_DOF[poseJoint]).map((label, k) => (
+          <SliderRow key={`${poseJoint}-${label}`} id={`body-pose-${label.toLowerCase()}`} label={label}
+            min={POSE_RANGE[k]![0]} max={POSE_RANGE[k]![1]} step={1}
+            value={Math.round((pose[poseJoint]?.[k] ?? 0) / DEG)} onInput={(v) => setAngle(k as 0 | 1 | 2, v)} />
+        ))}
+        <div className="sep" />
+        <div className="grp">
           <span className="lbl">Find</span>
           <input id="body-search" className="urlinput" value={query} placeholder="heart, liver, FMA7088…"
             title="Find a structure by name, FMA id or element id: it is isolated and framed"
@@ -418,6 +512,8 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
               + (hidden ? ` · ${hidden} hidden` : '')
               + (Object.keys(see).length ? ` · see-through ${(Object.entries(see) as [BodySystem, number][])
                 .map(([s, v]) => `${SYSTEM_LABEL[s].toLowerCase()} ${Math.round(v * 100)}%`).join(', ')}` : '')
+              + (isRest(pose) ? '' : ` · posed ${(Object.entries(pose) as [PoseJoint, readonly number[]][])
+                .map(([j, a]) => `${j} ${a.slice(0, POSE_DOF[j]).map((v) => `${Math.round(v / DEG)}°`).join('/')}`).join(', ')}`)
             : 'loading…')}</span></Chip>
         </div>
       </div>
