@@ -130,6 +130,14 @@ frame the same physical box.
   on the clustered copy and the full mesh anti-aliased once still, and
   finds structures through the K1 PART-OF concepts
   (`volume-core/body-search.ts`).
+- Placing another body's organs (H3): `glb.ts` reads glTF binary meshes
+  (node transforms applied; Draco, sparse accessors and non-triangle
+  primitives refused). `organ-fit.ts` fits organs both bodies have
+  ("anchors"): deterministic area-uniform surface samples, a k-d tree for
+  nearest points, Horn's closed-form similarity, ICP (both ways, or one way
+  where a model covers only part of its match), and a field that moves a
+  point by the anchors' fits blended by nearness. `scripts/build-body-hra.mjs`
+  uses them to place the HuBMAP reference organs in the BodyParts3D body.
 - Curved reformat (`cpr.ts`): the Curve tool's clicks (voxels) become a
   centripetal Catmull-Rom spline in mm; the straightened view samples
   across it, perpendicular to the curve and to the pane it was drawn on
