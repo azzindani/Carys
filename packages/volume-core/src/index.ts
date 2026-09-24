@@ -46,6 +46,7 @@ export * from './bundles.js';
 export * from './cohorts.js';
 export * from './tract-presets.js';
 export * from './terms.js';
+export * from './body-search.js';
 export * from './wsi-demo.js';
 export * from './selftest.js';
 export * from './brain-regions.js';

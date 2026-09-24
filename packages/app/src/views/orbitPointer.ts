@@ -15,6 +15,8 @@ export interface OrbitPointerHost {
   /** repaint for the new orbit/zoom (debounced by the caller) */
   queueOrbit: () => void;
   onTap: (clientX: number, clientY: number) => void;
+  /** what a pinch zooms; default the 3D view's (session.zoom3d) */
+  zoom?: { get: () => number; set: (z: number) => void; min: number; max: number };
 }
 
 export function useOrbitPointer(host: OrbitPointerHost): {
@@ -35,7 +37,7 @@ export function useOrbitPointer(host: OrbitPointerHost): {
       if (touches.current.size === 2) {
         const [a, b] = [...touches.current.values()];
         orbDrag.current = null;                       // a pinch is not an orbit
-        pinch.current = { d: Math.hypot(a!.x - b!.x, a!.y - b!.y), z: session.zoom3d };
+        pinch.current = { d: Math.hypot(a!.x - b!.x, a!.y - b!.y), z: host.zoom ? host.zoom.get() : session.zoom3d };
         return;
       }
       if (touches.current.size > 2) return;
@@ -52,7 +54,9 @@ export function useOrbitPointer(host: OrbitPointerHost): {
         const [a, b] = [...touches.current.values()];
         const d = Math.hypot(a!.x - b!.x, a!.y - b!.y);
         if (p.d > 0) {
-          session.zoom3d = Math.min(8, Math.max(0.4, p.z * (d / p.d)));
+          const z = host.zoom;
+          if (z) z.set(Math.min(z.max, Math.max(z.min, p.z * (d / p.d))));
+          else session.zoom3d = Math.min(8, Math.max(0.4, p.z * (d / p.d)));
           host.queueOrbit();
         }
         return;

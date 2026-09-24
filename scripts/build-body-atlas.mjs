@@ -78,11 +78,14 @@ const PART_SYSTEM = {
   FMA9668: 'endocrine', FMA72979: 'integumentary', FMA74657: 'integumentary', FMA79063: 'muscular',
 };
 
-/** An element's own concept(s): the smallest ones holding it. */
+/** An element's own concept(s): the smallest ones holding it, the most
+ *  specific first ("body of sternum" before "body of organ", which it is a
+ *  kind of: more IS-A ancestors), then by id. */
 function ownConcepts(f) {
   const holding = [...isa.el].filter(([, fs]) => fs.has(f)).map(([c]) => c);
   const least = Math.min(...holding.map((c) => isa.el.get(c).size));
-  return holding.filter((c) => isa.el.get(c).size === least).sort();
+  const depth = (c) => ancestors(c).size;
+  return holding.filter((c) => isa.el.get(c).size === least).sort((a, b) => depth(b) - depth(a) || (a < b ? -1 : a > b ? 1 : 0));
 }
 
 /** The body system of an element: tissue type first, then organ system. */
@@ -91,6 +94,8 @@ function systemOf(f, own) {
   const kinds = own.flatMap((c) => [...ancestors(c)].map((a) => isaName.get(a))).join(' | ').toLowerCase();
   const t = `${names} || ${kinds}`;
   const part = new Set([...partof.el].filter(([c, fs]) => fs.has(f) && PART_SYSTEM[c]).map(([c]) => PART_SYSTEM[c]));
+  // the liver's Couinaud segments are "hepatovenous": organ, not vessel
+  if (/\bliver\b|hepatovenous segment|biliary|hepatic duct|cystic duct|bile duct|gallbladder/.test(names)) return 'digestive';
   if (/\barter(y|ies)\b|\bveins?\b|venous|arterial|vascular tree|aorta|vena cava/.test(t)) return 'cardiovascular';
   if (part.has('nervous') || /neuraxis|\bnerves?\b|brain|ganglion|spinal cord|cerebr|cerebell|gyrus|thalam|\bpons\b|medulla oblongata|midbrain|insula|subarachnoid|interventricular foramen/.test(t)) return 'nervous';
   if (part.has('cardiovascular') || /\bheart\b|myocard|papillary muscle|chorda tendinea|cardiac valve|leaflet of .* valve/.test(t)) return 'cardiovascular';
@@ -195,7 +200,10 @@ for (const system of BODY_SYSTEMS) {
   console.log(`${system.padEnd(14)} ${String(mine.length).padStart(5)} parts ${String(source).padStart(9)} → ${String(tris).padStart(8)} tris  ${(bytes.length / 1e6).toFixed(2)} MB  worst ${err.toFixed(3)} mm`);
 }
 index.tris = totalTris; index.bytes = totalBytes; index.worstErrorMm = +worst.toFixed(3);
-writeFileSync(join(OUT, 'index.json'), JSON.stringify(index, null, 1) + '\n');
+// every part without its mesh, one row a line: the app finds a structure
+// (and the system file holding it) before that file is fetched
+const rowsText = parts.map((p) => `  ${JSON.stringify([p.element, p.fma, p.name, p.system])}`).join(',\n');
+writeFileSync(join(OUT, 'index.json'), JSON.stringify(index, null, 1).replace(/\n}$/, `,\n "parts": [\n${rowsText}\n ]\n}\n`));
 writeFileSync(join(OUT, 'SOURCES.json'), JSON.stringify({
   digest: 'bodyparts3d-body', format: 'carys-sources/1',
   sources: [{

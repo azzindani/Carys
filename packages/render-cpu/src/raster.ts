@@ -20,7 +20,7 @@ export interface RasterOpts {
   height: number;
   angleY: number; // orbit radians
   tiltX: number; // tilt radians
-  color: [number, number, number];
+  color: readonly [number, number, number];
   bg?: [number, number, number];
   zoom?: number; // view multiplier, default 1
   /** rotation center in voxel coords; default = volume center. Pointing it
@@ -36,6 +36,9 @@ export interface RasterOpts {
   /** keep only this region (mesh units); what it cuts open shows its
    *  inside, darker (F13) */
   clip?: Clip;
+  /** a colour per triangle, RGB at the triangle's first index (so as long
+   *  as `indices`); `color` then goes unused (H2: body systems) */
+  triColor?: Uint8Array;
 }
 
 // Light rig, view space. Ambient + diffuse match the old per-face shader.
@@ -106,6 +109,8 @@ export function renderMesh(
   const hl = 1 / Math.hypot(Lx, Ly, Lz + 1);
   const Hx = Lx * hl, Hy = Ly * hl, Hz = (Lz + 1) * hl;
   const clip = opts.clip ?? null;
+  const tc = opts.triColor ?? null;
+  if (tc && tc.length !== I.length) throw new RangeError(`raster-tricolor: ${tc.length} values for ${I.length} indices`);
   // a triangle wholly outside the clip is skipped, one wholly inside is
   // drawn without the per-pixel test
   let code: Uint8Array | null = null;
@@ -129,6 +134,7 @@ export function renderMesh(
     // outward winding is clockwise on screen (y down): the other way is the
     // triangle's back
     const inside = clip !== null && (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0) > 0;
+    const cr = tc ? tc[t]! : color[0], cg = tc ? tc[t + 1]! : color[1], cb = tc ? tc[t + 2]! : color[2];
     const denom = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
     if (Math.abs(denom) < 1e-9) continue;
     // barycentric weights as planes over the screen: w = a·x + b·y + c
@@ -163,9 +169,9 @@ export function renderMesh(
         const h = ex * Hx + ey * Hy + ez * Hz;
         const shade = (AMBIENT + DIFFUSE * d) * (inside ? INSIDE_SHADE : 1);
         const spec = !inside && d > 0 && h > SPEC_CUT ? SPECULAR * 255 * h ** SHININESS : 0;
-        acc[o * 3] = color[0] * shade + spec;
-        acc[o * 3 + 1] = color[1] * shade + spec;
-        acc[o * 3 + 2] = color[2] * shade + spec;
+        acc[o * 3] = cr * shade + spec;
+        acc[o * 3 + 1] = cg * shade + spec;
+        acc[o * 3 + 2] = cb * shade + spec;
       }
     }
   }

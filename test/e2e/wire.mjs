@@ -2441,6 +2441,98 @@ try {
   console.log('RadLex search lands:', await page20.locator('#ro-brain-hits').textContent());
   await page20.close();
 
+  // ---- 34b. H2 whole-body atlas: systems switch, taps name the structure
+  // under them (femur, brain, heart, liver), a find isolates, a structure
+  // hides, and the frame times on the full body are measured. Tap points
+  // are canvas pixels (480×800) of the default front view.
+  const pageB = await browser.newPage({ viewport: { width: 1440, height: 1500 } });
+  pageB.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
+  await pageB.goto(`${BASE}#/atlas`, { waitUntil: 'networkidle' });
+  await pageB.click('#atlas-mode button[data-atlas-mode="body"]');
+  const bodyRo = async () => (await pageB.locator('#ro-body').textContent()) ?? '';
+  /** wait for a settled frame whose readout differs from `prev` */
+  const bodySettles = async (prev) => pageB.waitForFunction(
+    (b) => { const t = document.getElementById('ro-body')?.textContent ?? ''; return /settled \d+ ms/.test(t) && t !== b; },
+    prev, { timeout: 180000 },
+  );
+  await bodySettles('');
+  console.log('body atlas opens:', await bodyRo());
+  const bodyTitle = await pageB.locator('#title-atlas p').textContent();
+  if (!bodyTitle.includes('2,234 structures') || !bodyTitle.includes('education overlay')) fail(`body atlas title wrong: ${bodyTitle}`);
+  const bodySrc = await pageB.locator('#body-src').textContent();
+  if (!bodySrc.includes('BodyParts3D') || !bodySrc.includes('CC Attribution 4.0') || !bodySrc.includes('BP3D-4.0-isa-obj99')) {
+    fail(`body atlas attribution missing: ${bodySrc}`);
+  }
+  const tapBody = async (x, y) => {
+    const box = await pageB.locator('#c-body').boundingBox();
+    const prev = await pageB.locator('#ro-body-part').textContent();
+    await pageB.mouse.click(box.x + (x / 480) * box.width, box.y + (y / 800) * box.height);
+    await pageB.waitForFunction((b) => (document.getElementById('ro-body-part')?.textContent ?? '') !== b, prev, { timeout: 60000 })
+      .catch(() => {});
+    return {
+      part: await pageB.locator('#ro-body-part').textContent(),
+      within: (await pageB.locator('#body-card-within').count()) ? await pageB.locator('#body-card-within').textContent() : '',
+    };
+  };
+  const femur = await tapBody(190, 470);
+  if (!/right femur · FMA24474 · FJ3365 · Skeletal/.test(femur.part)) fail(`body tap on the thigh: ${femur.part}`);
+  else console.log('body tap names', femur.part);
+  const femurCard = await pageB.locator('#body-card').getAttribute('aria-label');
+  if (femurCard !== 'Structure: right femur') fail(`body card names ${femurCard}`);
+  // the skeleton off: the organs under it
+  let bodyBefore = await bodyRo();
+  await pageB.click('#dock-body label.switch[title^="Skeletal"]');
+  await bodySettles(bodyBefore);
+  const brainTap = await tapBody(232, 46);
+  if (!brainTap.within.includes('brain')) fail(`body tap on the head: ${brainTap.part} / ${brainTap.within}`);
+  else console.log('body tap names', brainTap.part, '— part of', brainTap.within);
+  const heartTap = await tapBody(234, 197);
+  if (!/atri|ventric/.test(heartTap.part) || !heartTap.within.includes('heart')) fail(`body tap on the chest: ${heartTap.part} / ${heartTap.within}`);
+  else console.log('body tap names', heartTap.part, '— part of', heartTap.within);
+  const liverTap = await tapBody(215, 255);
+  if (!/hepatovenous segment/.test(liverTap.part) || !liverTap.within.includes('liver') || !liverTap.part.includes('Digestive')) {
+    fail(`body tap on the right upper abdomen: ${liverTap.part} / ${liverTap.within}`);
+  } else console.log('body tap names', liverTap.part, '— part of', liverTap.within);
+  // hide it: the same tap finds what was behind
+  bodyBefore = await bodyRo();
+  await pageB.click('#body-hide');
+  await bodySettles(bodyBefore);
+  if (!(await bodyRo()).includes('1 hidden')) fail(`body hide not counted: ${await bodyRo()}`);
+  const behind = await tapBody(215, 255);
+  if (behind.part === liverTap.part) fail(`hidden structure still tapped: ${behind.part}`);
+  else console.log('hidden; behind it:', behind.part);
+  // find isolates and frames: the frame's centre is the heart
+  bodyBefore = await bodyRo();
+  await pageB.fill('#body-search', 'heart');
+  await pageB.locator('#body-search').press('Enter');
+  await bodySettles(bodyBefore);
+  const found = await pageB.locator('#ro-body-find').textContent();
+  if (!found.includes('heart (FMA7088) · 83 isolated')) fail(`body find wrong: ${found}`);
+  const centre = await tapBody(240, 400);
+  if (!centre.within.includes('heart')) fail(`framed heart, centre tap: ${centre.part} / ${centre.within}`);
+  else console.log('find', found, '→ centre tap', centre.part);
+  bodyBefore = await bodyRo();
+  await pageB.click('#body-show-all');
+  await bodySettles(bodyBefore);
+  if ((await pageB.locator('#ro-body-find').count()) || (await bodyRo()).includes('hidden')) fail(`show all left state: ${await bodyRo()}`);
+  // the full body: every system on, then an orbit drag
+  for (const s of ['Skeletal', 'Muscular', 'Skin']) {
+    bodyBefore = await bodyRo();
+    await pageB.click(`#dock-body label.switch[title^="${s}"]`);
+    await bodySettles(bodyBefore);
+  }
+  const bodyFull = await bodyRo();
+  if (!bodyFull.startsWith('1,943,916 tris')) fail(`full body not all shown: ${bodyFull}`);
+  const fb = await pageB.locator('#c-body').boundingBox();
+  await pageB.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
+  await pageB.mouse.down();
+  for (let k = 1; k <= 8; k++) await pageB.mouse.move(fb.x + fb.width / 2 + k * 12, fb.y + fb.height / 2, { steps: 2 });
+  await pageB.mouse.up();
+  // (the readout keeps the full body's settled time beside the moving one)
+  await pageB.waitForFunction(() => /moving \d+ ms/.test(document.getElementById('ro-body')?.textContent ?? ''), null, { timeout: 120000 });
+  console.log('body frame times, full body:', await bodyRo());
+  await pageB.close();
+
   // ---- 35. E2 learn bundles: story + pathway + quiz with audit.
   // Bundle picker lands the story, Open structure deep-links the protein
   // view onto the right pathogen entry, quiz answers score + log.

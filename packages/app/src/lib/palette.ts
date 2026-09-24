@@ -4,6 +4,8 @@
  *  frame, so this module is the single source on the JS side.
  *  NOTE: wire asserts the fiber-view background (FIBER_BG); change it only
  *  together with `test/e2e/wire.mjs`. */
+import type { BodySystem } from '@carys/render-cpu';
+
 export const ACCENT = '#2dd4bf';
 export const ACCENT_HI = '#5eead4';
 export const ACCENT_DIM = 'rgba(45,212,191,0.55)';
@@ -53,6 +55,24 @@ export const LABEL_LUT: Uint8Array = (() => {
 /** A label's colour as CSS. */
 export function labelCss(v: number): string {
   const [r, g, b] = labelRgb(v);
+  return `rgb(${r},${g},${b})`;
+}
+/** The whole-body atlas (H2): a textbook tint per body system, apart from
+ *  each other and from the teal accent that marks the tapped structure. */
+export const BODY_SYSTEM_COLORS: Readonly<Record<BodySystem, readonly [number, number, number]>> = {
+  skeletal: [224, 213, 184], muscular: [178, 74, 66], nervous: [240, 220, 120],
+  cardiovascular: [200, 52, 52], lymphatic: [120, 200, 120], respiratory: [120, 170, 220],
+  digestive: [214, 150, 90], urinary: [230, 160, 60], reproductive: [226, 130, 170],
+  endocrine: [150, 120, 210], sensory: [240, 240, 245], integumentary: [226, 180, 150], other: [150, 150, 150],
+};
+/** The tapped or found structure: the accent. */
+export const BODY_PICK_COLOR: readonly [number, number, number] = [45, 212, 191];
+/** The body atlas' clear: the bone atlas' near-black. */
+export const BODY_BG: [number, number, number] = [16, 16, 17];
+
+/** A body system's tint as CSS. */
+export function bodyCss(s: BodySystem): string {
+  const [r, g, b] = BODY_SYSTEM_COLORS[s];
   return `rgb(${r},${g},${b})`;
 }
 /** Per-view canvas clears (kept distinct deliberately — see NOTE above). */
