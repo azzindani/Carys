@@ -29,6 +29,10 @@ export interface SurfacePickView {
   center?: Vec3;
   /** as renderMesh's: clipped points are not there to hit */
   clip?: Clip;
+  /** as renderMesh's: a triangle at 0 is not there; a see-through one (under
+   *  1) is hit only where no opaque one is, a tap reaching through it to
+   *  what it shows (H4) */
+  triAlpha?: ArrayLike<number>;
 }
 
 /** Opacity a volume ray must reach for its pick. */
@@ -56,11 +60,19 @@ export function pickSurface(mesh: TriMesh, dims: Vec3, view: SurfacePickView, x:
     Z[v] = py * sx + z1 * cx;
     NZ[v] = N[v * 3 + 1]! * sx + (-N[v * 3]! * sy + N[v * 3 + 2]! * cy) * cx;
   }
+  const ta = view.triAlpha;
+  if (ta && ta.length !== I.length / 3) throw new RangeError(`pick-trialpha: ${ta.length} values for ${I.length / 3} triangles`);
   let best = -Infinity, hit: Vec3 | null = null, tri = -1;
+  // the nearest see-through triangle, kept for where nothing opaque is
+  let seeBest = -Infinity, seeHit: Vec3 | null = null, seeTri = -1;
   for (let t = 0; t < I.length; t += 3) {
+    const alpha = ta ? ta[t / 3]! : 1;
+    if (!(alpha > 0)) continue;
     const a = I[t]!, b = I[t + 1]!, c = I[t + 2]!;
     if (!view.clip && NZ[a]! <= 0 && NZ[b]! <= 0 && NZ[c]! <= 0) continue;
     const x0 = X[a]!, y0 = Y[a]!, x1 = X[b]!, y1 = Y[b]!, x2 = X[c]!, y2 = Y[c]!;
+    // see-through: its front only, as renderMesh draws it
+    if (alpha < 1 && !view.clip && (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0) > 0) continue;
     if (x < Math.min(x0, x1, x2) || x > Math.max(x0, x1, x2) || y < Math.min(y0, y1, y2) || y > Math.max(y0, y1, y2)) continue;
     const den = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
     if (Math.abs(den) < 1e-12) continue;
@@ -69,13 +81,15 @@ export function pickSurface(mesh: TriMesh, dims: Vec3, view: SurfacePickView, x:
     const w2 = 1 - w0 - w1;
     if (w0 < 0 || w1 < 0 || w2 < 0) continue;
     const z = w0 * Z[a]! + w1 * Z[b]! + w2 * Z[c]!;
-    if (z <= best) continue;
+    if (z <= (alpha < 1 ? seeBest : best)) continue;
     const p = [0, 1, 2].map((k) => w0 * P[a * 3 + k]! + w1 * P[b * 3 + k]! + w2 * P[c * 3 + k]!) as Vec3;
     if (view.clip && !inClip(view.clip, p[0], p[1], p[2])) continue;
+    if (alpha < 1) { seeBest = z; seeHit = p; seeTri = t / 3; continue; }
     best = z;
     hit = p;
     tri = t / 3;
   }
+  if (!hit && seeHit) { hit = seeHit; tri = seeTri; }
   // into the screen: minus the view's third axis, in the mesh's axes
   return hit ? { point: hit, dir: [sy * cx, -sx, -cy * cx], tri } : null;
 }

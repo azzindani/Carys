@@ -1520,11 +1520,44 @@ merged into main 2026-09-24; work is on main only since).
   the two bodies' bronchi branch at different angles. Unblock: a non-rigid
   fit per organ (a thin-plate spline or coherent point drift on the ICP
   matches), with leave-one-out kept as the measure.
-- OPEN — **H4. See-through layers.** Order-independent transparency in
+- DONE — **H4. See-through layers.** Order-independent transparency in
   the rasterizer (weighted blended) with an opacity per system, so nerves
   and vessels show inside muscle and skin. Accept: an inner sphere seen
   through a 50% shell within 2 grey levels of the expected blend; opaque
   renders bit-identical (goldens unchanged).
+  `renderMesh` takes `triAlpha`, an opacity per triangle. Opaque ones
+  draw first, exactly as before. See-through ones draw after, hidden by
+  the opaque depth but not by each other. Each adds its colour weighted by
+  opacity × max(0.01, 3e3·(1 − d)³), d its depth across the scene
+  (McGuire & Bavoil 2013), and the opaque colour behind shows by the
+  product of their transparencies. No sorting.
+  A see-through surface draws its front faces only, by screen winding.
+  The opaque cull keeps a triangle while any vertex normal faces the
+  viewer, so at a silhouette some of the back sheet survives. Behind the
+  front that is hidden when opaque, but blended it doubled the layer: the
+  first measure was 21 grey levels off on the shell's rim.
+  `pickSurface` takes the same opacities: a tap goes through see-through
+  layers to the opaque surface they show, and lands on a see-through one
+  only where nothing is behind it. The Body dock has a See-through system
+  picker and an Opacity slider (0.1–1), and the readout lists what is
+  see-through.
+  Measured:
+  - A grey sphere through a 50% shell against the two drawn alone and
+    mixed half and half: every one of the 5,184 pixels within **1** grey
+    level (4,056 exact).
+  - Layers in another triangle order are within 1 level of each other.
+  - Opaque renders are byte-identical to the previous rasterizer: a
+    sphere with every option (AO, outlines, clip, 1× samples, zoom and
+    centre) and the body's 956,548 triangles, settled and clustered. An
+    opacity of 1 everywhere is identical too. The goldens are unchanged.
+  - The full body (1,982,505 triangles) at 480×800, one thread, median of
+    5 at load average 19 on the 4 cores: 849 ms opaque, 1,239 ms with skin
+    and muscle at 30% (940,367 triangles see-through). Moving frames on
+    the clustered copy take 249 and 214 ms, within the noise.
+  - Wire leg 34b: with skin and muscle at 30%, set by keys on the slider,
+    a tap on the thigh names the right femur through both. The full body
+    settles in 1,028 ms see-through and 880 ms opaque; moving frames take
+    124 and 128 ms. geometry.mjs passes unchanged.
 - OPEN — **H5. A rigged skeleton.** A joint hierarchy (spine, neck,
   shoulders, elbows, wrists, hips, knees, ankles), joint centres fitted
   from the bones (a hip at the femoral head's sphere fit), bones rigid,

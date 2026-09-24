@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateBodyIndex, type BodyPart } from '../body-pack.js';
-import { assembleScene, clusterScene, frameParts, sceneColors, sceneDims, toScenePart, type BodyBox } from '../body-scene.js';
+import { assembleScene, clusterScene, frameParts, sceneAlpha, sceneColors, sceneDims, toScenePart, type BodyBox } from '../body-scene.js';
 import { pickSurface } from '../pick.js';
 import { renderMesh } from '../raster.js';
 import { uvSphere, type V3 } from './phantoms.js';
@@ -57,6 +57,15 @@ describe('body scene (H2)', () => {
     assert.ok(lr! > 60 && lb! < 8, `left ${at(37, 48)}`);
     assert.ok(rb! > 60 && rr! < 8, `right ${at(59, 48)}`);
     assert.throws(() => renderMesh(s.mesh, dims, { ...view, color: [0, 0, 0], triColor: new Uint8Array(3) }), /raster-tricolor/);
+  });
+
+  it('gives each triangle its part\'s opacity, or none when all are opaque (H4)', () => {
+    const parts = [ball('FJ1', [-50, 0, 200], 30), ball('FJ2', [50, 0, 200], 30)].map((p) => toScenePart(p, box));
+    const s = assembleScene(parts, () => true), n = parts[0]!.indices.length / 3;
+    assert.equal(sceneAlpha(s, () => 1), null);
+    const a = sceneAlpha(s, (i) => (i === 0 ? 0.25 : 1))!;
+    assert.deepEqual([a[0], a[n - 1], a[n], a[2 * n - 1]], [0.25, 0.25, 1, 1]);
+    assert.throws(() => sceneAlpha(s, () => 2), /body-scene-alpha: part 0 opacity 2/);
   });
 
   it('names the part a tap lands on', () => {
