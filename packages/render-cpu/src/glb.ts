@@ -149,3 +149,47 @@ export function parseGlb(src: ArrayBuffer | Uint8Array): GlbMesh[] {
   for (const ni of scene.nodes ?? []) visit(ni, IDENTITY, new Set());
   return out;
 }
+
+/**
+ * Wind each closed piece of a mesh outward. A GLB need not (glTF viewers
+ * often draw both sides; half the HRA lung and spinal cord segments face
+ * in), and a renderer that culls back faces then loses them. Each piece
+ * (triangles joined by shared vertices) whose signed volume is negative is
+ * turned inside out. The volume is taken about the piece's own centre: for a
+ * closed piece that changes nothing, and an open tube (the cord segments are
+ * open at both ends) then still tells out from in, where about the origin
+ * its sign depends on where it sits. Returns new indices.
+ */
+export function windOutward(positions: ArrayLike<number>, indices: ArrayLike<number>): Uint32Array {
+  const nv = positions.length / 3;
+  const parent = Int32Array.from({ length: nv }, (_, i) => i);
+  const find = (x: number): number => {
+    while (parent[x] !== x) { parent[x] = parent[parent[x]!]!; x = parent[x]!; }
+    return x;
+  };
+  for (let t = 0; t < indices.length; t += 3) {
+    const a = find(indices[t]!), b = find(indices[t + 1]!), c = find(indices[t + 2]!);
+    parent[b] = a; parent[find(c)] = a;
+  }
+  const P = positions, centre = new Map<number, [number, number, number, number]>(), volume = new Map<number, number>();
+  for (let t = 0; t < indices.length; t += 3) {
+    for (let k = 0; k < 3; k++) {
+      const v = indices[t + k]!, r = find(v), c = centre.get(r) ?? [0, 0, 0, 0];
+      c[0] += P[v * 3]!; c[1] += P[v * 3 + 1]!; c[2] += P[v * 3 + 2]!; c[3]++;
+      centre.set(r, c);
+    }
+  }
+  for (let t = 0; t < indices.length; t += 3) {
+    const r = find(indices[t]!), c = centre.get(r)!, cx = c[0] / c[3], cy = c[1] / c[3], cz = c[2] / c[3];
+    const a = indices[t]! * 3, b = indices[t + 1]! * 3, d = indices[t + 2]! * 3;
+    const ax = P[a]! - cx, ay = P[a + 1]! - cy, az = P[a + 2]! - cz;
+    const bx = P[b]! - cx, by = P[b + 1]! - cy, bz = P[b + 2]! - cz;
+    const dx = P[d]! - cx, dy = P[d + 1]! - cy, dz = P[d + 2]! - cz;
+    volume.set(r, (volume.get(r) ?? 0) + ax * (by * dz - bz * dy) - ay * (bx * dz - bz * dx) + az * (bx * dy - by * dx));
+  }
+  const out = Uint32Array.from(indices);
+  for (let t = 0; t < out.length; t += 3) {
+    if (volume.get(find(out[t]!))! < 0) { const s = out[t + 1]!; out[t + 1] = out[t + 2]!; out[t + 2] = s; }
+  }
+  return out;
+}

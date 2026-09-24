@@ -2443,8 +2443,9 @@ try {
 
   // ---- 34b. H2 whole-body atlas: systems switch, taps name the structure
   // under them (femur, brain, heart, liver), a find isolates, a structure
-  // hides, and the frame times on the full body are measured. Tap points
-  // are canvas pixels (480×800) of the default front view.
+  // hides, and the frame times on the full body are measured. H3: the HRA
+  // lung and a lymph node are tapped and cited. Tap points are canvas
+  // pixels (480×800) of the default front view.
   const pageB = await browser.newPage({ viewport: { width: 1440, height: 1500 } });
   pageB.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await pageB.goto(`${BASE}#/atlas`, { waitUntil: 'networkidle' });
@@ -2458,11 +2459,15 @@ try {
   await bodySettles('');
   console.log('body atlas opens:', await bodyRo());
   const bodyTitle = await pageB.locator('#title-atlas p').textContent();
-  if (!bodyTitle.includes('2,234 structures') || !bodyTitle.includes('education overlay')) fail(`body atlas title wrong: ${bodyTitle}`);
+  const structures = Number((bodyTitle.match(/\(([\d,]+) structures/)?.[1] ?? '0').replace(/,/g, ''));
+  if (!bodyTitle.includes('BodyParts3D and HRA organs') || !(structures > 2234) || !bodyTitle.includes('education overlay')) fail(`body atlas title wrong: ${bodyTitle}`);
   const bodySrc = await pageB.locator('#body-src').textContent();
   if (!bodySrc.includes('BodyParts3D') || !bodySrc.includes('CC Attribution 4.0') || !bodySrc.includes('BP3D-4.0-isa-obj99')) {
     fail(`body atlas attribution missing: ${bodySrc}`);
   }
+  // H3: the HRA organs are attributed on the page and cited on tap
+  const hraSrc = await pageB.locator('#body-hra-src').textContent();
+  if (!hraSrc.includes('Human Reference Atlas') || !hraSrc.includes('CC Attribution 4.0')) fail(`HRA attribution missing: ${hraSrc}`);
   const tapBody = async (x, y) => {
     const box = await pageB.locator('#c-body').boundingBox();
     const prev = await pageB.locator('#ro-body-part').textContent();
@@ -2479,6 +2484,8 @@ try {
   else console.log('body tap names', femur.part);
   const femurCard = await pageB.locator('#body-card').getAttribute('aria-label');
   if (femurCard !== 'Structure: right femur') fail(`body card names ${femurCard}`);
+  const cardSource = async () => (await pageB.locator('#body-card-source').textContent()) ?? '';
+  if (!(await cardSource()).includes('BodyParts3D')) fail(`femur card source: ${await cardSource()}`);
   // the skeleton off: the organs under it
   let bodyBefore = await bodyRo();
   await pageB.click('#dock-body label.switch[title^="Skeletal"]');
@@ -2486,6 +2493,16 @@ try {
   const brainTap = await tapBody(232, 46);
   if (!brainTap.within.includes('brain')) fail(`body tap on the head: ${brainTap.part} / ${brainTap.within}`);
   else console.log('body tap names', brainTap.part, '— part of', brainTap.within);
+  // H3: the lung is HRA's, and its card cites it
+  const lungTap = await tapBody(205, 190);
+  const lungSrc = await cardSource();
+  if (!/bronchopulmonary segment .*lung-male\/.* · Respiratory/.test(lungTap.part) || !lungSrc.includes('3D Reference Organ for Lung') || !lungSrc.includes('CC BY 4.0') || !lungSrc.includes('https://doi.org/')) {
+    fail(`body tap on the right chest: ${lungTap.part} / ${lungSrc}`);
+  } else console.log('body tap names', lungTap.part, '— cited', lungSrc.slice(0, 90));
+  // the lungs off: the heart under them
+  bodyBefore = await bodyRo();
+  await pageB.click('#dock-body label.switch[title^="Respiratory"]');
+  await bodySettles(bodyBefore);
   const heartTap = await tapBody(234, 197);
   if (!/atri|ventric/.test(heartTap.part) || !heartTap.within.includes('heart')) fail(`body tap on the chest: ${heartTap.part} / ${heartTap.within}`);
   else console.log('body tap names', heartTap.part, '— part of', heartTap.within);
@@ -2515,14 +2532,28 @@ try {
   await pageB.click('#body-show-all');
   await bodySettles(bodyBefore);
   if ((await pageB.locator('#ro-body-find').count()) || (await bodyRo()).includes('hidden')) fail(`show all left state: ${await bodyRo()}`);
+  // H3: the lymph nodes BodyParts3D lacks; the one in the chest is tapped
+  bodyBefore = await bodyRo();
+  await pageB.fill('#body-search', 'lymph node');
+  await pageB.locator('#body-search').press('Enter');
+  await bodySettles(bodyBefore);
+  const nodes = await pageB.locator('#ro-body-find').textContent();
+  const nodeTap = await tapBody(232, 226);
+  const nodeSrc = await cardSource();
+  if (!nodes.includes('"lymph node" · 12 isolated') || !nodeTap.part.includes('lymph-node-male/') || !nodeSrc.includes('3D Reference Organ for Lymph Node') || !nodeSrc.includes('CC BY 4.0')) {
+    fail(`lymph node find: ${nodes} → ${nodeTap.part} / ${nodeSrc}`);
+  } else console.log('find', nodes, '→', nodeTap.part);
+  bodyBefore = await bodyRo();
+  await pageB.click('#body-show-all');
+  await bodySettles(bodyBefore);
   // the full body: every system on, then an orbit drag
-  for (const s of ['Skeletal', 'Muscular', 'Skin']) {
+  for (const s of ['Skeletal', 'Respiratory', 'Muscular', 'Skin']) {
     bodyBefore = await bodyRo();
     await pageB.click(`#dock-body label.switch[title^="${s}"]`);
     await bodySettles(bodyBefore);
   }
   const bodyFull = await bodyRo();
-  if (!bodyFull.startsWith('1,943,916 tris')) fail(`full body not all shown: ${bodyFull}`);
+  if (!bodyFull.startsWith('1,982,505 tris')) fail(`full body not all shown: ${bodyFull}`);
   const fb = await pageB.locator('#c-body').boundingBox();
   await pageB.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
   await pageB.mouse.down();

@@ -1,0 +1,915 @@
+{
+ "format": "carys-body-fit/1",
+ "frame": "HRA (x, y, z) m → BodyParts3D (1000 x, −1000 z, 1000 y) mm, then the fit",
+ "method": "per-anchor similarity by ICP (both ways where both surfaces are whole), started from one similarity on all anchors; added organs move by the anchors' fits blended by 1/(d² + 5²)², d the distance (mm) to each anchor",
+ "measure": "mean distance between surfaces sampled 1 mm apart (at most 60000 samples a side, evenly strided)",
+ "global": {
+  "scale": 0.9453,
+  "m": [
+   0.943279,
+   0.060565,
+   0.007681,
+   -0.060646,
+   0.94325,
+   0.010205,
+   -0.007011,
+   -0.010677,
+   0.945166
+  ],
+  "t": [
+   -4.67,
+   -98.203,
+   757.886
+  ]
+ },
+ "anchors": [
+  {
+   "id": "left kidney",
+   "hra": "kidney-male-left@v1.3",
+   "nodes": [
+    "VH_M_kidney_capsule_L"
+   ],
+   "bodyparts3d": [
+    "left kidney"
+   ],
+   "both": true,
+   "scale": 0.8091,
+   "globalMm": 8.2,
+   "ownMm": 2.02,
+   "leaveOneOutMm": 5.84
+  },
+  {
+   "id": "right kidney",
+   "hra": "kidney-male-right@v1.3",
+   "nodes": [
+    "VH_M_kidney_capsule_R"
+   ],
+   "bodyparts3d": [
+    "right kidney"
+   ],
+   "both": true,
+   "scale": 0.8538,
+   "globalMm": 7.85,
+   "ownMm": 2.03,
+   "leaveOneOutMm": 9.71
+  },
+  {
+   "id": "spleen",
+   "hra": "spleen-male@v1.3",
+   "nodes": [
+    "VH_M_colic_surface_of_spleen",
+    "VH_M_diaphragmatic_surface_of_spleen",
+    "VH_M_gastric_surface_of_spleen",
+    "VH_M_hilum_of_spleen",
+    "VH_M_renal_surface_of_spleen"
+   ],
+   "bodyparts3d": [
+    "spleen"
+   ],
+   "both": true,
+   "scale": 0.7785,
+   "globalMm": 17.32,
+   "ownMm": 4,
+   "leaveOneOutMm": 9.7
+  },
+  {
+   "id": "liver",
+   "hra": "liver-male@v1.2",
+   "nodes": [
+    "VH_M_liver_capsule"
+   ],
+   "bodyparts3d": [
+    "hepatovenous segment ii",
+    "hepatovenous segment iii",
+    "hepatovenous segment iv",
+    "hepatovenous segment v",
+    "hepatovenous segment vi",
+    "hepatovenous segment vii",
+    "hepatovenous segment viii",
+    "hepatovenous segment ix",
+    "caudate lobe of liver"
+   ],
+   "both": false,
+   "scale": 0.8333,
+   "globalMm": 10.62,
+   "ownMm": 3.65,
+   "leaveOneOutMm": 11.02
+  },
+  {
+   "id": "pancreas",
+   "hra": "pancreas-male@v1.3",
+   "nodes": [
+    "VH_M_body_of_pancreas",
+    "VH_M_tail_of_pancreas",
+    "VH_M_head_of_pancreas",
+    "VH_M_neck_of_pancreas",
+    "VH_M_uncinate_process_of_the_pancreas"
+   ],
+   "bodyparts3d": [
+    "pancreas"
+   ],
+   "both": true,
+   "scale": 0.8451,
+   "globalMm": 20.92,
+   "ownMm": 3.95,
+   "leaveOneOutMm": 6.9
+  },
+  {
+   "id": "urinary bladder",
+   "hra": "urinary-bladder-male@v1.2",
+   "nodes": [
+    "VH_M_urinary_bladder_neck_smooth_muscle",
+    "VH_M_fundus_of_urinary_bladder_dome",
+    "VH_M_fundus_of_urinary_bladder_base1",
+    "VH_M_trigone_of_urinary_bladder"
+   ],
+   "bodyparts3d": [
+    "urinary bladder"
+   ],
+   "both": true,
+   "scale": 1.0281,
+   "globalMm": 17.47,
+   "ownMm": 2.17,
+   "leaveOneOutMm": 7.69
+  },
+  {
+   "id": "thymus",
+   "hra": "thymus-male@v1.3",
+   "nodes": [
+    "VH_M_thymus_lobe_L",
+    "VH_M_thymus_lobe_R"
+   ],
+   "bodyparts3d": [
+    "left lobe of thymus",
+    "right lobe of thymus"
+   ],
+   "both": true,
+   "scale": 1.0228,
+   "globalMm": 9.01,
+   "ownMm": 3.22,
+   "leaveOneOutMm": 3.93
+  },
+  {
+   "id": "pelvis",
+   "hra": "pelvis-male@v1.3",
+   "nodes": [
+    "VH_M_sacrum",
+    "VH_M_pubis_compact_bone_L",
+    "VH_M_pubis_compact_bone_R",
+    "VH_M_ilium_compact_bone_L",
+    "VH_M_ilium_compact_bone_R",
+    "VH_M_ischium_compact_bone_L",
+    "VH_M_ischium_compact_bone_R"
+   ],
+   "bodyparts3d": [
+    "left hip bone",
+    "right hip bone",
+    "sacrum"
+   ],
+   "both": true,
+   "scale": 0.9349,
+   "globalMm": 8.2,
+   "ownMm": 3.67,
+   "leaveOneOutMm": 10.72
+  },
+  {
+   "id": "heart",
+   "hra": "heart-male@v1.3",
+   "nodes": [
+    "VH_M_left_cardiac_atrium",
+    "VH_M_right_cardiac_atrium",
+    "VH_M_heart_right_ventricle",
+    "VH_M_interventricular_septum",
+    "VH_M_heart_left_ventricle"
+   ],
+   "bodyparts3d": [
+    "heart",
+    "wall of ventricle"
+   ],
+   "both": true,
+   "scale": 1.0191,
+   "globalMm": 6.74,
+   "ownMm": 3.4,
+   "leaveOneOutMm": 6.57
+  },
+  {
+   "id": "trachea",
+   "hra": "trachea-male@v1.1",
+   "nodes": [
+    "VH_M_trachea"
+   ],
+   "bodyparts3d": [
+    "trachea"
+   ],
+   "both": true,
+   "scale": 0.923,
+   "globalMm": 14.12,
+   "ownMm": 1.8,
+   "leaveOneOutMm": 6.36
+  },
+  {
+   "id": "main bronchi",
+   "hra": "main-bronchus-male@v1.1",
+   "nodes": [
+    "VH_M_left_main_bronchus",
+    "VH_M_right_main_bronchus"
+   ],
+   "bodyparts3d": [
+    "left main bronchus",
+    "right main bronchus proper"
+   ],
+   "both": true,
+   "scale": 1.8017,
+   "globalMm": 15.13,
+   "ownMm": 7.15,
+   "leaveOneOutMm": 10.56
+  },
+  {
+   "id": "larynx",
+   "hra": "larynx-male@v1.1",
+   "nodes": [
+    "VH_M_cricoid_cartilage",
+    "VH_M_thyroid_cartilage"
+   ],
+   "bodyparts3d": [
+    "thyroid cartilage",
+    "cricoid cartilage"
+   ],
+   "both": true,
+   "scale": 0.6795,
+   "globalMm": 23.45,
+   "ownMm": 1.07,
+   "leaveOneOutMm": 6.92
+  },
+  {
+   "id": "left submandibular gland",
+   "hra": "mouth-male@v1.0",
+   "nodes": [
+    "VH_M_submandibular_gland_L"
+   ],
+   "bodyparts3d": [
+    "left submandibular gland"
+   ],
+   "both": true,
+   "scale": 0.5883,
+   "globalMm": 21.45,
+   "ownMm": 1.46,
+   "leaveOneOutMm": 26.24
+  },
+  {
+   "id": "right submandibular gland",
+   "hra": "mouth-male@v1.0",
+   "nodes": [
+    "VH_M_submandibular_gland_R"
+   ],
+   "bodyparts3d": [
+    "right submandibular gland"
+   ],
+   "both": true,
+   "scale": 0.5812,
+   "globalMm": 22.18,
+   "ownMm": 1.48,
+   "leaveOneOutMm": 24.4
+  },
+  {
+   "id": "duodenum",
+   "hra": "small-intestine-male@v1.2",
+   "nodes": [
+    "VH_M_duodenum_ascending",
+    "VH_M_duodenum_descending",
+    "VH_M_duodenum_horizonal",
+    "VH_M_duodenum_superior"
+   ],
+   "bodyparts3d": [
+    "duodenum"
+   ],
+   "both": true,
+   "scale": 1.0436,
+   "globalMm": 16.92,
+   "ownMm": 2.72,
+   "leaveOneOutMm": 10.68
+  },
+  {
+   "id": "jejunum and ileum",
+   "hra": "small-intestine-male@v1.2",
+   "nodes": [
+    "VH_M_ileum",
+    "VH_M_ileum_terminal",
+    "VH_M_jejunum"
+   ],
+   "bodyparts3d": [
+    "proximal part of jejunum",
+    "proximal part of ileum",
+    "middle part of jejunum",
+    "middle part of ileum",
+    "distal part of jejunum",
+    "distal part of ileum"
+   ],
+   "both": true,
+   "scale": 1.0055,
+   "globalMm": 14.61,
+   "ownMm": 10.64,
+   "leaveOneOutMm": 12.75
+  },
+  {
+   "id": "colon",
+   "hra": "large-intestine-male@v1.3",
+   "nodes": [
+    "VH_M_ascending_colon",
+    "VH_M_descending_colon",
+    "VH_M_hepatic_flexure_of_colon",
+    "VH_M_splenic_flexure_of_colon",
+    "VH_M_transverse_colon"
+   ],
+   "bodyparts3d": [
+    "ascending colon",
+    "transverse colon",
+    "descending colon"
+   ],
+   "both": true,
+   "scale": 0.8795,
+   "globalMm": 23.55,
+   "ownMm": 11.22,
+   "leaveOneOutMm": 19.74
+  },
+  {
+   "id": "left knee",
+   "hra": "knee-male-left@v1.2",
+   "nodes": [
+    "VH_M_fibula_L",
+    "VH_M_femur_L",
+    "VH_M_tibia_L",
+    "VH_M_patella_L"
+   ],
+   "bodyparts3d": [
+    "left femur",
+    "left tibia",
+    "left fibula",
+    "left patella"
+   ],
+   "both": false,
+   "scale": 0.9228,
+   "globalMm": 39.66,
+   "ownMm": 5.83,
+   "leaveOneOutMm": 65.4
+  },
+  {
+   "id": "right knee",
+   "hra": "knee-male-right@v1.2",
+   "nodes": [
+    "VH_M_tibia_R",
+    "VH_M_fibula_R",
+    "VH_M_patella_R",
+    "VH_M_femur_R"
+   ],
+   "bodyparts3d": [
+    "right femur",
+    "right tibia",
+    "right fibula",
+    "right patella"
+   ],
+   "both": false,
+   "scale": 0.9295,
+   "globalMm": 44.39,
+   "ownMm": 5.76,
+   "leaveOneOutMm": 64.25
+  },
+  {
+   "id": "intervertebral disk of axis",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_axis"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of axis"
+   ],
+   "both": true,
+   "scale": 0.2869,
+   "globalMm": 13.23,
+   "ownMm": 4.64,
+   "leaveOneOutMm": 14.27
+  },
+  {
+   "id": "intervertebral disk of third cervical vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_third_cervical_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of third cervical vertebra"
+   ],
+   "both": true,
+   "scale": 0.158,
+   "globalMm": 11.2,
+   "ownMm": 4.47,
+   "leaveOneOutMm": 4.72
+  },
+  {
+   "id": "intervertebral disk of fourth cervical vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_fourth_cervical_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of fourth cervical vertebra"
+   ],
+   "both": true,
+   "scale": 0.3951,
+   "globalMm": 8.86,
+   "ownMm": 3.64,
+   "leaveOneOutMm": 4.05
+  },
+  {
+   "id": "intervertebral disk of fifth cervical vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_fifth_cervical_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of fifth cervical vertebra"
+   ],
+   "both": true,
+   "scale": 0.4001,
+   "globalMm": 8.24,
+   "ownMm": 3.71,
+   "leaveOneOutMm": 2.47
+  },
+  {
+   "id": "intervertebral disk of sixth cervical vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_sixth_cervical_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of sixth cervical vertebra"
+   ],
+   "both": true,
+   "scale": 0.7078,
+   "globalMm": 8.02,
+   "ownMm": 1.78,
+   "leaveOneOutMm": 3.17
+  },
+  {
+   "id": "intervertebral disk of seventh cervical vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_seventh_cervical_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of seventh cervical vertebra"
+   ],
+   "both": true,
+   "scale": 0.9776,
+   "globalMm": 8.63,
+   "ownMm": 0.81,
+   "leaveOneOutMm": 2.33
+  },
+  {
+   "id": "intervertebral disk of eleventh thoracic vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_eleventh_thoracic_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of eleventh thoracic vertebra"
+   ],
+   "both": true,
+   "scale": 0.8555,
+   "globalMm": 13.93,
+   "ownMm": 1.3,
+   "leaveOneOutMm": 5.74
+  },
+  {
+   "id": "intervertebral disk of tenth thoracic vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_tenth_thoracic_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of tenth thoracic vertebra"
+   ],
+   "both": true,
+   "scale": 0.9122,
+   "globalMm": 12.25,
+   "ownMm": 0.89,
+   "leaveOneOutMm": 3.7
+  },
+  {
+   "id": "intervertebral disk of ninth thoracic vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_ninth_thoracic_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of ninth thoracic vertebra"
+   ],
+   "both": true,
+   "scale": 1.0033,
+   "globalMm": 8.24,
+   "ownMm": 0.86,
+   "leaveOneOutMm": 3.68
+  },
+  {
+   "id": "intervertebral disk of eighth thoracic vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_eighth_thoracic_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of eighth thoracic vertebra"
+   ],
+   "both": true,
+   "scale": 1.0589,
+   "globalMm": 6.06,
+   "ownMm": 0.94,
+   "leaveOneOutMm": 1.86
+  },
+  {
+   "id": "intervertebral disk of seventh thoracic vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_seventh_thoracic_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of seventh thoracic vertebra"
+   ],
+   "both": true,
+   "scale": 1.1696,
+   "globalMm": 4.35,
+   "ownMm": 0.89,
+   "leaveOneOutMm": 1.23
+  },
+  {
+   "id": "intervertebral disk of sixth thoracic vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_sixth_thoracic_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of sixth thoracic vertebra"
+   ],
+   "both": true,
+   "scale": 1.1912,
+   "globalMm": 5,
+   "ownMm": 1.09,
+   "leaveOneOutMm": 2.57
+  },
+  {
+   "id": "intervertebral disk of fifth thoracic vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_fifth_thoracic_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of fifth thoracic vertebra"
+   ],
+   "both": true,
+   "scale": 0.8491,
+   "globalMm": 7.09,
+   "ownMm": 1.93,
+   "leaveOneOutMm": 2.31
+  },
+  {
+   "id": "intervertebral disk of fourth thoracic vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_fourth_thoracic_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of fourth thoracic vertebra"
+   ],
+   "both": true,
+   "scale": 0.9018,
+   "globalMm": 8.9,
+   "ownMm": 1.59,
+   "leaveOneOutMm": 3.39
+  },
+  {
+   "id": "intervertebral disk of third thoracic vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_third_thoracic_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of third thoracic vertebra"
+   ],
+   "both": true,
+   "scale": 0.9543,
+   "globalMm": 10.35,
+   "ownMm": 1.19,
+   "leaveOneOutMm": 2.86
+  },
+  {
+   "id": "intervertebral disk of second thoracic vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_second_thoracic_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of second thoracic vertebra"
+   ],
+   "both": true,
+   "scale": 1.0348,
+   "globalMm": 11.34,
+   "ownMm": 0.81,
+   "leaveOneOutMm": 1.89
+  },
+  {
+   "id": "intervertebral disk of first thoracic vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_first_thoracic_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of first thoracic vertebra"
+   ],
+   "both": true,
+   "scale": 0.9273,
+   "globalMm": 10.84,
+   "ownMm": 1.06,
+   "leaveOneOutMm": 1.86
+  },
+  {
+   "id": "intervertebral disk of fourth lumbar vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_fourth_lumbar_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of fourth lumbar vertebra"
+   ],
+   "both": true,
+   "scale": 0.9484,
+   "globalMm": 6.42,
+   "ownMm": 0.93,
+   "leaveOneOutMm": 7.57
+  },
+  {
+   "id": "intervertebral disk of third lumbar vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_third_lumbar_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of third lumbar vertebra"
+   ],
+   "both": true,
+   "scale": 0.7764,
+   "globalMm": 5.2,
+   "ownMm": 2.13,
+   "leaveOneOutMm": 5.74
+  },
+  {
+   "id": "intervertebral disk of second lumbar vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_second_lumbar_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of second lumbar vertebra"
+   ],
+   "both": true,
+   "scale": 0.9749,
+   "globalMm": 9.06,
+   "ownMm": 1,
+   "leaveOneOutMm": 5.34
+  },
+  {
+   "id": "intervertebral disk of first lumbar vertebra",
+   "hra": "intervertebral-disk-male@v1.0",
+   "nodes": [
+    "VH_M_intervertebral_disk_of_first_lumbar_vertebra"
+   ],
+   "bodyparts3d": [
+    "intervertebral disk of first lumbar vertebra"
+   ],
+   "both": true,
+   "scale": 0.8857,
+   "globalMm": 12.01,
+   "ownMm": 0.93,
+   "leaveOneOutMm": 7.03
+  }
+ ],
+ "canal": {
+  "method": "the spinal cord moved across (heights kept) onto the line through each BodyParts3D vertebra's canal centre: the point on its midline, front to back every 0.5 mm at heights 1 mm apart through its middle half, outside the bone with bone ahead and behind, farthest from it",
+  "vertebrae": [
+   {
+    "name": "atlas",
+    "at": [
+     -0.62,
+     -62.21,
+     1473.06
+    ],
+    "clearanceMm": 12.98
+   },
+   {
+    "name": "axis",
+    "at": [
+     -0.86,
+     -62.04,
+     1450.46
+    ],
+    "clearanceMm": 8.34
+   },
+   {
+    "name": "third cervical vertebra",
+    "at": [
+     -0.61,
+     -65.19,
+     1431.12
+    ],
+    "clearanceMm": 8.86
+   },
+   {
+    "name": "fourth cervical vertebra",
+    "at": [
+     -0.64,
+     -67.11,
+     1415.47
+    ],
+    "clearanceMm": 7.75
+   },
+   {
+    "name": "fifth cervical vertebra",
+    "at": [
+     -0.62,
+     -68.21,
+     1399.82
+    ],
+    "clearanceMm": 7.54
+   },
+   {
+    "name": "sixth cervical vertebra",
+    "at": [
+     -0.8,
+     -67.2,
+     1387.32
+    ],
+    "clearanceMm": 7.82
+   },
+   {
+    "name": "seventh cervical vertebra",
+    "at": [
+     -0.65,
+     -62.57,
+     1371.41
+    ],
+    "clearanceMm": 8.07
+   },
+   {
+    "name": "first thoracic vertebra",
+    "at": [
+     -0.66,
+     -56.96,
+     1354.55
+    ],
+    "clearanceMm": 8.14
+   },
+   {
+    "name": "second thoracic vertebra",
+    "at": [
+     -0.62,
+     -50.73,
+     1334.97
+    ],
+    "clearanceMm": 8.15
+   },
+   {
+    "name": "third thoracic vertebra",
+    "at": [
+     -0.54,
+     -41.23,
+     1312.07
+    ],
+    "clearanceMm": 8.95
+   },
+   {
+    "name": "fourth thoracic vertebra",
+    "at": [
+     -0.56,
+     -33.28,
+     1288.67
+    ],
+    "clearanceMm": 9.33
+   },
+   {
+    "name": "fifth thoracic vertebra",
+    "at": [
+     -0.66,
+     -29.54,
+     1261.12
+    ],
+    "clearanceMm": 9.72
+   },
+   {
+    "name": "sixth thoracic vertebra",
+    "at": [
+     -0.78,
+     -27.32,
+     1236.34
+    ],
+    "clearanceMm": 9.44
+   },
+   {
+    "name": "seventh thoracic vertebra",
+    "at": [
+     -0.48,
+     -27.98,
+     1208.99
+    ],
+    "clearanceMm": 8.84
+   },
+   {
+    "name": "eighth thoracic vertebra",
+    "at": [
+     -0.78,
+     -31.45,
+     1181.57
+    ],
+    "clearanceMm": 9.17
+   },
+   {
+    "name": "ninth thoracic vertebra",
+    "at": [
+     -0.77,
+     -35.69,
+     1154.21
+    ],
+    "clearanceMm": 9.65
+   },
+   {
+    "name": "tenth thoracic vertebra",
+    "at": [
+     -0.58,
+     -41.59,
+     1126.11
+    ],
+    "clearanceMm": 8.98
+   },
+   {
+    "name": "eleventh thoracic vertebra",
+    "at": [
+     -0.52,
+     -49.65,
+     1098.07
+    ],
+    "clearanceMm": 8.93
+   },
+   {
+    "name": "twelfth thoracic vertebra",
+    "at": [
+     -0.73,
+     -58.92,
+     1073.79
+    ],
+    "clearanceMm": 8.28
+   },
+   {
+    "name": "first lumbar vertebra",
+    "at": [
+     -0.67,
+     -69.15,
+     1041.48
+    ],
+    "clearanceMm": 7.96
+   },
+   {
+    "name": "second lumbar vertebra",
+    "at": [
+     -0.66,
+     -72.84,
+     1020.16
+    ],
+    "clearanceMm": 7.73
+   },
+   {
+    "name": "third lumbar vertebra",
+    "at": [
+     -0.68,
+     -68.84,
+     978.12
+    ],
+    "clearanceMm": 9.04
+   },
+   {
+    "name": "fourth lumbar vertebra",
+    "at": [
+     -0.59,
+     -58.47,
+     949.83
+    ],
+    "clearanceMm": 11.11
+   },
+   {
+    "name": "fifth lumbar vertebra",
+    "at": [
+     -0.63,
+     -46.62,
+     923.1
+    ],
+    "clearanceMm": 9.75
+   }
+  ],
+  "cordShiftMaxMm": 18.56
+ }
+}

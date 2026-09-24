@@ -1,0 +1,264 @@
+{
+ "digest": "hra-organs",
+ "format": "carys-sources/1",
+ "sources": [
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/heart-male/v1.3/assets/3d-vh-m-heart.glb",
+   "version_pin": "heart-male@v1.3",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Heart, Male v1.3.\" https://doi.org/10.48539/HBM564.WKNG.249.",
+   "doi": "https://doi.org/10.48539/HBM564.WKNG.249"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/intervertebral-disk-male/v1.0/assets/3d-vh-m-intervertebral-disk.glb",
+   "version_pin": "intervertebral-disk-male@v1.0",
+   "role": "anchor",
+   "citation": "Kristen Browne, Heidi Schlehlein. 2025. *3D reference organ for intervertebral discs, Male v1.0.* [https://doi.org/10.48539/HBM747.XJJX.236](https://doi.org/10.48539/HBM747.XJJX.236).",
+   "doi": "https://doi.org/10.48539/HBM747.XJJX.236"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/kidney-male-left/v1.3/assets/3d-vh-m-kidney-l.glb",
+   "version_pin": "kidney-male-left@v1.3",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Kidney, Male, Left v1.3.\" https://doi.org/10.48539/HBM759.JKKF.434.",
+   "doi": "https://doi.org/10.48539/HBM759.JKKF.434"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/kidney-male-right/v1.3/assets/3d-vh-m-kidney-r.glb",
+   "version_pin": "kidney-male-right@v1.3",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Kidney, Male, Right v1.3.\" https://doi.org/10.48539/HBM364.QTSC.334.",
+   "doi": "https://doi.org/10.48539/HBM364.QTSC.334"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/knee-male-left/v1.2/assets/3d-vh-m-knee-l.glb",
+   "version_pin": "knee-male-left@v1.2",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Knee, Male, Left v1.2.\" https://doi.org/10.48539/HBM839.JJQF.873.",
+   "doi": "https://doi.org/10.48539/HBM839.JJQF.873"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/knee-male-right/v1.2/assets/3d-vh-m-knee-r.glb",
+   "version_pin": "knee-male-right@v1.2",
+   "role": "anchor",
+   "citation": "Browne, Kristen. 2024. \"3D Reference Organ for Knee, Male, Right v1.2.\" https://doi.org/10.48539/HBM984.JRHT.838.",
+   "doi": "https://doi.org/10.48539/HBM984.JRHT.838"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/large-intestine-male/v1.3/assets/3d-sbu-m-large-intestine.glb",
+   "version_pin": "large-intestine-male@v1.3",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Large Intestine, Male v1.3.\" https://doi.org/10.48539/HBM487.ZKSN.693.",
+   "doi": "https://doi.org/10.48539/HBM487.ZKSN.693"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/larynx-male/v1.1/assets/3d-vh-m-larynx.glb",
+   "version_pin": "larynx-male@v1.1",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Larynx, Male v1.1.\" https://doi.org/10.48539/HBM362.HNZB.247.",
+   "doi": "https://doi.org/10.48539/HBM362.HNZB.247"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/liver-male/v1.2/assets/3d-vh-m-liver.glb",
+   "version_pin": "liver-male@v1.2",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Liver, Male v1.2.\" https://doi.org/10.48539/HBM896.WMSL.867.",
+   "doi": "https://doi.org/10.48539/HBM896.WMSL.867"
+  },
+  {
+   "entry_count": 20,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/lung-male/v1.4/assets/3d-vh-m-lung.glb",
+   "version_pin": "lung-male@v1.4",
+   "role": "added",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Lung, Male v1.4.\" https://doi.org/10.48539/HBM532.KLZD.394.",
+   "doi": "https://doi.org/10.48539/HBM532.KLZD.394"
+  },
+  {
+   "entry_count": 6,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/lymph-node-male/v1.4/assets/3d-nih-m-lymph-node.glb",
+   "version_pin": "lymph-node-male@v1.4",
+   "role": "added",
+   "citation": "Yao, Li, Kristen Browne, and Heidi Schlehlein. 2024. \"3D Reference Organ for Lymph Node, Male v1.4.\" https://doi.org/10.48539/HBM532.TNXR.875.",
+   "doi": "https://doi.org/10.48539/HBM532.TNXR.875"
+  },
+  {
+   "entry_count": 6,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/lymph-node-male-left/v1.0/assets/NIH_M_Lymph_Node_Left.glb",
+   "version_pin": "lymph-node-male-left@v1.0",
+   "role": "added",
+   "citation": "Yao, Li. 2021. \"3D Reference Organ for Lymph Node, Male, Left v1.0.\" https://doi.org/10.48539/hbm668.rblw.256.",
+   "doi": "https://doi.org/10.48539/hbm668.rblw.256"
+  },
+  {
+   "entry_count": 6,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/lymph-node-male-right/v1.0/assets/NIH_M_Lymph_Node_Right.glb",
+   "version_pin": "lymph-node-male-right@v1.0",
+   "role": "added",
+   "citation": "Yao, Li. 2021. \"3D Reference Organ for Lymph Node, Male, Right v1.0.\" https://doi.org/10.48539/hbm699.blks.298.",
+   "doi": "https://doi.org/10.48539/hbm699.blks.298"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/main-bronchus-male/v1.1/assets/3d-vh-m-main-bronchus.glb",
+   "version_pin": "main-bronchus-male@v1.1",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Main Bronchus, Male v1.1.\" https://doi.org/10.48539/HBM373.XHXV.928.",
+   "doi": "https://doi.org/10.48539/HBM373.XHXV.928"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/mouth-male/v1.0/assets/3d-vh-m-mouth.glb",
+   "version_pin": "mouth-male@v1.0",
+   "role": "anchor",
+   "citation": "Schlehlein, Heidi. 2024. \"3D Reference Organ for mouth, Female v1.0.\" https://doi.org/10.48539/HBM568.RFGM.978.",
+   "doi": "https://doi.org/10.48539/HBM568.RFGM.978"
+  },
+  {
+   "entry_count": 1,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/palatine-tonsil-male-left/v1.2/assets/3d-vh-m-palatine-tonsil-l.glb",
+   "version_pin": "palatine-tonsil-male-left@v1.2",
+   "role": "added",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Palatine Tonsil, Male, Left v1.2.\" https://doi.org/10.48539/HBM366.GHGT.974.",
+   "doi": "https://doi.org/10.48539/HBM366.GHGT.974"
+  },
+  {
+   "entry_count": 1,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/palatine-tonsil-male-right/v1.2/assets/3d-vh-m-palatine-tonsil-r.glb",
+   "version_pin": "palatine-tonsil-male-right@v1.2",
+   "role": "added",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Palatine Tonsil, Male, Right v1.2.\" https://doi.org/10.48539/HBM867.FQCX.589.",
+   "doi": "https://doi.org/10.48539/HBM867.FQCX.589"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/pancreas-male/v1.3/assets/3d-vh-m-pancreas.glb",
+   "version_pin": "pancreas-male@v1.3",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Pancreas, Male v1.3.\" https://doi.org/10.48539/HBM396.QWWJ.639.",
+   "doi": "https://doi.org/10.48539/HBM396.QWWJ.639"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/pelvis-male/v1.3/assets/3d-vh-m-pelvis.glb",
+   "version_pin": "pelvis-male@v1.3",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. \"3D Reference Organ for Pelvis, Male v1.3.\" https://doi.org/10.48539/HBM384.SBWX.873.",
+   "doi": "https://doi.org/10.48539/HBM384.SBWX.873"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/small-intestine-male/v1.2/assets/3d-vh-m-small-intestine.glb",
+   "version_pin": "small-intestine-male@v1.2",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. *3D Reference Organ for Small Intestine, Male v1.2*. https://doi.org/10.48539/HBM789.XTDK.794.",
+   "doi": "https://doi.org/10.48539/HBM789.XTDK.794"
+  },
+  {
+   "entry_count": 30,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/spinal-cord-male/v1.1/assets/3d-vh-m-spinal-cord.glb",
+   "version_pin": "spinal-cord-male@v1.1",
+   "role": "added",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. *3D Reference Organ for Spinal Cord, Male, v1.1*. https://doi.org/10.48539/HBM575.VDJW.494.",
+   "doi": "https://doi.org/10.48539/HBM575.VDJW.494"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/spleen-male/v1.3/assets/3d-vh-m-spleen.glb",
+   "version_pin": "spleen-male@v1.3",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. *3D Reference Organ for Spleen, Male v1.3*. https://doi.org/10.48539/HBM437.LMTZ.752.",
+   "doi": "https://doi.org/10.48539/HBM437.LMTZ.752"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/thymus-male/v1.3/assets/3d-vh-m-thymus.glb",
+   "version_pin": "thymus-male@v1.3",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. *3D Reference Organ for Thymus, Male v1.2*. https://doi.org/10.48539/HBM923.RZCC.934.",
+   "doi": "https://doi.org/10.48539/HBM923.RZCC.934"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/trachea-male/v1.1/assets/3d-vh-m-trachea.glb",
+   "version_pin": "trachea-male@v1.1",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. *3D Reference Organ for Trachea, Male v1.1*. https://doi.org/10.48539/HBM357.VGJC.676.",
+   "doi": "https://doi.org/10.48539/HBM357.VGJC.676"
+  },
+  {
+   "entry_count": 0,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/urinary-bladder-male/v1.2/assets/3d-vh-m-urinary-bladder.glb",
+   "version_pin": "urinary-bladder-male@v1.2",
+   "role": "anchor",
+   "citation": "Browne, Kristen, and Heidi Schlehlein. 2024. *3D Reference Organ for Urinary Bladder, Male v1.2*. https://doi.org/10.48539/HBM722.RMHQ.397.",
+   "doi": "https://doi.org/10.48539/HBM722.RMHQ.397"
+  },
+  {
+   "entry_count": 747,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://raw.githubusercontent.com/hubmapconsortium/ccf-releases/b036a91aaf7234f462b1249d4a5f4fb0e982f412/v2.0/models/asct-b-3d-models-crosswalk.csv",
+   "version_pin": "ccf-releases@b036a91aaf72",
+   "role": "mesh names"
+  }
+ ]
+}

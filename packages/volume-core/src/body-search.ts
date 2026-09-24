@@ -29,8 +29,9 @@ const ALL_TERMS = 5000;
 /**
  * The parts a query names. In order: an element id; an FMA id (the parts of
  * that concept, or the parts that are it); a concept named exactly so; parts
- * named exactly so; parts whose name holds it; the first concept whose name
- * holds it and has parts here. Null when nothing does (the caller says so).
+ * named exactly so; parts whose name holds it; parts whose element id holds
+ * it; the first concept whose name holds it and has parts here. Null when
+ * nothing does (the caller says so).
  */
 export function findBodyStructures(rows: readonly BodyRow[], query: string): BodyFind | null {
   const q = query.trim().toLowerCase();
@@ -58,6 +59,9 @@ export function findBodyStructures(rows: readonly BodyRow[], query: string): Bod
   if (named.length) return { label: named[0]!.name, elements: named.map((r) => r.element) };
   const holding = rows.filter((r) => r.name.toLowerCase().includes(q));
   if (holding.length) return { label: `"${query.trim()}"`, elements: holding.map((r) => r.element) };
+  // an HRA part's element names its organ ("lung-male/…"): its segments do not
+  const organ = rows.filter((r) => r.element.toLowerCase().includes(q));
+  if (organ.length) return { label: `"${query.trim()}"`, elements: organ.map((r) => r.element) };
   for (const t of terms) {
     const hit = byConcept(t);
     if (hit) return hit;

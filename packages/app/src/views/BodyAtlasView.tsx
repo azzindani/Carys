@@ -1,5 +1,6 @@
 // The whole-body atlas (H2, docs/PHASES.md): BodyParts3D's 2,234 structures
-// by body system on the CPU rasterizer. Systems switch on and off, a drag
+// and the HRA organs placed among them (H3) by body system on the CPU
+// rasterizer. Systems switch on and off, a drag
 // orbits (a clustered copy at half size while moving, the full mesh
 // anti-aliased once it settles), a tap names the structure, a search
 // isolates and frames it, a structure hides. Education pixels only (badged).
@@ -8,12 +9,14 @@ import type { JSX, ReactNode } from 'react';
 import type React from 'react';
 import {
   assembleScene, clusterScene, frameParts, pickSurface, renderMesh, sceneColors, sceneDims,
-  type BodyIndex, type BodyScene, type BodySystem, type ScenePart,
+  type BodyScene, type BodySystem, type ScenePart,
 } from '@carys/render-cpu';
 import { conceptsOfElement, findBodyStructures, TERMS_DIGEST_ID, TERMS_DIGEST_PIN, type BodyRow } from '@carys/volume-core';
 import { EDUCATION_BADGE } from '@carys/study';
 import { ensureTerms } from '../lib/atlasTerms';
-import { BODY_DIGEST_ID, loadBodyIndex, loadBodySystem } from '../lib/bodyAtlas';
+import {
+  BODY_DIGEST_ID, HRA_DIGEST_ID, hraOrganOf, loadBodyAtlas, loadBodySystem, type BodyAtlas,
+} from '../lib/bodyAtlas';
 import { BODY_BG, BODY_PICK_COLOR, BODY_SYSTEM_COLORS, bodyCss } from '../lib/palette';
 import { session } from '../lib/session';
 import { setAmbientStatus, setStatus } from '../lib/status';
@@ -71,22 +74,26 @@ function lodCell(dims: V3, w: number, h: number, zoom: number): number {
   return Math.max(CELL_MIN_MM, 2 ** Math.round(Math.log2(mm)));
 }
 
-/** What a tap found: name and FMA id, what it is part of, its system and
- *  how its shipped mesh compares with the source. */
-function BodyCard({ picked }: { picked: Picked }): JSX.Element {
+/** What a tap found: name and FMA id, what it is part of, its system, where
+ *  it comes from and how its shipped mesh compares with the source. */
+function BodyCard({ picked, atlas }: { picked: Picked; atlas: BodyAtlas }): JSX.Element {
   const p = picked.part;
+  const hra = hraOrganOf(atlas, p.element);
   return (
     <dl className="kv" id="body-card" aria-label={`Structure: ${p.name}`}>
       <div className="mrow"><dt>{p.name}</dt><dd>{p.fma}</dd></div>
       <div className="mrow"><dt>part of</dt><dd id="body-card-within">{picked.within.length ? picked.within.join(' › ') : '— (in no PART-OF tree)'}</dd></div>
       <div className="mrow"><dt>system</dt><dd>{SYSTEM_LABEL[p.system]}</dd></div>
+      <div className="mrow"><dt>source</dt><dd id="body-card-source">{hra
+        ? `${hra.organ.citation} CC BY 4.0. Placed from the Visible Human male by a fit on ${atlas.hra.anchors} organs both bodies have: an organ placed that way lands ${atlas.hra.looMedianMm} mm from its match (median).`
+        : `${atlas.indexes[BODY_DIGEST_ID].attribution} (${atlas.indexes[BODY_DIGEST_ID].pin})`}</dd></div>
       <div className="mrow"><dt>mesh</dt><dd>{p.element} · {(p.indices.length / 3).toLocaleString()} of {p.sourceTris.toLocaleString()} tris · within {p.errorMm.toFixed(2)} mm</dd></div>
     </dl>
   );
 }
 
 export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Element {
-  const [idx, setIdx] = useState<BodyIndex | null>(null);
+  const [idx, setIdx] = useState<BodyAtlas | null>(null);
   const [on, setOn] = useState<ReadonlySet<BodySystem>>(() => new Set(OPEN_SYSTEMS));
   const [loading, setLoading] = useState('');
   const [orbit, setOrbit] = useState(0);
@@ -102,7 +109,7 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const offRef = useRef<HTMLCanvasElement | null>(null);
-  const idxRef = useRef<BodyIndex | null>(null);
+  const idxRef = useRef<BodyAtlas | null>(null);
   /** every loaded part, systems appended as they arrive, and where each is */
   const parts = useRef<ScenePart[]>([]);
   const at = useRef(new Map<string, number>());
@@ -218,11 +225,13 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
     let live = true;
     void (async () => {
       try {
-        const [ix] = await Promise.all([loadBodyIndex(), ensureTerms()]);
+        const [ix] = await Promise.all([loadBodyAtlas(), ensureTerms()]);
         if (!live) return;
         idxRef.current = ix;
         setIdx(ix);
-        session.digestPins = { [BODY_DIGEST_ID]: ix.pin, [TERMS_DIGEST_ID]: TERMS_DIGEST_PIN };
+        session.digestPins = {
+          [BODY_DIGEST_ID]: ix.indexes[BODY_DIGEST_ID].pin, [HRA_DIGEST_ID]: ix.indexes[HRA_DIGEST_ID].pin, [TERMS_DIGEST_ID]: TERMS_DIGEST_PIN,
+        };
         await sync();
       } catch (e) {
         setErr((e as Error).message);
@@ -326,7 +335,7 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
     <>
       <div className="view-title" id="title-atlas">
         <h1>Atlas</h1>
-        <p>BodyParts3D whole body ({idx ? idx.parts.length.toLocaleString() : '…'} structures, {systems.length} systems) · FMA terms · {EDUCATION_BADGE}</p>
+        <p>Whole body: BodyParts3D and HRA organs ({idx ? idx.parts.length.toLocaleString() : '…'} structures, {systems.length} systems) · FMA terms · {EDUCATION_BADGE}</p>
       </div>
       <div className="dock" id="dock-body">
         {modeSwitch}
@@ -334,7 +343,7 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
         {systems.map((s) => (
           <div className="grp" key={s}>
             <span className="lblswatch" style={{ background: bodyCss(s) }} aria-hidden="true" />
-            <Switch checked={on.has(s)} label={`${SYSTEM_LABEL[s]} ${idx!.systems[s]!.parts}`} onChange={(v) => toggle(s, v)} />
+            <Switch checked={on.has(s)} label={`${SYSTEM_LABEL[s]} ${idx!.systems[s]}`} onChange={(v) => toggle(s, v)} />
           </div>
         ))}
         <div className="sep" />
@@ -380,8 +389,9 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
               onPointerDown={onOrbitDown} onPointerMove={onOrbitMove} onPointerUp={onOrbitUp} onPointerCancel={onOrbitUp}
               onWheel={wheel} />
           </div>
-          {picked && <BodyCard picked={picked} />}
-          <div className="hint" id="body-src">{idx?.attribution ?? 'BodyParts3D'} · {idx?.pin ?? ''}</div>
+          {picked && idx && <BodyCard picked={picked} atlas={idx} />}
+          <div className="hint" id="body-src">{idx ? `${idx.indexes[BODY_DIGEST_ID].attribution} · ${idx.indexes[BODY_DIGEST_ID].pin}` : 'BodyParts3D'}</div>
+          <div className="hint" id="body-hra-src">{idx ? `${idx.indexes[HRA_DIGEST_ID].attribution} · ${idx.hra.organs.size} organs, cited on tap` : 'HRA'}</div>
         </div>
       </div>
     </>

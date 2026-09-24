@@ -30,6 +30,16 @@
    "source_url": "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html"
   },
   {
+   "id": "hra-organs",
+   "kind": "digest",
+   "license_spdx": "CC-BY-4.0",
+   "license_note": "HuBMAP Human Reference Atlas 3D reference organs (Visible Human male), each dataset CC BY 4.0 per its humanatlas.io record; the citation of every organ used is in digests/hra-organs/SOURCES.json and shown on tap",
+   "mode": "digest",
+   "lane": "H3",
+   "status": "shipped",
+   "source_url": "https://humanatlas.io/3d-reference-library"
+  },
+  {
    "id": "rcsb-pathogens",
    "kind": "digest",
    "license_spdx": "CC0-1.0",
