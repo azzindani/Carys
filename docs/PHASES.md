@@ -924,7 +924,8 @@ are binary so even surface nets terrace, thick slices make 5 mm steps, and
 the rasterizer lights each triangle flat. This queue fixes that on the CPU,
 one item per delivery, in order. Each item lands with its tests and docs,
 passes `npm run ci` and the e2e suites it touches, and is pushed on
-`claude/3d-fidelity` with CI green before the next starts. Accuracy is
+`claude/3d-fidelity` (merged into main 2026-09-24) with CI green before
+the next starts. Accuracy is
 measured, not eyeballed: analytic phantoms have known surfaces and volumes.
 
 - DONE — **F1. Accuracy harness.** `render-cpu/src/test/phantoms.ts` +
@@ -1357,8 +1358,9 @@ education (not diagnosis). Data is CC BY only: CC BY 4.0 or CC0, never
 share-alike, non-commercial or no-derivatives; every asset is wrapped into
 the repo under `digests/` with a `SOURCES.json` and a `DIGESTS.json` row,
 and its attribution shown where it is used. One item per delivery, in
-order, each with its tests, docs and measured numbers, pushed on
-`claude/body-atlas` with CI green before the next.
+order, each with its tests, docs and measured numbers, pushed on `main`
+with CI green before the next (H1–H2 landed on `claude/body-atlas`,
+merged into main 2026-09-24; work is on main only since).
 
 - DONE — **H1. Whole-body data package.** `scripts/build-body-atlas.mjs`
   fetches BodyParts3D 4.0 (the IS-A mesh set, obj_99: 2,234 element
