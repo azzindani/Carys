@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { JSX } from 'react';
 import { SERIES } from '../lib/catalog';
 import type { Extractor } from '../lib/extractor';
@@ -12,8 +12,11 @@ import { toast } from '../lib/toasts';
 import { useVersion } from '../lib/version';
 import { DarkSelect, Seg } from '../ui/primitives';
 import { IconPanel } from '../ui/Icons';
+import { PopOut } from '../ui/PopOut';
 import type { MSheet, MView } from '../lib/types';
-import { MprTuneDock, MprToolDock, SegDock } from './MprView';
+import {
+  CompareDock, DisplayDock, ExportDock, MprToolDock, ReformatDock, SegDock, TimeDock, useHasFrames,
+} from './MprView';
 import { MprPanes } from './MprPanes';
 import { SurfaceView } from './SurfaceView';
 import { CprPanel } from './CprPanel';
@@ -129,6 +132,39 @@ function ViewGrid({ sliceInit, axialCanvasRef, extractor, full, mView }: {
   );
 }
 
+type PopId = 'display' | 'reformat' | 'compare' | 'time' | 'segment' | '3d' | 'export';
+
+/** The desktop viewer's display tools, one pop-out per job, in the bar
+ *  beside the file tabs. One is open at a time. They replaced a toolbar strip
+ *  that floated over the top of the viewport and pushed its panes down. */
+function ViewerPopOuts({ axialCanvasRef }: {
+  axialCanvasRef: React.RefObject<HTMLCanvasElement | null>;
+}): JSX.Element {
+  const [open, setOpen] = useState<PopId | null>(null);
+  const hasFrames = useHasFrames();
+  // a close from one pop-out must not undo another's open (an outside press
+  // on B's button closes A, then B's click opens B)
+  const change = useCallback((id: PopId) => (v: boolean): void => {
+    setOpen((cur) => (v ? id : cur === id ? null : cur));
+  }, []);
+  // the bar sits at the right of the screen, so every panel opens leftwards
+  const pop = (id: PopId, label: string, title: string, body: JSX.Element): JSX.Element => (
+    <PopOut id={id} label={label} title={title} open={open === id} onOpenChange={change(id)} align="end">{body}</PopOut>
+  );
+  return (
+    <div className="popbar" role="group" aria-label="Display tools">
+      {pop('display', 'Display', 'Window, colormap, layout, sync, hanging protocol', <DisplayDock />)}
+      {pop('reformat', 'Reformat', 'Slab projection, obliquity, plane card', <ReformatDock />)}
+      {pop('compare', 'Compare', 'Overlay a second series', <CompareDock />)}
+      {hasFrames && pop('time', 'Time', 'Cine: play, speed, frame', <TimeDock />)}
+      {pop('segment', 'Segment', 'Mask look and segmentation operations', <SegDock />)}
+      {/* SurfaceView portals #dock-3d into this slot (always mounted) */}
+      {pop('3d', '3D', 'Surface and volume rendering', <div id="dockslot-3d" className="dockslot" />)}
+      {pop('export', 'Export', 'PNG, mask, DICOM-SEG, presentation state', <ExportDock axialCanvasRef={axialCanvasRef} />)}
+    </div>
+  );
+}
+
 /** Professional viewport grid: file tabs on top, 3D viewport left, the
  *  three 2D viewports stacked right — each with its own tools.
  *
@@ -146,7 +182,6 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
   const mView = useUiPick('mView');
   const mSheet = useUiPick('mSheet');
   const series = useUiPick('series');
-  const docksOpen = useUiPick('docksOpen');
   const insOpen = useUiPick('insOpen');
 
   // One file input for the whole viewer, always mounted: it lived inside the
@@ -182,14 +217,7 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
         <div className="ftop">
           <FileTabs onOpen={onOpenSeries} />
           <label className="iconbtn" htmlFor="upload" title="Open files or a study — or drop a folder onto the viewer">Open</label>
-          <button
-            className={`iconbtn docktoggle${docksOpen ? ' on' : ''}`} id="docktoggle"
-            title={docksOpen ? 'Hide toolbar (more viewport)' : 'Show toolbar'}
-            aria-label="Toggle toolbar" aria-pressed={docksOpen}
-            onClick={() => setUi({ docksOpen: !docksOpen })}
-          >
-            <IconPanel />Toolbar
-          </button>
+          <ViewerPopOuts axialCanvasRef={axialCanvasRef} />
           <button
             className={`iconbtn instoggle${insOpen ? ' on' : ''}`} id="instoggle"
             title={insOpen ? 'Hide details (more viewport)' : 'Show details'}
@@ -199,19 +227,9 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
             <IconPanel />Details
           </button>
         </div>
-        {/* Chrome lives inside the work area and floats over the image — the
-            way a site's nav floats over its hero — so the viewport keeps the
-            full area and tools reveal on demand. */}
+        {/* The tool strip floats over the image and the display tools sit
+            behind the bar's pop-outs, so the viewport keeps the whole area. */}
         <div className="workarea" {...drop}>
-          {docksOpen && (
-            <div className="dockrow" id="dockrow-2d">
-              <MprTuneDock axialCanvasRef={axialCanvasRef} />
-              <SegDock />
-              {/* SurfaceView portals #dock-3d here, so the 3D controls ride
-                  the same strip instead of stacking above the image. */}
-              <div id="dockslot-3d" className="dockslot" />
-            </div>
-          )}
           <aside className="toolstrip" aria-label="Tools">
             <MprToolDock column />
           </aside>
@@ -276,8 +294,12 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
                 the one on screen — same dock as desktop, hosted where mobile
                 controls belong. */}
             <div id="deck-3d" />
-            <MprTuneDock axialCanvasRef={axialCanvasRef} />
+            <DisplayDock />
+            <ReformatDock />
+            <CompareDock />
+            <TimeDock />
             <SegDock />
+            <ExportDock axialCanvasRef={axialCanvasRef} />
           </div>
         )}
         {mSheet === 'files' && (

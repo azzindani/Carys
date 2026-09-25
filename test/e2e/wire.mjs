@@ -13,6 +13,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { zipSync } from 'fflate';
+import { closePop, openPop } from './popout.mjs';
 
 const PORT = Number(process.env.E2E_PORT || 8130);
 const BASE = `http://localhost:${PORT}/packages/app/dist/index.html`;
@@ -169,12 +170,14 @@ try {
 
   // ---- 1c. A4 plane atlas: the teaching card names the axial third from
   // the live slider; switching to Cor retitles, and the badge stays on.
+  await openPop(page, 'reformat');
   await page.waitForSelector('#dock-plane', { timeout: 90000 });
   await page.waitForFunction(
     () => /Axial/.test(document.getElementById('ro-plane')?.textContent ?? ''),
     null, { timeout: 30000 },
   );
   console.log('plane card teaches:', await page.locator('#ro-plane').textContent());
+  await openPop(page, 'reformat');
   await page.click('#dock-plane #planeseg button[data-planecard="coronal"]');
   await page.waitForFunction(
     () => /Coronal/.test(document.getElementById('ro-plane')?.textContent ?? ''),
@@ -227,7 +230,9 @@ try {
   // ---- 3. rotating MIP: proj=mip + oblique angles tags the axial pane.
   // Real key events (a user nudging the slider): synthetic input/change
   // dispatches don't reach this React build's range handlers either.
+  await openPop(page, 'reformat');
   await page.click('#projseg button[data-proj="mip"]');
+  await openPop(page, 'reformat');
   await page.locator('input[aria-label="Obl A"]').focus();
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
@@ -238,6 +243,7 @@ try {
   );
   console.log('rotating mip tags axial:', await page.locator('#ro-axial').textContent());
   // Oblique Min/Mean take the same rotating path (used to silently reslice).
+  await openPop(page, 'reformat');
   await page.click('#projseg button[data-proj="mean"]');
   await page.waitForFunction(
     () => document.getElementById('ro-axial')?.textContent?.includes('MEAN obl'),
@@ -330,12 +336,14 @@ try {
   // leg's streamline sits near the cardiac-frame01 center, so midline
   // selection is data-dependent — assert the contract instead: the chip
   // names kept + preset id, and clearing restores the full import.
+  await openPop(page3, '3d');
   await page3.locator('#dock-3d select[aria-label="Tract preset"]').selectOption('two-hop');
   await page3.waitForFunction(
     () => (document.getElementById('ro-preset')?.textContent ?? '').includes('two-hop'),
     null, { timeout: 30000 },
   );
   console.log('preset chip:', await page3.locator('#ro-preset').textContent());
+  await openPop(page3, '3d');
   await page3.locator('#dock-3d select[aria-label="Tract preset"]').selectOption('');
   await page3.waitForFunction(
     () => (document.getElementById('ro-preset')?.textContent ?? '').includes('no filter'),
@@ -570,6 +578,7 @@ try {
   // the same repaint — but paint() early-returns without session.wl, and
   // the NRRD upload's WL state can lag the route swap, so wait on the
   // projseg button state (React, always fresh) instead of the canvas tag.
+  await openPop(page, 'reformat');
   await page.click('#projseg button[data-proj="slice"]');
   await page.waitForFunction(
     () => document.querySelector('#projseg button[data-proj="slice"]')?.className.includes('on') ?? false,
@@ -845,16 +854,19 @@ try {
     fail(`us cine status wrong: ${await page.locator('#status-text').textContent()} | toasts: ${await page.evaluate(() => [...document.querySelectorAll('#toasts .toast')].map((t) => t.textContent).join(' || ') || '(none)')}`);
   }
   console.log('us cine opens:', await page.locator('#status-text').textContent());
+  await openPop(page, 'time');
   await page.waitForSelector('#cine-play', { timeout: 30000 });
   const usT = await page.locator('#ro-time').textContent();
   if (!usT || !usT.startsWith('t=0/1')) fail(`us cine time rail wrong: ${usT}`);
   else console.log(`us cine time rail ${usT}`);
+  await openPop(page, 'time');
   await page.click('#cine-play');
   await page.waitForFunction(
     (before) => document.getElementById('ro-time')?.textContent !== before,
     usT, { timeout: 15000 },
   );
   console.log(`us cine plays: ${usT} -> ${await page.locator('#ro-time').textContent()}`);
+  await openPop(page, 'time');
   await page.click('#cine-play');
   const usFps = await page.locator('#cine-fps').inputValue();
   if (usFps !== '26') fail(`us cine fps should seed 26 from the file, got ${usFps}`);
@@ -1432,19 +1444,36 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.getElementById('viewgrid')?.dataset.full, null, { timeout: 30000 });
   console.log('Escape exits fullscreen');
-  // Toolbar toggle. The toolbar now floats over the image like a site's nav
-  // instead of pushing it down, so the assertion is the stronger one: the
-  // stage already owns the full work area, and showing or hiding chrome must
-  // not cost the image a single pixel of height.
-  const gridH = () => page.evaluate(() => document.getElementById('viewgrid')?.getBoundingClientRect().height);
-  const hOpen = await gridH();
-  await page.click('#docktoggle');
-  await page.waitForFunction(() => !document.getElementById('dockrow-2d'), null, { timeout: 30000 });
-  const hHidden = await gridH();
-  if (Math.abs(hHidden - hOpen) > 1) fail(`toolbar is not an overlay — it changed stage height: ${hOpen} -> ${hHidden}`);
-  else console.log(`toolbar overlays the stage, costing it no height: ${Math.round(hOpen)} == ${Math.round(hHidden)}`);
-  await page.click('#docktoggle');
-  await page.waitForSelector('#dockrow-2d', { timeout: 30000 });
+  // Pop-outs. The display tools sit behind buttons in the bar and open over
+  // the image, so opening one must not cost the stage a pixel. Escape closes
+  // a panel and hands focus back to its button, a press outside closes it,
+  // one is open at a time, and Enter on a button puts focus inside its panel.
+  const gridBox = () => page.evaluate(() => {
+    const r = document.getElementById('viewgrid')?.getBoundingClientRect();
+    return r ? `${Math.round(r.top)}/${Math.round(r.height)}` : 'none';
+  });
+  const gridClosed = await gridBox();
+  await openPop(page, 'display');
+  const gridOpen = await gridBox();
+  if (gridOpen !== gridClosed) fail(`a pop-out moved the stage: ${gridClosed} -> ${gridOpen}`);
+  await page.locator('#pop-display select[title="Colormap"]').focus();
+  await page.keyboard.press('Escape');
+  await page.locator('#pop-display').waitFor({ state: 'hidden', timeout: 10000 });
+  const escFocus = await page.evaluate(() => document.activeElement?.id);
+  if (escFocus !== 'pop-display-btn') fail(`Escape left focus on ${escFocus}, not the Display button`);
+  await openPop(page, 'reformat');
+  await openPop(page, 'compare');
+  if (await page.locator('#pop-reformat').isVisible()) fail('two pop-outs open at once');
+  const tabsBox = await page.locator('#filetabs').boundingBox();
+  await page.mouse.click(tabsBox.x + tabsBox.width - 4, tabsBox.y + tabsBox.height / 2);
+  await page.locator('#pop-compare').waitFor({ state: 'hidden', timeout: 10000 })
+    .catch(() => fail('a press outside did not close the Compare pop-out'));
+  await page.locator('#pop-segment-btn').focus();
+  await page.keyboard.press('Enter');
+  const inPanel = await page.evaluate(() => Boolean(document.activeElement?.closest('#pop-segment')));
+  if (!inPanel) fail('Enter on the Segment button left focus outside its panel');
+  await closePop(page, 'segment');
+  if (!failed) console.log(`pop-outs float (stage ${gridClosed} either way), Escape and outside close, one at a time, Enter focuses the panel`);
   await page.click(`#filetabs [data-closetab="${other}"]`);
   await page.waitForFunction(() => document.querySelectorAll('#filetabs [data-tab]').length === 1, null, { timeout: 30000 });
   const tEnd = await activeTab();
@@ -1493,20 +1522,24 @@ try {
     () => document.getElementById('status-text')?.textContent?.includes('cardiac-4d-cine'),
     null, { timeout: 90000 },
   );
+  await openPop(page5, 'time');
   await page5.waitForSelector('#cine-play', { timeout: 30000 });
   const tBefore = await page5.locator('#ro-time').textContent();
+  await openPop(page5, 'time');
   await page5.click('#cine-play');
   await page5.waitForFunction(
     (before) => document.getElementById('ro-time')?.textContent !== before,
     tBefore, { timeout: 15000 },
   );
   console.log(`cine plays: ${tBefore} -> ${await page5.locator('#ro-time').textContent()}`);
+  await openPop(page5, 'time');
   await page5.locator('#cine-fps').focus();
   await page5.keyboard.press('ArrowRight');
   await page5.keyboard.press('ArrowRight');
   const fps = await page5.locator('#cine-fps').inputValue();
   if (fps !== '6') fail(`cine fps expected 6, got ${fps}`);
   else console.log('cine fps retimes to 6');
+  await openPop(page5, 'time');
   await page5.click('#cine-play');
   const paused = await page5.locator('#cine-play').getAttribute('title');
   if (paused !== 'Play cine') fail(`cine did not pause: title=${paused}`);
@@ -1522,6 +1555,7 @@ try {
     return s;
   });
   // The switch track covers the checkbox (real users click the label).
+  await openPop(page5, 'display');
   await page5.click('label.switch[title="Invert"]');
   await page5.waitForFunction(
     (before) => {
@@ -1618,7 +1652,9 @@ try {
   // Axial-emphasis layout first: the tri-stack panes are short and taps
   // near the edge fall into the neighbor pane (plane reset, toast never).
   await page8.click('#kindseg button[data-kind="cobb"]');
+  await openPop(page8, 'display');
   await page8.click('#layoutseg button[data-layout="axial"]');
+  await closePop(page8, 'display');
   await page8.waitForTimeout(600);
   const abox = await page8.locator('#c-axial').boundingBox();
   const cx = abox.x + abox.width / 2, cy = abox.y + abox.height / 2;
@@ -1665,7 +1701,8 @@ try {
   if (Math.abs(gray.r - gray.g) > 2 || Math.abs(gray.g - gray.b) > 2) {
     fail(`default pane not grayscale: ${JSON.stringify(gray)}`);
   }
-  await page9.selectOption('#dock-tune select[title="Colormap"]', 'Fire');
+  await openPop(page9, 'display');
+  await page9.selectOption('#dock-display select[title="Colormap"]', 'Fire');
   await page9.waitForFunction(() => {
     const cv = document.getElementById('c-axial');
     const d = cv.getContext('2d').getImageData(
@@ -1675,7 +1712,8 @@ try {
     return r / n > g / n + 5;
   }, null, { timeout: 30000 });
   console.log('fire LUT paints red-dominant axial patch');
-  await page9.selectOption('#dock-tune select[title="Colormap"]', 'Grayscale');
+  await openPop(page9, 'display');
+  await page9.selectOption('#dock-display select[title="Colormap"]', 'Grayscale');
   await page9.waitForFunction(() => {
     const cv = document.getElementById('c-axial');
     const d = cv.getContext('2d').getImageData(
@@ -1734,7 +1772,7 @@ try {
     wlBefore, { timeout: 30000 },
   );
   console.log(`WL drag moves readout: ${wlBefore} -> ${await page10.locator('#ro-wl').textContent()}`);
-  const preset = await page10.locator('#dock-tune select[title="Preset"]').inputValue();
+  const preset = await page10.locator('#dock-display select[title="Preset"]').inputValue();
   if (preset !== 'custom') fail(`WL drag should flip preset to custom, got ${preset}`);
   else console.log('WL drag flips preset to custom');
   await page10.close();
@@ -1846,6 +1884,7 @@ try {
   const obox = await page13.locator('#c-axial').boundingBox();
   // mid-stroke tilt restarts the stroke: tap once, tilt, tap again → no value yet
   await page13.mouse.click(obox.x + obox.width / 2 - 60, obox.y + obox.height / 2);
+  await openPop(page13, 'reformat');
   await page13.locator('input[aria-label="Obl A"]').focus();
   await page13.keyboard.press('ArrowRight');
   await page13.keyboard.press('ArrowRight');
@@ -1853,6 +1892,7 @@ try {
     () => document.getElementById('ro-axial')?.textContent?.includes('obl'),
     null, { timeout: 60000 },
   );
+  await closePop(page13, 'reformat');
   await page13.mouse.click(obox.x + obox.width / 2 + 60, obox.y + obox.height / 2);
   const early = await page13.waitForFunction(
     () => [...document.querySelectorAll('#toasts .toast')].some((t) => /length: [\d.]+ mm/.test(t.textContent ?? '')),
@@ -1881,12 +1921,14 @@ try {
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
   );
-  await page14.locator('#dock-tune select[aria-label="Compare overlay series"]').selectOption('covid-chest-seg');
+  await openPop(page14, 'compare');
+  await page14.locator('#dock-compare select[aria-label="Compare overlay series"]').selectOption('covid-chest-seg');
   await page14.waitForFunction(
     () => (document.getElementById('ro-axial')?.textContent ?? '').includes('checker'),
     null, { timeout: 90000 },
   );
   console.log('compare checker tags axial:', await page14.locator('#ro-axial').textContent());
+  await openPop(page14, 'compare');
   await page14.click('#cmpseg button[data-cmp="subtract"]');
   await page14.waitForFunction(
     () => (document.getElementById('ro-axial')?.textContent ?? '').includes('Δ'),
@@ -1904,6 +1946,7 @@ try {
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
   );
+  await openPop(page15, 'segment');
   await page15.click('#dock-seg button[title="Split mask into per-component label values"]');
   await page15.waitForFunction(
     () => document.getElementById('seginfo')?.textContent?.includes('vox'),
@@ -2267,7 +2310,9 @@ try {
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
   );
+  await openPop(page19, 'reformat');
   await page19.click('#oblplaneseg button[data-oblplane="coronal"]');
+  await openPop(page19, 'reformat');
   await page19.locator('input[aria-label="Obl A"]').focus();
   await page19.keyboard.press('ArrowRight');
   await page19.keyboard.press('ArrowRight');
@@ -2281,6 +2326,7 @@ try {
   else console.log('axial stays orthogonal under coronal tilt');
 
   // ---- 32. Oblique paint: tilted strokes land voxels + undo restores.
+  await closePop(page19, 'reformat');
   await page19.click('#modeseg button[data-mode="paint"]');
   const pbox = await page19.locator('#c-coronal').boundingBox();
   await page19.mouse.move(pbox.x + pbox.width / 2 - 20, pbox.y + pbox.height / 2);
@@ -2308,6 +2354,7 @@ try {
   await page19.click('#vp-2d .pane-head .vptools button[title^="Zoom in Coronal"]');
   const zoomBefore = await page19.locator('[data-zoom="coronal"]').textContent();
   if (zoomBefore !== '125%') fail(`coronal zoom step expected 125%, got ${zoomBefore}`);
+  await openPop(page19, 'export');
   const [pdl] = await Promise.all([
     page19.waitForEvent('download', { timeout: 30000 }),
     page19.click('#dock-present button[title^="Save presentation"]'),
@@ -3082,6 +3129,7 @@ try {
     return n ? s / n : 0;
   });
   const cuesOn = await surfMean();
+  await openPop(page25b, '3d');
   const cuesSwitch = page25b.locator('#dock-3d input[aria-label="Depth cues"]');
   if (!(await cuesSwitch.isChecked())) fail('depth cues not on by default');
   await cuesSwitch.uncheck({ force: true });
@@ -3097,8 +3145,11 @@ try {
   // ---- 41c. F10 cinematic volume lighting accumulates pass by pass while
   // the view is still; an orbit starts it over; leaving volume mode ends it
   // (a late pass used to be able to paint over the surface).
+  await openPop(page25b, '3d');
   await page25b.click('#renderseg button[data-r="volume"]');
+  await openPop(page25b, '3d');
   await page25b.click('#srcseg button[data-s="image"]');
+  await openPop(page25b, '3d');
   await page25b.locator('#dock-3d input[aria-label="Cinematic"]').check({ force: true });
   const ro3d = () => page25b.locator('#ro-3d').textContent();
   await page25b.waitForFunction(() => /· [2-9]\/16 passes · cinematic$/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 120000 });
@@ -3106,6 +3157,7 @@ try {
   await page25b.locator('input[aria-label="Orbit"]').fill('1.2');
   await page25b.waitForFunction(() => /^VR \d+×\d+ · [\d.]+s · cinematic$/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 60000 });
   console.log(`cinematic: ${accumulated} -> orbit restarts at pass 1`);
+  await openPop(page25b, '3d');
   await page25b.click('#renderseg button[data-r="surface"]');
   await page25b.waitForTimeout(3000);
   const after = await ro3d();
@@ -3163,6 +3215,7 @@ try {
   let pickZ = 0;
   for (const mode of ['surface', 'volume']) {
     if (mode === 'volume') {
+      await openPop(page25c, '3d');
       await page25c.click('#renderseg button[data-r="volume"]');
       await page25c.waitForFunction(() => /^VR \d+×\d+/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 120000 });
     }
@@ -3192,10 +3245,12 @@ try {
   const whole = { volume: await drawnCount() };
   // set the clip up on the surface (drawn at once), then enter volume mode:
   // one render starts, and its last pass is the clipped one
+  await openPop(page25c, '3d');
   await page25c.click('#renderseg button[data-r="surface"]');
   await page25c.waitForFunction(() => /tris/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 90000 });
   await page25c.waitForTimeout(1000);
   whole.surface = await drawnCount();
+  await openPop(page25c, '3d');
   await page25c.locator('#dock-3d input[aria-label="Clip"]').check({ force: true });
   await page25c.waitForSelector('#pane-clip');
   await page25c.click('#clipplane button[data-plane="axial"]');
@@ -3205,6 +3260,7 @@ try {
   for (const mode of ['surface', 'volume']) {
     if (mode === 'volume') {
       await page25c.evaluate(() => { document.getElementById('ro-3d').textContent = ''; });
+      await openPop(page25c, '3d');
       await page25c.click('#renderseg button[data-r="volume"]');
       await lastPass();
     } else await page25c.waitForTimeout(1000);
@@ -3215,6 +3271,7 @@ try {
     else if (!(z <= at + 2)) fail(`${mode} pick through the clip at z ${at.toFixed(1)}: ${said}`);
     else console.log(`clip (${mode}): axial plane z ${at.toFixed(1)} · ${cut} of ${whole[mode]} px drawn · pick z ${z}`);
   }
+  await openPop(page25c, '3d');
   await page25c.locator('#dock-3d input[aria-label="Clip"]').uncheck({ force: true });
   if (await page25c.locator('#pane-clip').count()) fail('the clip pane outlived the Clip switch');
 
@@ -3246,9 +3303,11 @@ try {
   // the light fill under an outline is far from every label colour, so
   // what is near one is its outline
   const lines = await labelPx(60);
+  await openPop(page25c, 'segment');
   await page25c.click('#masklook button[data-look="fill"]');
   await page25c.waitForTimeout(500);
   const solid = await labelPx(0);
+  await openPop(page25c, 'segment');
   await page25c.click('#masklook button[data-look="outline"]');
   await page25c.click('#pane-axial button[aria-label="Axial fullscreen"]');
   const outlined = Object.keys(LABEL_RGB).every((v) => lines[v] >= 20 && solid[v] > 2 * lines[v]);
@@ -3277,6 +3336,7 @@ try {
   await page25d.locator('#s-sagittal').fill('118');
   await page25d.waitForFunction(() => (document.getElementById('ro-sagittal')?.textContent ?? '').startsWith('118 /'), null, { timeout: 30000 });
   await page25d.waitForTimeout(500);
+  await openPop(page25d, 'segment');
   await page25d.click('#masklook button[data-look="fill"]');
   await page25d.waitForTimeout(500);
   const bodies = await page25d.evaluate(() => {
@@ -3310,6 +3370,7 @@ try {
     const big = Math.max(...out.map((b) => b.n));
     return out.filter((b) => b.n >= big / 4).sort((a, b) => a.y - b.y);
   });
+  await openPop(page25d, 'segment');
   await page25d.click('#masklook button[data-look="outline"]');
   await page25d.click('#modeseg button[data-mode="curve"]');
   for (const b of bodies) await page25d.mouse.click(b.x, b.y);

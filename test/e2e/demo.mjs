@@ -4,6 +4,7 @@
 // asserts nothing, records everything.
 import { spawn } from 'node:child_process';
 import { mkdirSync, renameSync } from 'node:fs';
+import { openPop } from './popout.mjs';
 
 const PORT = Number(process.env.E2E_PORT || 8127);
 const OUT = new URL('./demos/', import.meta.url).pathname;
@@ -57,6 +58,7 @@ try {
     await page.screenshot({ path: `${DIR}paint.png` });
 
     // watershed split the fresh stroke
+    await openPop(page, 'segment');
     await page.click('#dock-seg button[title="Watershed split at shape necks"]');
     await page.waitForFunction(
       () => document.getElementById('status-text')?.textContent?.includes('basins'),

@@ -606,16 +606,22 @@ buttons. Changes driven by the job:
   against the viewport edge; the details panel gained a collapse toggle
   (`#instoggle`, `insOpen`) that hands its 304px column back to the image.
 
-BLOCKED, owner: this sandbox — full "every tool hidden behind pop-outs".
-`wire.mjs:1397` asserts `#dockrow-2d` is present on load and that hiding it
-*grows* `#viewgrid`, so the toolbar cannot default closed or float out of
-layout flow. Moving the tune/seg controls into popovers would also remove
-`#layoutseg`, `#projseg`, `#planeseg`, `#cmpseg`, `#cine-play`,
-`#oblplaneseg` and friends from the DOM until opened, breaking ~20 legs.
-That refactor needs the e2e suite re-run to re-validate, and e2e needs
-`samples/`, which is gitignored and absent here. Unblock: run
-`npm run test:e2e` on a machine with `samples/`, then rewrite those legs to
-open the owning popover first.
+- [x] Every display tool behind a pop-out (2026-09-25; blocked until then on
+  samples/ being absent here). The strip across the top of the viewport
+  (`#dockrow-2d`, one `#dock-tune` of ~30 controls plus the seg and 3D docks)
+  is gone. Its controls sit behind seven buttons in the viewer's bar, one per
+  job: Display, Reformat, Compare, Time (only for a series with frames),
+  Segment, 3D and Export (`ui/PopOut.tsx`; the tune dock split into
+  `DisplayDock`, `ReformatDock`, `CompareDock`, `TimeDock`, `ExportDock`).
+  A panel floats over the image and follows its button in the DOM. It stays
+  mounted while closed, so readouts (W/L, cine frame, threshold) stay live
+  and the 3D dock's portal always has a target. Escape or a press outside
+  closes it, focus returns to the button, one panel is open at a time, and
+  Enter on a button moves focus into its panel. The stage no longer insets
+  its panes by a bar's height: the viewgrid starts under the file tabs. The
+  mobile deck stacks the same docks. The e2e legs open the owning pop-out
+  (`test/e2e/popout.mjs`) before they drive a control inside it, and wire's
+  toolbar leg now asserts the pop-out contract.
 owner + unblock step, or accepted by design — verified 2026-09-14)
 - DONE (2026-09-25) — Docker image: this sandbox's daemon could not build
   it (`unshare: operation not permitted`), but CI does on every push: the

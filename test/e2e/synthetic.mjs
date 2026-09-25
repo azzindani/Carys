@@ -13,6 +13,7 @@
 // NOTE: waitForSelector takes (selector, options) — TWO args.
 import { spawn } from 'node:child_process';
 import { launchChromium } from './browser.mjs';
+import { openPop } from './popout.mjs';
 
 const PORT = Number(process.env.E2E_PORT || 8134);
 const BASE = `http://localhost:${PORT}/packages/app/dist/index.html`;
@@ -93,6 +94,7 @@ try {
   if (!(boneTris > 0)) fail(`DICOM CT bone surface empty: ${boneTris}`);
   if (await ct.locator('#srcseg button[data-s="image"]').getAttribute('aria-pressed') !== 'true') fail('DICOM CT 3D source is not the image');
   if (await ct.locator('#ctpreset button[data-ct="bone"]').getAttribute('aria-pressed') !== 'true') fail('the Hounsfield default does not press the bone preset');
+  await openPop(ct, '3d');
   await ct.click('#ctpreset button[data-ct="skin"]');
   const skinTris = trisOf(await ctRead(-300, boneText));
   if (!(skinTris > 0 && skinTris !== boneTris)) fail(`skin preset: ${skinTris} tris vs bone ${boneTris}`);
