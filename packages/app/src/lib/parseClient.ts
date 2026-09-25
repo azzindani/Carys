@@ -1,7 +1,8 @@
 // Parse client: file uploads decode in the parse worker, main-thread
 // loaders stay as the fallback. Same id-routed contract as the extractor
 // (single worker, pending map, transferable input, workerDead latch).
-import { fetchSample, loadNiiBuffer, loadNrrdBuffer, loadOmeTiffBuffer } from './loaders';
+import { isNrrdLike, isTiffLike } from '@carys/io';
+import { fetchSample, loadNiiBuffer } from './loaders';
 import type { Volume } from './types';
 
 interface Pending {
@@ -68,10 +69,9 @@ export async function parseUpload(buf: ArrayBuffer, name: string): Promise<Volum
     }
   }
   // fallback mirrors the worker's sniff order (nrrd → tiff → nifti)
-  const { isNrrdLike, isTiffLike } = await import('@carys/io');
   const bytes = new Uint8Array(buf);
-  if (isNrrdLike(bytes)) return loadNrrdBuffer(buf);
-  if (isTiffLike(bytes)) return loadOmeTiffBuffer(buf);
+  if (isNrrdLike(bytes)) return (await import('./formatLoaders')).loadNrrdBuffer(buf);
+  if (isTiffLike(bytes)) return (await import('./formatLoaders')).loadOmeTiffBuffer(buf);
   return loadNiiBuffer(buf);
 }
 

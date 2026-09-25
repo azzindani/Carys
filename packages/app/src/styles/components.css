@@ -509,3 +509,24 @@ input[type="range"].styled::-moz-range-thumb {
   width: 28px; height: 22px; padding: 0; background: transparent;
   border: 1px solid var(--color-line-strong); border-radius: var(--radius-2xs); cursor: pointer;
 }
+
+/* ---- forced colors (Windows high contrast) ----------------------------
+   The palette swap drops box-shadow and maps every background to Canvas, so
+   a pressed segment (a background), a switch's state and focus (a track
+   fill, a box-shadow) and a scrub field's value (a fill) would all read the
+   same as their resting state. Each gets a system-colour cue instead; the
+   a11y gate emulates forced colors and compares on against off. */
+@media (forced-colors: active) {
+  .seg button.on, .seg button[aria-pressed="true"] {
+    forced-color-adjust: none;
+    background: var(--fc-on-bg); color: var(--fc-on-text);
+  }
+  .switch .tr { forced-color-adjust: none; background: var(--fc-canvas); border-color: var(--fc-text); }
+  .switch .tr::after { forced-color-adjust: none; background: var(--fc-text); }
+  .switch input:checked + .tr { background: var(--fc-on-bg); border-color: var(--fc-on-bg); }
+  .switch input:checked + .tr::after { background: var(--fc-on-text); }
+  .switch input:focus-visible + .tr { outline: 2px solid var(--fc-text); outline-offset: 2px; }
+  /* a bar under the label, not a fill behind it: Highlight behind forced
+     text is not a contrast the palette promises */
+  .field-fill { forced-color-adjust: none; top: auto; height: 4px; background: var(--fc-on-bg); }
+}

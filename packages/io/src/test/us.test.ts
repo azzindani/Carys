@@ -2,10 +2,10 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { writePart10, type DcmElement } from '../dcm-write.js';
 import {
-  cineFields, foldYbrFrame, isUsSopClass, physicalUnitsName,
-  regionDataTypeName, regionSpatialFormatName, usRegionsFromBuffer,
+  cineFields, foldYbrFrame, isUsSopClass, usRegionsFromBuffer,
   usRegionSpacingMm, ybrToLuma,
 } from '../us.js';
+import { physicalUnitsName, regionDataTypeName, regionSpatialFormatName } from '../us-names.js';
 import { parseDicomFrames } from '../dicom-parse.js';
 import { fileMetaToSummary, summarizeDataset, usTypesLabel } from '../dicom-tags.js';
 import { readDataset } from '../dcm-read.js';

@@ -133,6 +133,17 @@
   --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
+/* -- forced colors (Windows high contrast) --------------------------------
+   The user's palette replaces every author colour, and state carried by a
+   background or a box-shadow vanishes with it. The overrides in
+   components.css name these system colours, which the palette supplies. */
+:root {
+  --fc-canvas: Canvas;
+  --fc-text: CanvasText;
+  --fc-on-bg: Highlight;
+  --fc-on-text: HighlightText;
+}
+
 /* -- appearance pref: text scale (5 levels, persisted) -------------------- */
 html[data-text="xs"] { --ts: 0.82; }
 html[data-text="s"]  { --ts: 0.91; }

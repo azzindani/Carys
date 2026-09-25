@@ -4,8 +4,8 @@
 // squares, one CLOSED_PLANAR contour per island per slice.
 import { readDataset, type Dataset } from './dcm-read.js';
 import { makeUID, writePart10, type DcmElement, type DcmItem } from './dcm-write.js';
+import { RTSTRUCT_SOP_CLASS } from './sniff.js';
 
-export const RTSTRUCT_SOP_CLASS = '1.2.840.10008.5.1.4.1.1.481.3';
 
 export interface RTContour {
   roiNumber: number;

@@ -8,7 +8,6 @@ import { loadPresentStateFile, savePresentState } from '../lib/present';
 import { session } from '../lib/session';
 import { applyHanging, applySegOp, doClear, doUndo, hangingOptions, saveAxialPng, saveMaskNii, SEG_OPS } from '../lib/sessionOps';
 import { setCompare } from '../lib/compare';
-import { saveSegDcm } from '../lib/segImport';
 import { CINE_MAX_FPS, isCinePlaying, retimeCine, setTimeFrame, toggleCine } from '../lib/cine';
 import { SERIES } from '../lib/catalog';
 import { setUi, useUi } from '../lib/store';
@@ -244,7 +243,7 @@ export function MprTuneDock({ axialCanvasRef }: {
         <div className="grp">
           <IconBtn accent title="Export axial PNG" onClick={() => { if (axialCanvasRef.current) saveAxialPng(axialCanvasRef.current); }}>PNG</IconBtn>
           <IconBtn accent title="Export mask as .nii" onClick={saveMaskNii}>.NII</IconBtn>
-          <IconBtn accent title="Export mask as DICOM-SEG" onClick={saveSegDcm}>SEG</IconBtn>
+          <IconBtn accent title="Export mask as DICOM-SEG" onClick={() => { void import('../lib/segImport').then((m) => m.saveSegDcm()); }}>SEG</IconBtn>
         </div>
         <div className="sep" />
         <PlaneAtlasCard />

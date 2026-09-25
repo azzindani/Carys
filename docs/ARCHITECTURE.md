@@ -331,10 +331,22 @@ the volume's patient geometry, not a DICOM tag, so NIfTI gets them too.
   chunk that 404s after a redeploy into a "reload" card instead of a blank
   shell. React and Radix sit in their own chunks so their hashes survive app
   releases.
+- The viewer boots with NIfTI only (`lib/loaders.ts`). DICOM, NRRD, OME-TIFF,
+  SEG/RTSTRUCT and the PACS client load on first use: `lib/formatLoaders.ts`,
+  `dicomSets`, `dicomUpload`, `segImport`, `pacs` and `ioLazy` are reached
+  only through `import()`. Rollup assigns chunks by module, so a boot-path
+  file that needs a sniffer or a SOP constant imports it from an io module
+  that holds nothing else (`io/sniff.ts`, `sop-names.ts`, `us-names.ts`,
+  `app/lib/heldStacks.ts`): one constant taken from `seg.ts` put the SEG
+  reader, the dataset parser and every JPEG decoder back in the entry.
+  `npm run check:entry` (in `ci`) fails on a byte budget or on a decoder's
+  string literal found in the built entry.
 - Cache policy follows naming: hashed `assets/` are immutable for a year,
   everything unhashed revalidates, `samples/` is private and short-lived.
 - The CSP is `'self'` for script, style, font and worker — no inline, no
   eval, no blob workers — and fonts are bundled, so no request leaves the
-  origin except the stores a user types in (`connect-src https:`). A change
+  origin except the stores a user types in (`connect-src https:`, or the
+  site's own list from `CARYS_CONNECT_SRC`, rendered by `deploy/start.sh`
+  into a `/tmp` include before nginx starts). A change
   that needs more than that must change `deploy/nginx.conf` in the same
   commit; `npm run test:image` (CI, image job) fails on any CSP violation.

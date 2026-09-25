@@ -51,6 +51,10 @@ expect(page.status === 200 && page.h('content-type').startsWith('text/html'), 'a
 expect(page.h('cache-control') === 'no-cache', `index.html revalidates (${page.h('cache-control')})`);
 expect(scriptSrc === "'self'", `script-src is 'self' only (${scriptSrc})`);
 expect(/frame-ancestors 'none'/.test(csp) && /default-src 'none'/.test(csp), 'CSP denies framing and defaults to none');
+// deploy/start.sh renders connect-src from CARYS_CONNECT_SRC; unset, this
+const connectSrc = /connect-src ([^;]*)/.exec(csp)?.[1] ?? '';
+const wantConnect = `'self' ${process.env.CARYS_CONNECT_SRC ?? 'https: http://localhost:* http://127.0.0.1:*'}`;
+expect(connectSrc === wantConnect, `connect-src is ${wantConnect} (${connectSrc})`);
 expect(page.h('x-content-type-options') === 'nosniff', 'nosniff');
 expect(page.h('referrer-policy') === 'no-referrer', 'no-referrer');
 expect(page.h('x-frame-options') === 'DENY', 'X-Frame-Options DENY');

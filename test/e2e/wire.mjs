@@ -3374,6 +3374,61 @@ try {
   console.log('radiomics import returns tagged rows');
   await page26.close();
 
+  // ---- 43. DICOM → 3D: the generated 120-slice CT series (npm run gen:ct)
+  // opens through the DICOM lane and extracts a surface with no mask: the
+  // source falls back to the image, the Hounsfield cut lands on the bone
+  // preset, and the skin preset cuts a different surface at -300 HU.
+  const page27 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page27.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
+  await page27.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await page27.click('#openpal'); await page27.fill('#palinput', 'ct-head-dicom');
+  await page27.waitForSelector('#pallist li'); await page27.click('#pallist li');
+  await page27.waitForFunction(
+    () => document.querySelector('#filetabs [data-tab="ct-head-dicom"][data-active="true"]'),
+    null, { timeout: 60000 },
+  );
+  const trisOf = (t) => Number((t?.match(/^([\d,]+) tris/)?.[1] ?? '0').replace(/,/g, ''));
+  // the threshold chip moves at the click; the tri readout keeps the old
+  // surface until the new one lands, so a later cut waits for new text
+  const ctRead = async (hu, before) => (await page27.waitForFunction(([want, old]) => {
+    const t = document.getElementById('ro-3d')?.textContent ?? '';
+    return document.getElementById('tval')?.textContent === String(want) && /^[\d,]+ tris/.test(t) && t !== old ? t : false;
+  }, [hu, before], { timeout: 120000 })).jsonValue();
+  const boneText = await ctRead(300, null);
+  const boneTris = trisOf(boneText);
+  if (!(boneTris > 0)) fail(`DICOM CT bone surface empty: ${boneTris}`);
+  if (await page27.locator('#srcseg button[data-s="image"]').getAttribute('aria-pressed') !== 'true') fail('DICOM CT 3D source is not the image');
+  if (await page27.locator('#ctpreset button[data-ct="bone"]').getAttribute('aria-pressed') !== 'true') fail('the Hounsfield default does not press the bone preset');
+  await page27.click('#ctpreset button[data-ct="skin"]');
+  const skinTris = trisOf(await ctRead(-300, boneText));
+  if (!(skinTris > 0 && skinTris !== boneTris)) fail(`skin preset: ${skinTris} tris vs bone ${boneTris}`);
+  else console.log(`DICOM -> 3D: ct-head-dicom bone ${boneTris.toLocaleString('en-US')} tris, skin ${skinTris.toLocaleString('en-US')} tris`);
+  await page27.close();
+
+  // ---- 44. The keyboard drives the viewport: Tab alone reaches the axial
+  // slice control, and ArrowUp moves the slice the readout reports.
+  const page28 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page28.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
+  await page28.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  await page28.waitForFunction(
+    () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
+    null, { timeout: 90000 },
+  );
+  let tabs = 0;
+  while (tabs < 250 && await page28.evaluate(() => document.activeElement?.id) !== 's-axial') {
+    await page28.keyboard.press('Tab');
+    tabs++;
+  }
+  if (tabs >= 250) fail('Tab never reaches the axial slice control');
+  else {
+    const sliceBefore = await page28.locator('#ro-axial').textContent();
+    await page28.keyboard.press('ArrowUp');
+    await page28.waitForFunction((b) => document.getElementById('ro-axial')?.textContent !== b, sliceBefore, { timeout: 10000 })
+      .catch(() => fail(`ArrowUp on the focused axial slider left the slice at ${sliceBefore}`));
+    console.log(`keyboard: ${tabs} Tabs reach the axial slider; ArrowUp ${sliceBefore} -> ${await page28.locator('#ro-axial').textContent()}`);
+  }
+  await page28.close();
+
   await browser.close();
 } catch (e) {
   fail(`exception: ${(e.stack || String(e)).slice(0, 800)}`);

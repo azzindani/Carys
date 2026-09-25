@@ -6,7 +6,10 @@
 #   docker build -t carys:latest .
 #   docker run --rm -p 8080:8080 \
 #     -v /path/to/samples:/usr/share/nginx/html/samples:ro \
+#     -e CARYS_CONNECT_SRC="https://pacs.example.org" \
 #     carys:latest
+#   (CARYS_CONNECT_SRC is optional: the hosts the app may fetch from; unset,
+#   any https origin plus loopback — deploy/start.sh)
 #   open http://localhost:8080/  (302 to the React app)
 
 ARG NODE_TAG=20.20.2-alpine3.22
@@ -51,9 +54,13 @@ FROM nginx:${NGINX_TAG} AS serve
 # conf.d file: the stock nginx.conf is what put the pid and temp files where
 # a non-root user cannot write (see the header of deploy/nginx.conf).
 COPY deploy/nginx.conf /etc/nginx/nginx.conf
+# Renders the per-site connect-src (CARYS_CONNECT_SRC) into /tmp, the one
+# writable path, then execs nginx; nginx.conf includes what it wrote.
+COPY deploy/start.sh /usr/local/bin/carys-start
 # The base image's own site goes too: its "Welcome to nginx!" page would
 # still answer /index.html, announcing the server to anyone who asks.
-RUN rm /etc/nginx/conf.d/default.conf /usr/share/nginx/html/index.html /usr/share/nginx/html/50x.html
+RUN rm /etc/nginx/conf.d/default.conf /usr/share/nginx/html/index.html /usr/share/nginx/html/50x.html \
+ && chmod 0555 /usr/local/bin/carys-start
 # The React app is the whole product: Vite bundles every package it uses, so
 # the per-package tsc builds are not shipped. The legacy static shell
 # (packages/ui) used to be, and never worked here: its import map points at
@@ -81,3 +88,5 @@ USER nginx
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1
+# The base image's entrypoint runs a non-nginx command as given.
+CMD ["/usr/local/bin/carys-start"]

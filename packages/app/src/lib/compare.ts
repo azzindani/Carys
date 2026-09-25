@@ -4,7 +4,7 @@
 // past the 700-line gate (rule 1: one module, one job).
 import { readFrame } from '@carys/io';
 import { SERIES } from './catalog';
-import { autoWindow, loadDicomSeries, loadNii, loadNiiRaw, volumeFromNifti } from './loaders';
+import { autoWindow, loadNii, loadNiiRaw, volumeFromNifti } from './loaders';
 import { paintBus } from './paintBus';
 import { session } from './session';
 import { setStatus } from './status';
@@ -29,6 +29,7 @@ export async function resolveCompareVolume(name: string): Promise<Volume> {
     return v;
   }
   if (spec.dicom) {
+    const { loadDicomSeries } = await import('./formatLoaders');
     const loaded = await loadDicomSeries(spec.dicom, { pick: spec.stackIndex });
     session.cacheVol(name, loaded.vol);
     return loaded.vol;

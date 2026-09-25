@@ -9,7 +9,8 @@
 // rest noise, while the main-thread fallback (the only path the fixtures
 // exercised) was fine. One implementation cannot drift like that.
 import { isNrrdLike, isTiffLike } from '@carys/io';
-import { loadNiiBuffer, loadNrrdBuffer, loadOmeTiffBuffer } from '../lib/loaders';
+import { loadNrrdBuffer, loadOmeTiffBuffer } from '../lib/formatLoaders';
+import { loadNiiBuffer } from '../lib/loaders';
 import type { Volume } from '../lib/types';
 
 export interface ParseRequest {

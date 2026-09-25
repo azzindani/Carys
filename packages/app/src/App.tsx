@@ -4,7 +4,6 @@ import { SERIES } from './lib/catalog';
 import { createExtractor, type Extractor } from './lib/extractor';
 import { paintBus } from './lib/paintBus';
 import { undoBus } from './lib/undoBus';
-import { resolveVolume } from './lib/pacs';
 import { session } from './lib/session';
 import { setStatus } from './lib/status';
 import { useRoute } from './lib/router';
@@ -70,7 +69,9 @@ export function App(): JSX.Element {
       // PACS pull: resolve first (status visible), then load as uploaded vol.
       go('viewer');
       setStatus(`pulling ${s}…`);
-      void resolveVolume(s)
+      // the PACS client and DICOM decoders load with the first pull
+      void import('./lib/pacs')
+        .then(({ resolveVolume }) => resolveVolume(s))
         .then((vol) => loadSeries(s, vol))
         .then((init) => { if (init) setSliceInit(init); })
         .catch((e) => setStatus(`pull failed: ${(e as Error).message}`, 'error'));
