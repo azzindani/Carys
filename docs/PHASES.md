@@ -1076,7 +1076,7 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   from 19.7° to 13.5° with the volume unchanged (26,449 voxel³) — the
   terraces F3 could not touch are gone in the render. Cost: 0.13 s on that
   23.7k-triangle mask, 1.2 s on the 529k-triangle FLAIR surface (worker).
-- OPEN — **F5. Thick slices.** Shape-based (distance-field) interpolation
+- DONE — **F5. Thick slices.** Shape-based (distance-field) interpolation
   between slices for masks, cubic along z for intensity, before extraction.
   Accept: the ellipsoid on a 1×1×5 mm grid meets the F2/F3 bounds; the
   covid chest CT surface shows no 5 mm terraces (eyeballed screenshot).
@@ -1121,6 +1121,14 @@ measured, not eyeballed: analytic phantoms have known surfaces and volumes.
   ends the mean is still 0.14 mm, because three 5 mm slices do not fix
   the sides to 0.1 mm either. Meeting it needs either more slices than the
   scan has or a bound set for 5 mm data; that choice is the owner's.
+  Closed on a bound for 5 mm data (the owner's call, 2026-09-25). F2's
+  image bound is a tenth of the grid spacing, 0.1 mm on 1 mm, so on 5 mm
+  slices the mean error bound is 0.5 mm. Normals are held to 13°, on both
+  paths, and each path must still beat its one-grid surface on the same
+  samples. Measured: image 0.603 mm / 19.0° → 0.460 mm / 12.2°, mask
+  0.685 mm / 21.0° → 0.460 mm / 12.9°. The maximum error goes the other
+  way, 1.25-1.59 mm → 2.2 mm: the ends are a guess inside the gap, and the
+  mean hides that. thick-slices.test.ts holds the bound.
 - DONE — **F6. Per-pixel shading.** Interpolated normals, Blinn-Phong with a
   soft specular, 2× supersampled edges. Surface goldens re-frozen only after
   the PNGs are looked at. `raster.ts` interpolates the three vertex normals

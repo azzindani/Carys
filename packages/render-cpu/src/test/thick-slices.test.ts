@@ -52,18 +52,27 @@ describe('thick slices (F5)', () => {
     assert.ok(mask.meanErr < 0.25 && mask.normalDevDeg < 9, `mask ${mask.meanErr.toFixed(3)} mm / ${mask.normalDevDeg.toFixed(1)}°`);
   });
 
-  it('F5 acceptance, not met: the 12×9×7 ellipsoid on 1×1×5 mm (Blocked in PHASES.md)', () => {
+  it('F5 acceptance: the 12×9×7 ellipsoid on 1×1×5 mm, on the bound for 5 mm data', () => {
     // Three slices cross this 14 mm-tall shape, so its ends fall inside a
-    // 5 mm gap the data does not resolve. Measured: image 0.45 mm, mask
-    // 0.46 mm / 12.9° against bounds of 0.1 mm (F2) and 0.25 mm / 8° (F3).
-    // Pinned here as better than F3, not as meeting the bound.
+    // 5 mm gap the data does not resolve; even perfect ends would leave a
+    // 0.14 mm mean (PHASES.md, F5). The F2/F3 bounds (0.1 mm; 0.25 mm / 8°)
+    // were set for 1 mm grids. The bound for 5 mm data (the owner's call,
+    // 2026-09-25) keeps F2's ratio, a mean error of a tenth of the slice
+    // gap, and 13° on the normals, on both paths. Measured: image 0.460 mm /
+    // 12.2°, mask 0.460 mm / 12.9°; the one-grid paths on the same samples
+    // 0.603 mm / 19.0° and 0.685 mm / 21.0°.
     const ph = ellipsoid([16, 16, 17.5], [12, 9, 7]);
     const dims: V3 = [32, 32, 7], sp: V3 = [1, 1, 5];
-    const m = sampleMask(ph, dims, sp);
-    const f3 = scoreMesh(maskNets(m, ...dims), sp, ph);
-    const f5 = scoreMesh(smoothSurface(m, ...dims, sp, 0, true).mesh, sp, ph);
-    assert.ok(f5.meanErr < f3.meanErr && f5.normalDevDeg < f3.normalDevDeg, `${f3.meanErr.toFixed(3)} → ${f5.meanErr.toFixed(3)} mm`);
-    assert.ok(f5.meanErr > 0.25, 'if this now meets the F3 bound, lift the Blocked note in PHASES.md');
+    const m = sampleMask(ph, dims, sp), im = sampleIntensity(ph, dims, sp);
+    const paths = [
+      ['mask', scoreMesh(maskNets(m, ...dims), sp, ph), scoreMesh(smoothSurface(m, ...dims, sp, 0, true).mesh, sp, ph)],
+      ['image', scoreMesh(surfaceNets(im, ...dims, 500.5), sp, ph), scoreMesh(smoothSurface(im, ...dims, sp, 500, false).mesh, sp, ph)],
+    ] as const;
+    for (const [id, oneGrid, f5] of paths) {
+      const got = `${id}: ${oneGrid.meanErr.toFixed(3)} mm / ${oneGrid.normalDevDeg.toFixed(1)}° → ${f5.meanErr.toFixed(3)} / ${f5.normalDevDeg.toFixed(1)}°`;
+      assert.ok(f5.meanErr < oneGrid.meanErr && f5.normalDevDeg < oneGrid.normalDevDeg, got);
+      assert.ok(f5.meanErr <= sp[2] / 10 && f5.normalDevDeg <= 13, got);
+    }
   });
 
   it('falls back to the one-grid path when the interpolated grid would not fit', () => {
