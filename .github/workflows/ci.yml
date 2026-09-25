@@ -138,6 +138,18 @@ jobs:
         env:
           CARYS_URL: http://127.0.0.1:8080
 
+      # The access gate (deploy/gate.js): the same image with CARYS_ACCESS_KEY
+      # set. test:image checks the gate's contract first (401 page, ?token=
+      # login, signed and expiring session cookie, Bearer), then runs every
+      # check again through it, the browser logging in the way a reader does.
+      - name: Access gate
+        run: |
+          KEY=$(openssl rand -hex 32)
+          docker run -d --name carys-gated -p 8083:8080 --read-only --tmpfs /tmp --cap-drop ALL \
+            -e CARYS_ACCESS_KEY="$KEY" carys:ci
+          curl -fsS --retry 10 --retry-delay 1 --retry-all-errors -o /dev/null http://127.0.0.1:8083/healthz
+          CARYS_URL=http://127.0.0.1:8083 CARYS_ACCESS_KEY="$KEY" npm run test:image
+
       # CARYS_CONNECT_SRC (deploy/start.sh): a site's own origin list replaces
       # the default connect-src, and a value that is not an origin list — here
       # one smuggling a directive in after `;` — stops the container at start.

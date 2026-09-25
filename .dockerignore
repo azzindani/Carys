@@ -6,6 +6,8 @@ dist/
 tsconfig.tsbuildinfo
 .tmp-digest/
 samples/
+# the production access key: never in a build context, let alone an image
+deploy/.env
 .git/
 .gitignore
 *.log

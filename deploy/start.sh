@@ -37,6 +37,21 @@ if [ "$n" -eq 0 ]; then
 fi
 set +f
 
+# The access gate (deploy/gate.js). Unset or empty: open, and said so. Set:
+# a long random key (openssl rand -hex 32), nothing nginx or a URL would
+# read as syntax.
+if [ -n "${CARYS_ACCESS_KEY:-}" ]; then
+  # length apart from the regex: busybox grep caps a {m,n} bound at 255
+  if [ "${#CARYS_ACCESS_KEY}" -lt 32 ] || [ "${#CARYS_ACCESS_KEY}" -gt 256 ] \
+    || ! printf '%s' "$CARYS_ACCESS_KEY" | grep -Eq '^[A-Za-z0-9_-]+$'; then
+    echo 'carys: CARYS_ACCESS_KEY must be 32-256 characters of [A-Za-z0-9_-] (openssl rand -hex 32)' >&2
+    exit 64
+  fi
+  echo 'carys: access gate on (?token=, Bearer, or the session cookie)' >&2
+else
+  echo 'carys: no CARYS_ACCESS_KEY, so the site is open to anyone who can reach it' >&2
+fi
+
 # collapse runs of whitespace; the tokens themselves passed the check above
 src=$(printf '%s' "$src" | tr -s ' \t\n' '   ' | sed 's/^ //; s/ $//')
 printf 'map $scheme $carys_connect_src { default "%s"; }\n' "$src" > /tmp/carys-connect-src.conf
