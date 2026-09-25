@@ -94,10 +94,16 @@ const samples = [
   [SAMPLE_DCM, 'application/dicom', true],
   [SAMPLE_PDB, 'chemical/x-pdb', true],
 ];
-let haveSamples = true;
+// A deployment may publish part of the set (carys.casava.space serves the
+// synthetic phantoms and CC0 files only), so each check below depends on its
+// own file rather than on the whole set being there.
+const served = new Set();
+const ZARR = '/samples/cells_demo.zarr/.zattrs';
+if ((await get(ZARR)).status === 200) served.add(ZARR);
 for (const [path, type, gz] of samples) {
   const s = await get(path);
-  if (s.status === 404) { haveSamples = false; skip(`${path}: samples/ not mounted`); continue; }
+  if (s.status === 404) { skip(`${path}: not served`); continue; }
+  served.add(path);
   expect(s.h('content-type') === type, `${path} is ${type} (${s.h('content-type')})`);
   expect(!gz || s.h('content-encoding') === 'gzip', `${path} gzip`);
   expect(/^private/.test(s.h('cache-control')), `${path} private cache (${s.h('cache-control')})`);
@@ -135,10 +141,10 @@ try {
 
   await pg.goto(`${BASE}/`, { waitUntil: 'networkidle' });
   expect(pg.url() === `${BASE}/packages/app/dist/`, `browser lands on the app (${pg.url()})`);
-  if (haveSamples) {
+  if (served.has(SAMPLE_NII)) {
     await pg.waitForFunction(() => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''), null, { timeout: 90000 })
       .then(() => console.log('ok    viewer booted and loaded the default series'), () => fail('viewer never loaded the default series'));
-  } else skip('viewer series load: samples/ not mounted');
+  } else skip(`viewer series load: ${SAMPLE_NII} not served`);
   const fonts = await pg.evaluate(async () => {
     await document.fonts.ready;
     return [...document.fonts].filter((f) => f.status === 'loaded').map((f) => `${f.family} ${f.weight}`);
@@ -167,16 +173,16 @@ try {
     const split = [...chunks].some((c) => c.startsWith(view));
     expect(rendered && split, `#/${route} chunk loaded and rendered`);
   }
-  if (haveSamples) {
+  if (served.has(ZARR)) {
     // The zarr path end to end: dotfile metadata as JSON, extensionless chunks.
     await pg.goto(`${BASE}/packages/app/dist/#/cells`, { waitUntil: 'networkidle' });
     await pg.locator('button', { hasText: 'Sample .zarr' }).click();
     await pg.waitForFunction(() => /\dch/.test(document.getElementById('ro-cells')?.textContent ?? ''), null, { timeout: 30000 })
       .then(() => console.log('ok    sample OME-Zarr store opened over HTTP'), () => fail('sample OME-Zarr store did not open'));
-  } else skip('OME-Zarr open: samples/ not mounted');
+  } else skip('OME-Zarr open: the sample store is not served');
   // With nothing mounted the skips above already say so; a partial mount
   // names each file it lacks.
-  if (haveSamples) for (const p of missingSamples) skip(`${p}: not in the mounted samples/`);
+  if (served.size > 0) for (const p of missingSamples) skip(`${p}: not in the mounted samples/`);
 } finally {
   await browser.close();
 }

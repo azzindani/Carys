@@ -18,14 +18,15 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { samplesDir } from './samples-dir.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'samples', 'precomputed_demo');
+const OUT = join(samplesDir(ROOT), 'precomputed_demo');
 
 const { OmeZarrStore } = await import('../packages/io/dist/omezarr.js');
 const { readFileSync } = await import('node:fs');
 
-const ZARR_DIR = join(ROOT, 'samples', 'cells_demo.zarr');
+const ZARR_DIR = join(samplesDir(ROOT), 'cells_demo.zarr');
 const diskFetch = (base) => (async (url) => {
   if (!url.startsWith(`${base}/`)) return new Response('nope', { status: 404 });
   const rel = url.slice(base.length + 1);

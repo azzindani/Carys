@@ -22,9 +22,10 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writePart10 } from '../packages/io/dist/dcm-write.js';
 import { head } from './phantom.mjs';
+import { samplesDir } from './samples-dir.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'samples', 'ct-head-series');
+const OUT = join(samplesDir(ROOT), 'ct-head-series');
 
 // CT Image Storage. Fixed UID roots (2.25.* is the UUID-derived arc) keep the
 // output byte-identical across runs; makeUID() embeds a timestamp and would not.

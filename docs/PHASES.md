@@ -633,9 +633,18 @@ owner + unblock step, or accepted by design — verified 2026-09-14)
   progressive, blosc/zstd chunks: need openjpeg/charls or numcodecs plus a
   WASM toolchain; sandbox has no emcc/rustc/wasm-pack (verified today).
   Named errors stand. Unblock: vendor the codecs + toolchain, then port.
-- BLOCKED, owner: you — stable tunnel: the app serves via quick tunnels
-  (`deploy` mints a URL, `update` keeps it); a named tunnel needs your
-  cloudflared account cert. Unblock: `cloudflared tunnel login` + route.
+- DONE (2026-09-25) — a stable address: https://carys.casava.space, with no
+  tunnel involved. The production image runs as compose project `carys`
+  (`deploy/docker-compose.yml`, `deploy/up.sh`) behind the host's shared
+  Caddy router, the same arrangement as Thoth. It is locked down, alone on
+  `carys_edge`, and gets a Let's Encrypt certificate and HSTS from the
+  router. It serves the synthetic phantoms plus the CC0 files (OpenNeuro
+  ds000001 crops, PDB 1CRN), hash-checked against the samples manifest;
+  real samples with unverified licences are not published. Checked live:
+  `test:image` passes, and `test:synthetic` passes against the URL (boot
+  7,016 tris; DICOM→3D 242,616 / 136,892; worklist "6 of 21 can open
+  here"). The quick-tunnel scripts (`scripts/deploy.sh`, `update.sh`) stay
+  as a dev preview.
 - BLOCKED, owner: you — auth / multi-user / training models / real PACS:
   need a backend, GPU/data, or PACS credentials; outside the static
   prototype by scope. Unblock: product decision + backend.

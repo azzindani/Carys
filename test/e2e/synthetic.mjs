@@ -9,6 +9,9 @@
 //   npm run gen:samples     (fresh clone only: it writes over the real names)
 //   npm run build:app && npm run test:synthetic
 //
+// CARYS_URL runs the same legs against a deployment instead of a local
+// server: CARYS_URL=https://carys.casava.space npm run test:synthetic
+//
 // Fails loud, prints PASS.
 // NOTE: waitForSelector takes (selector, options) — TWO args.
 import { spawn } from 'node:child_process';
@@ -16,9 +19,10 @@ import { launchChromium } from './browser.mjs';
 import { openPop } from './popout.mjs';
 
 const PORT = Number(process.env.E2E_PORT || 8134);
-const BASE = `http://localhost:${PORT}/packages/app/dist/index.html`;
-const server = spawn('python3', ['-m', 'http.server', String(PORT), '--directory', '.'], { stdio: 'ignore' });
-await new Promise((r) => setTimeout(r, 1500));
+const REMOTE = process.env.CARYS_URL?.replace(/\/$/, '');
+const BASE = `${REMOTE ?? `http://localhost:${PORT}`}/packages/app/dist/index.html`;
+const server = REMOTE ? null : spawn('python3', ['-m', 'http.server', String(PORT), '--directory', '.'], { stdio: 'ignore' });
+if (server) await new Promise((r) => setTimeout(r, 1500));
 
 /** Catalog entries whose files a generator writes (SeriesSpec.gen). */
 const GENERATED = ['brats-flair-seg', 'skull-seg', 'skull-ct-bone', 'ct-head-dicom'];
@@ -125,7 +129,7 @@ try {
   fail(`exception: ${(e.stack || String(e)).slice(0, 800)}`);
 } finally {
   if (browser) await browser.close();
-  server.kill();
+  server?.kill();
 }
 if (!failed) console.log('SYNTHETIC PASS');
 process.exit(failed ? 1 : 0);

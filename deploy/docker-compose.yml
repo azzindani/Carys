@@ -1,0 +1,53 @@
+# Carys production compose: one read-only nginx container behind the shared
+# Caddy router (/root/caddy-router), the same arrangement as Thoth.
+#
+#   sh deploy/up.sh        (builds the image, fills the sample set, starts)
+#
+# Exposure: the router joins `carys_edge`, which holds this container and
+# nothing else, and proxies carys.casava.space to carys-app-1:8080. TLS and
+# HSTS are the router's (deploy/nginx.conf leaves both to the proxy in front).
+# The loopback port is for host checks only.
+
+name: carys
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" }
+
+services:
+  app:
+    # Built by deploy/up.sh with `docker build` so the in-image gate runs
+    # once, then started here without rebuilding.
+    image: carys:prod
+    build:
+      context: ..
+    environment:
+      # Unset or empty: any https origin plus loopback (deploy/start.sh).
+      CARYS_CONNECT_SRC: ${CARYS_CONNECT_SRC:-}
+    volumes:
+      - ${CARYS_SAMPLES:?set CARYS_SAMPLES to the sample set to serve}:/usr/share/nginx/html/samples:ro
+    ports:
+      - "127.0.0.1:${CARYS_PORT:-8090}:8080"
+    networks:
+      - edge
+    # the locked-down run the README documents and CI tests
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          # static files: one core and a little memory is plenty, and a
+          # shared host keeps the rest
+          cpus: "1.0"
+          memory: 256M
+    logging: *logging
+
+networks:
+  edge:
+    name: carys_edge

@@ -1,7 +1,7 @@
 # Carys — single CPU-only spatial viewer (prototype)
 
 **Location:** this repository — nothing outside it.
-**Rule for this prototype:** no Docker, no GPU, no backend. Static TypeScript + Web Workers + WASM. Preview via Cloudflare quick tunnel from this sandbox.
+**Rule for this prototype:** no GPU, no backend. Static TypeScript + Web Workers + WASM, served as static files (an nginx image in production). Live at **https://carys.casava.space** (see Production).
 
 ## Vision
 
@@ -174,6 +174,44 @@ image on every push, then runs it and points `npm run test:image` at it:
 headers, cache and compression over HTTP, then Chromium boots the app and
 visits every route under the real CSP. The image used to build green and exit
 at start-up, because nothing ever ran it.
+
+## Production (carys.casava.space)
+
+This host serves Carys at **https://carys.casava.space**, behind the shared
+Caddy router in `/root/caddy-router` (repo `Caddy_Router`), which owns :80,
+:443 and TLS. It's the same arrangement as Thoth:
+
+```bash
+sh deploy/up.sh    # sample set, image, compose up, health + public check
+```
+
+- `deploy/docker-compose.yml` (project `carys`) runs one container,
+  `carys-app-1`, from `carys:prod`. It runs locked down: read-only root,
+  tmpfs `/tmp`, all capabilities dropped, no-new-privileges, one CPU and
+  256 MB. Its only network is `carys_edge`. The router joins that network
+  and proxies `carys.casava.space` to `carys-app-1:8080`, adding HSTS.
+  nginx owns everything else: CSP, cache policy, compression. The loopback
+  port `127.0.0.1:8090` is for host checks.
+- The site is public on purpose. It has no backend and no secrets, and
+  uploads never leave the browser.
+- The sample set is `/srv/carys/samples` (`CARYS_SAMPLES`), mounted
+  read-only. It holds the synthetic phantoms, generated there with
+  `CARYS_SAMPLES_DIR`, so a real `samples/` is never written over. It also
+  holds the real files whose licence is known to be CC0: the OpenNeuro
+  ds000001 crops and PDB 1CRN, each checked against its hash in the samples
+  manifest before copying. No other real sample is published, because its
+  licence is unverified; the worklist says "needs real data" for those.
+- Redeploy after a change with `sh deploy/up.sh`: it rebuilds the image,
+  which re-runs the gate, and keeps the sample set.
+- Check the live site with
+  `CARYS_URL=https://carys.casava.space npm run test:image` (headers, types,
+  every route under the CSP) and
+  `CARYS_URL=https://carys.casava.space npm run test:synthetic` (boot,
+  keyboard, DICOM→3D, worklist).
+- The router side is one site block in `/root/caddy-router/Caddyfile` plus
+  `carys_edge` in its compose networks. If the network is ever deleted,
+  reattach it without restarting the router:
+  `docker network connect carys_edge caddy-router`.
 
 ## Privacy note
 

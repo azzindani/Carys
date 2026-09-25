@@ -19,9 +19,10 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeNifti1 } from '../packages/io/dist/nifti-write.js';
 import { head } from './phantom.mjs';
+import { samplesDir } from './samples-dir.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'samples');
+const OUT = samplesDir(ROOT);
 mkdirSync(OUT, { recursive: true });
 
 const write = (name, data, dims, spacing, dtype) => {
