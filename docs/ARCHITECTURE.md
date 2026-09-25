@@ -155,6 +155,21 @@ frame the same physical box.
   digest and system). `lib/bodyRig.ts` fetches them with the first pose
   and refuses a rig fitted to other digest pins; the Body dock's Pose
   joint and sliders set the angles.
+- Motion (H6): `bvh.ts` reads and writes BVH and retargets a frame onto
+  the rig. It splits each mapped joint's rotation into that joint's
+  flexion, abduction and twist axes (`anglesAbout`) and measures what a
+  hinge drops. `gait.ts` holds the gait helpers: `groundRoot` sets the
+  feet in contact on the ground (a ballistic arc between), `plantRoot`
+  moves the body on as its grounded sole points slide back,
+  `footSlip` is the acceptance measure, and `muscleEnds`/`muscleLength`
+  and `stretchColor` colour the muscles by stretch.
+  `scripts/build-body-gait.mjs` averages two CC BY 4.0 gait data sets
+  (figshare; the walking archive's members read by byte range) into
+  `digests/gait-motions/` (`walk.bvh`, `run.bvh` with the root motion
+  solved for the H5 body, `gait.json`). `lib/bodyGait.ts` fetches them
+  with the first motion. The Body dock's Motion picker, Play, cycle
+  slider and Stretch switch play them through the pose path, each frame
+  the one real time has reached.
 - Placing another body's organs (H3): `glb.ts` reads glTF binary meshes
   (node transforms applied; Draco, sparse accessors and non-triangle
   primitives refused). `organ-fit.ts` fits organs both bodies have

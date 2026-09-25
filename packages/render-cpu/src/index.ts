@@ -32,5 +32,7 @@ export * from './thick-slices.js';
 export * from './body-scene.js';
 export * from './rig.js';
 export * from './mesh-grid.js';
+export * from './bvh.js';
+export * from './gait.js';
 export * from './glb.js';
 export * from './organ-fit.js';

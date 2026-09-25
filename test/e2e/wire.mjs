@@ -2446,8 +2446,8 @@ try {
   // hides, and the frame times on the full body are measured. H3: the HRA
   // lung and a lymph node are tapped and cited. H4: skin and muscle
   // see-through, a tap reaches the femur. H5: a posed shoulder puts the
-  // arm under a tap that missed. Tap points are canvas pixels (480×800) of
-  // the default front view.
+  // arm under a tap that missed. H6: the walking cycle, cited, stepped and
+  // played. Tap points are canvas pixels (480×800) of the default front view.
   const pageB = await browser.newPage({ viewport: { width: 1440, height: 1500 } });
   pageB.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
   await pageB.goto(`${BASE}#/atlas`, { waitUntil: 'networkidle' });
@@ -2594,6 +2594,30 @@ try {
   if (besideRest.part !== 'tap a structure' || !/^skin · /.test(besidePosed.part) || besideBack.part !== 'tap a structure') {
     fail(`pose: beside the body ${besideRest.part} → posed ${besidePosed.part} → rest ${besideBack.part}`);
   } else console.log('pose', posedRo, '→ a tap beside the body lands on', besidePosed.part.split(' · ')[0]);
+  // H6: the walking cycle on the rig, cited; a quarter through by keys, the
+  // muscles coloured by stretch, then played (real time moves the frame on)
+  bodyBefore = await bodyRo();
+  await pageB.selectOption('#body-motion', 'walk');
+  await pageB.waitForFunction(() => / · walk 0% of [\d.]+ s at [\d.]+ m\/s/.test(document.getElementById('ro-body')?.textContent ?? ''), null, { timeout: 180000 });
+  const gaitSrc = await pageB.locator('#body-gait-src').textContent();
+  await pageB.locator('#body-motion-frame').focus();
+  for (let k = 0; k < 25; k++) await pageB.keyboard.press('ArrowRight');
+  await pageB.waitForFunction(() => / · walk 25% of/.test(document.getElementById('ro-body')?.textContent ?? ''), null, { timeout: 180000 });
+  bodyBefore = await bodyRo();
+  await pageB.click('#dock-body label.switch[title="Stretch"]');
+  await bodySettles(bodyBefore);
+  const walkRo = await bodyRo();
+  await pageB.click('#body-motion-play');
+  await pageB.waitForFunction(() => { const t = document.getElementById('ro-body')?.textContent ?? ''; return / · walk \d+% of/.test(t) && !/ · walk 25% of/.test(t); }, null, { timeout: 120000 });
+  await pageB.click('#body-motion-play');
+  const playedRo = await bodyRo();
+  bodyBefore = playedRo;
+  await pageB.selectOption('#body-motion', 'none');
+  await pageB.waitForFunction(() => !/ · walk /.test(document.getElementById('ro-body')?.textContent ?? ''), null, { timeout: 120000 });
+  await pageB.click('#dock-body label.switch[title="Stretch"]');
+  if (!gaitSrc.includes('51 subjects') || !gaitSrc.includes('Fukuchi') || !gaitSrc.includes('CC BY 4.0') || !gaitSrc.includes('10.6084/m9.figshare.5722711')) {
+    fail(`gait source: ${gaitSrc}`);
+  } else console.log('motion', walkRo, '→ played to', playedRo.match(/walk \d+%/)?.[0]);
   const fb = await pageB.locator('#c-body').boundingBox();
   await pageB.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
   await pageB.mouse.down();
@@ -3009,8 +3033,12 @@ try {
   // decimated level for orbit frames (the skull CT's bone, ~118k tris).
   await page25b.click('#openpal'); await page25b.fill('#palinput', 'skull-ct-bone');
   await page25b.waitForSelector('#pallist li'); await page25b.click('#pallist li');
-  await page25b.waitForFunction(() => /\(orbit [\d,]+\)/.test(document.getElementById('ro-3d')?.textContent ?? ''), null, { timeout: 180000 });
-  const lodText = await ro3d();
+  // the readout as it matched: a later extraction (the series' own
+  // threshold) can put "extracting…" back before a second read
+  const lodText = await (await page25b.waitForFunction(() => {
+    const t = document.getElementById('ro-3d')?.textContent ?? '';
+    return /\(orbit [\d,]+\)/.test(t) ? t : false;
+  }, null, { timeout: 180000 })).jsonValue();
   const [full, orbit] = (lodText?.match(/([\d,]+) tris \(orbit ([\d,]+)\)/) ?? []).slice(1).map((n) => Number(n.replace(/,/g, '')));
   if (!(full > 100000 && orbit > 0 && orbit * 3 <= full * 2)) fail(`orbit level: ${lodText}`);
   else console.log(`level of detail: ${lodText}`);

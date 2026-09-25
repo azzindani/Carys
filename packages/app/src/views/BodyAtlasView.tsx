@@ -12,8 +12,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX, ReactNode } from 'react';
 import type React from 'react';
 import {
-  assembleScene, clusterScene, frameParts, pickSurface, POSE_DOF, POSE_JOINTS, poseMesh, renderMesh, sceneAlpha, sceneColors,
-  sceneDims, segmentTransforms, type BodyScene, type BodySystem, type Pose, type PoseJoint, type ScenePart, type SkinWeights,
+  assembleScene, clusterScene, frameParts, muscleEnds, muscleLength, pickSurface, POSE_DOF, POSE_JOINTS, poseMesh, renderMesh,
+  retargetFrame, sceneAlpha, sceneColors, sceneDims, segmentTransforms, stretchColor, type BodyScene, type BodySystem, type MuscleEnds,
+  type Pose, type PoseJoint, type ScenePart, type SkinWeights,
 } from '@carys/render-cpu';
 import { conceptsOfElement, findBodyStructures, TERMS_DIGEST_ID, TERMS_DIGEST_PIN, type BodyRow } from '@carys/volume-core';
 import { EDUCATION_BADGE } from '@carys/study';
@@ -22,7 +23,10 @@ import {
   BODY_DIGEST_ID, HRA_DIGEST_ID, hraOrganOf, loadBodyAtlas, loadBodySystem, type BodyAtlas,
 } from '../lib/bodyAtlas';
 import { loadBodyRig, loadRigWeights, RIG_DIGEST_ID, type BodyRig } from '../lib/bodyRig';
-import { BODY_BG, BODY_PICK_COLOR, BODY_SYSTEM_COLORS, bodyCss } from '../lib/palette';
+import { GAIT_DIGEST_ID, GAIT_MOTIONS, loadGait, type Gait, type GaitMotion } from '../lib/bodyGait';
+import {
+  BODY_BG, BODY_PICK_COLOR, BODY_STRETCH_LONG, BODY_STRETCH_SHORT, BODY_STRETCH_SPAN, BODY_SYSTEM_COLORS, bodyCss,
+} from '../lib/palette';
 import { session } from '../lib/session';
 import { setAmbientStatus, setStatus } from '../lib/status';
 import { bump } from '../lib/version';
@@ -70,6 +74,7 @@ const POSE_RANGE: readonly [number, number][] = [[-90, 150], [-60, 180], [-90, 9
 const POSE_LABEL = ['Flex', 'Abduct', 'Twist'] as const;
 const DEG = Math.PI / 180;
 const isRest = (p: Pose): boolean => Object.values(p).every((a) => a.every((v) => v === 0));
+const NO_ROOT: V3 = [0, 0, 0];
 
 interface Picked {
   part: ScenePart;
@@ -129,6 +134,11 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
   const [seeSys, setSeeSys] = useState<BodySystem>(SEE_FIRST);
   const [pose, setPose] = useState<Pose>({});
   const [poseJoint, setPoseJoint] = useState<PoseJoint>('left knee');
+  const [motion, setMotion] = useState<GaitMotion | 'none'>('none');
+  const [cycleFrame, setCycleFrame] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [stretch, setStretch] = useState(false);
+  const [gaitRef, setGaitRef] = useState<Gait | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const offRef = useRef<HTMLCanvasElement | null>(null);
@@ -142,6 +152,7 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
   const want = useRef({
     on: new Set(OPEN_SYSTEMS) as ReadonlySet<BodySystem>, hidden: new Set<string>() as ReadonlySet<string>,
     isolate: null as ReadonlySet<string> | null, pick: null as string | null, see: {} as Opacities, pose: {} as Pose,
+    root: NO_ROOT as V3, stretch: false,
   });
   /** the rig and the skin weights of the loaded systems, once a pose is set */
   const rigRef = useRef<BodyRig | null>(null);
@@ -149,6 +160,11 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
   const skinned = useRef(new Set<BodySystem>());
   /** the parts posed (same order as `parts`), null at rest */
   const posed = useRef<ScenePart[] | null>(null);
+  /** the last pose's segment transforms, and each muscle's ends (H6) */
+  const lastT = useRef<Float64Array | null>(null);
+  const muscleEndsOf = useRef(new Map<string, MuscleEnds | null>());
+  /** playback: running, and when frame 0 would have been drawn */
+  const play = useRef<{ on: boolean; t0: number }>({ on: false, t0: 0 });
   const poseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const angles = useRef({ orbit: 0, tilt: 0 });
   const zoomRef = useRef(1);
@@ -160,7 +176,11 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
 
   const colorOf = (i: number): readonly [number, number, number] => {
     const p = parts.current[i]!;
-    return p.element === want.current.pick ? BODY_PICK_COLOR : BODY_SYSTEM_COLORS[p.system];
+    if (p.element === want.current.pick) return BODY_PICK_COLOR;
+    const ends = want.current.stretch && lastT.current ? muscleEndsOf.current.get(p.element) : null;
+    return ends
+      ? stretchColor(muscleLength(ends, lastT.current!) / ends.restMm, BODY_SYSTEM_COLORS.muscular, BODY_STRETCH_SHORT, BODY_STRETCH_LONG, BODY_STRETCH_SPAN)
+      : BODY_SYSTEM_COLORS[p.system];
   };
   const alphaOf = (i: number): number => want.current.see[parts.current[i]!.system] ?? 1;
 
@@ -227,7 +247,7 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
    *  fetched first), or none at rest: the parts as loaded, drawn as in H2. */
   const posePartsNow = async (ix: BodyAtlas): Promise<void> => {
     const p = want.current.pose;
-    if (isRest(p)) { posed.current = null; return; }
+    if (isRest(p) && want.current.root.every((v) => v === 0)) { posed.current = null; lastT.current = null; return; }
     if (!rigRef.current) {
       rigRef.current = await loadBodyRig(ix);
       session.digestPins = { ...session.digestPins, [RIG_DIGEST_ID]: rigRef.current.pin };
@@ -244,7 +264,13 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
       }
     }
     if (want.current.pose !== p) return; // a newer pose is on its way
-    const T = segmentTransforms(r.rig, p);
+    const T = segmentTransforms(r.rig, p, want.current.root);
+    lastT.current = T;
+    // each muscle's two ends, once its weights are here (for the stretch colours)
+    for (const part of parts.current) {
+      const w = part.system === 'muscular' && !muscleEndsOf.current.has(part.element) ? skin.current.get(part.element) : undefined;
+      if (w) muscleEndsOf.current.set(part.element, muscleEnds(part.element, part.positions, w));
+    }
     posed.current = parts.current.map((part) => {
       const bind = r.bones.get(part.element) ?? skin.current.get(part.element);
       if (bind === undefined) throw new Error(`${part.name} (${part.element}) is in no rig segment and has no weights`);
@@ -383,9 +409,70 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
     queueMove();
   };
 
+  /** A motion off: the pose it left is kept, its rise and fall dropped. */
+  const stopMotion = (): void => {
+    play.current.on = false;
+    setPlaying(false);
+    setMotion('none');
+    want.current.root = NO_ROOT;
+  };
+
+  /** A motion's frame as the pose: its BVH frame onto the rig. */
+  const showFrame = async (m: GaitMotion, f: number): Promise<void> => {
+    const ix = idxRef.current, g = gaitRef ?? (await loadGait());
+    if (!ix) return;
+    const r = (rigRef.current ??= await loadBodyRig(ix));
+    const got = retargetFrame(g.motions[m].bvh, f, r.rig);
+    want.current.pose = got.pose;
+    want.current.root = got.root;
+    setPose(got.pose);
+    setCycleFrame(f);
+    await sync();
+  };
+
+  const chooseMotion = async (m: GaitMotion | 'none'): Promise<void> => {
+    if (m === 'none') { stopMotion(); restPose(); return; }
+    try {
+      const g = await loadGait();
+      setGaitRef(g);
+      session.digestPins = { ...session.digestPins, [GAIT_DIGEST_ID]: g.pin };
+      setMotion(m);
+      await showFrame(m, 0);
+    } catch (e) {
+      setErr((e as Error).message);
+      setStatus(`gait failed: ${(e as Error).message}`, 'error');
+    }
+  };
+
+  const setStretchV = (v: boolean): void => {
+    want.current.stretch = v;
+    setStretch(v);
+    recolor();
+    paint('settled');
+  };
+
+  /** Playback: each frame the one real time has reached since frame 0, so
+   *  the cycle keeps its speed however long a frame takes to draw. */
+  const togglePlay = (m: GaitMotion): void => {
+    if (play.current.on) { play.current.on = false; setPlaying(false); return; }
+    const g = gaitRef;
+    if (!g) return;
+    const { frameTime, frames } = g.motions[m].bvh;
+    play.current = { on: true, t0: performance.now() - cycleFrame * frameTime * 1000 };
+    setPlaying(true);
+    const tick = async (): Promise<void> => {
+      if (!play.current.on) return;
+      const f = Math.floor((performance.now() - play.current.t0) / 1000 / frameTime) % frames.length;
+      await showFrame(m, f);
+      setTimeout(() => { void tick(); }, 0);
+    };
+    void tick();
+  };
+
   /** One angle of the chosen joint (degrees); the body is posed and drawn
    *  once the slider rests. */
   const setAngle = (k: 0 | 1 | 2, deg: number): void => {
+    stopMotion();
     const a = [...(want.current.pose[poseJoint] ?? [0, 0, 0])] as [number, number, number];
     a[k] = deg * DEG;
     const next = { ...want.current.pose, [poseJoint]: a };
@@ -397,6 +484,7 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
   };
 
   const restPose = (): void => {
+    stopMotion();
     want.current.pose = {};
     setPose({});
     void sync();
@@ -482,6 +570,24 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
             min={POSE_RANGE[k]![0]} max={POSE_RANGE[k]![1]} step={1}
             value={Math.round((pose[poseJoint]?.[k] ?? 0) / DEG)} onInput={(v) => setAngle(k as 0 | 1 | 2, v)} />
         ))}
+        <div className="grp">
+          <span className="lbl">Motion</span>
+          <DarkSelect id="body-motion" value={motion} onChange={(v) => { void chooseMotion(v as GaitMotion | 'none'); }}
+            title="A mean gait cycle of CC BY 4.0 gait data, played on the rig">
+            <option value="none">none</option>
+            {GAIT_MOTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+          </DarkSelect>
+          {motion !== 'none' && (
+            <IconBtn id="body-motion-play" title={playing ? 'Pause the cycle' : 'Play the cycle in real time'} onClick={() => togglePlay(motion)}>
+              {playing ? 'Pause' : 'Play'}
+            </IconBtn>
+          )}
+          <Switch checked={stretch} label="Stretch" onChange={setStretchV} />
+        </div>
+        {motion !== 'none' && (
+          <SliderRow id="body-motion-frame" label="Cycle %" min={0} max={99} step={1} value={cycleFrame}
+            onInput={(v) => { play.current.on = false; setPlaying(false); void showFrame(motion, v); }} />
+        )}
         <div className="sep" />
         <div className="grp">
           <span className="lbl">Find</span>
@@ -512,7 +618,8 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
               + (hidden ? ` · ${hidden} hidden` : '')
               + (Object.keys(see).length ? ` · see-through ${(Object.entries(see) as [BodySystem, number][])
                 .map(([s, v]) => `${SYSTEM_LABEL[s].toLowerCase()} ${Math.round(v * 100)}%`).join(', ')}` : '')
-              + (isRest(pose) ? '' : ` · posed ${(Object.entries(pose) as [PoseJoint, readonly number[]][])
+              + (motion !== 'none' && gaitRef ? ` · ${motion} ${cycleFrame}% of ${gaitRef.motions[motion].strideS} s at ${gaitRef.motions[motion].bodySpeedMps} m/s`
+                : isRest(pose) ? '' : ` · posed ${(Object.entries(pose) as [PoseJoint, readonly number[]][])
                 .map(([j, a]) => `${j} ${a.slice(0, POSE_DOF[j]).map((v) => `${Math.round(v / DEG)}°`).join('/')}`).join(', ')}`)
             : 'loading…')}</span></Chip>
         </div>
@@ -531,6 +638,9 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
           </div>
           {picked && idx && <BodyCard picked={picked} atlas={idx} />}
           <div className="hint" id="body-src">{idx ? `${idx.indexes[BODY_DIGEST_ID].attribution} · ${idx.indexes[BODY_DIGEST_ID].pin}` : 'BodyParts3D'}</div>
+          {motion !== 'none' && gaitRef && (
+            <div className="hint" id="body-gait-src">{`Motion: the mean ${motion === 'walk' ? 'walking' : 'running'} cycle of ${gaitRef.motions[motion].subjects} subjects (hips, knees and ankles; the upper body is not in the data). ${gaitRef.citations.join(' · ')} CC BY 4.0.`}</div>
+          )}
           <div className="hint" id="body-hra-src">{idx ? `${idx.indexes[HRA_DIGEST_ID].attribution} · ${idx.hra.organs.size} organs, cited on tap` : 'HRA'}</div>
         </div>
       </div>

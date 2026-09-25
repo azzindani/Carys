@@ -159,12 +159,15 @@ const mul = (A: ArrayLike<number>, B: ArrayLike<number>): number[] => [0, 1, 2].
 /**
  * Each segment's transform for a pose, 12 numbers a segment: a rotation
  * (row-major) then a shift, taking a rest-pose point where the pose puts
- * it. Throws on an angle a joint cannot take (a knee's abduction) and on a
- * rig whose joints are not parents first.
+ * it. The root moves by `root` (a shift, the rig's units; H6: a gait's
+ * rise and fall), everything with it. Throws on an angle a joint cannot
+ * take (a knee's abduction) and on a rig whose joints are not parents
+ * first.
  */
-export function segmentTransforms(rig: Rig, pose: Pose): Float64Array {
+export function segmentTransforms(rig: Rig, pose: Pose, root: readonly [number, number, number] = [0, 0, 0]): Float64Array {
   const S = rig.segments.length, T = new Float64Array(S * 12), set = new Uint8Array(S);
-  T.set([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 0);
+  if (!root.every(Number.isFinite)) throw new RangeError(`rig-root: ${root}`);
+  T.set([1, 0, 0, 0, 1, 0, 0, 0, 1, root[0], root[1], root[2]], 0);
   set[0] = 1;
   for (const [name, a] of Object.entries(pose) as [PoseJoint, JointAngles][]) {
     if (!POSE_JOINTS.includes(name)) throw new RangeError(`rig-pose: no joint "${name}"`);
