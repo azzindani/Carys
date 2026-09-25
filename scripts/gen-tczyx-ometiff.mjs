@@ -7,6 +7,7 @@ import { writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeOmeTiff, parseOmeTiff } from '../packages/io/dist/ome-tiff.js';
+import { samplesDir } from './samples-dir.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const W = 8, H = 8, T = 2, C = 2, Z = 3;
@@ -41,5 +42,5 @@ back.planes.forEach((p, i) => {
     if (p.data[k] !== planes[i].values[k]) throw new Error(`plane ${i} pixel ${k} mismatch`);
   }
 });
-writeFileSync(join(ROOT, 'samples', 'tczyx.ome.tif'), Buffer.from(buf));
+writeFileSync(join(samplesDir(ROOT), 'tczyx.ome.tif'), Buffer.from(buf));
 console.log('tczyx.ome.tif written', buf.byteLength, 'bytes');

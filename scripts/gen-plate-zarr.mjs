@@ -9,9 +9,10 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { samplesDir } from './samples-dir.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'samples', 'plate_demo.zarr');
+const OUT = join(samplesDir(ROOT), 'plate_demo.zarr');
 const N = 32;
 
 const json = (o) => JSON.stringify(o, null, 2);

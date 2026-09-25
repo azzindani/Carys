@@ -11,9 +11,10 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
+import { samplesDir } from './samples-dir.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'samples', 'cells_demo.zarr');
+const OUT = join(samplesDir(ROOT), 'cells_demo.zarr');
 const N = 128, CH = 64;
 
 function pixel(c, x, y) {
