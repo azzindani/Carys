@@ -1,4 +1,4 @@
-// The gait motions (H6, docs/PHASES.md): the mean walking and running
+// The gait motions: the mean walking and running
 // cycles of digests/gait-motions, BVH files fetched and parsed the first
 // time a motion is chosen, with the citations of the data they come from.
 // A failed fetch is forgotten, so the next attempt retries.

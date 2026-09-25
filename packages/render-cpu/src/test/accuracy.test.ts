@@ -9,7 +9,7 @@ import {
   type Phantom, type SurfaceScore, type V3,
 } from './phantoms.js';
 
-// F1 (docs/PHASES.md): surface accuracy measured against analytic shapes,
+// Surface accuracy measured against analytic shapes,
 // in mm, on the grids a scanner produces. The table records where each
 // extraction path stands; every 3D-fidelity item beats it with its own
 // acceptance test, and a change that moves these numbers has to say why.

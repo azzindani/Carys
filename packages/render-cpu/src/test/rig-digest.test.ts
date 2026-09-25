@@ -8,7 +8,7 @@ import {
   NO_SEG, POSE_DOF, POSE_JOINTS, poseMesh, segmentTransforms, unpackWeights, type Pose, type Rig, type SkinWeights,
 } from '../rig.js';
 
-// H5 (docs/PHASES.md): the body rig digest, as built by
+// The body rig digest, as built by
 // scripts/build-body-rig.mjs, against the body digests it was fitted to.
 
 const DIGESTS = join(process.cwd(), 'digests');

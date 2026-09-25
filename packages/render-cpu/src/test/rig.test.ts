@@ -6,7 +6,7 @@ import {
 } from '../rig.js';
 import { uvSphere } from './phantoms.js';
 
-// H5 (docs/PHASES.md): a rigged skeleton.
+// A rigged skeleton.
 
 type V3 = [number, number, number];
 

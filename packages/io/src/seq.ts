@@ -1,4 +1,4 @@
-// Port of igv.js track parsers (minimal FASTA/VCF/GFF subset for Phase 2).
+// Port of igv.js track parsers (minimal FASTA/VCF/GFF subset).
 // Genome tracks come in Week 3+; here just the parsers behind one interface.
 
 export interface SeqRecord { id: string; seq: string }

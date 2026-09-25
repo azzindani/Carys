@@ -1,4 +1,4 @@
-// The body rig (H5, docs/PHASES.md): the segments, fitted joints and skin
+// The body rig: the segments, fitted joints and skin
 // weights of digests/body-rig, fetched the first time a pose is set (the
 // weights are megabytes) and turned to the renderer's frame. The rig was
 // fitted to the atlas' digests at their pins; any other pin fails loud, as

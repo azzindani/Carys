@@ -1,5 +1,5 @@
-// The non-rigid part of placing one body's organs in another's (H3,
-// docs/PHASES.md): after an anchor's similarity (organ-fit.ts), a smooth
+// The non-rigid part of placing one body's organs in another's: after an
+// anchor's similarity (organ-fit.ts), a smooth
 // bend takes it the rest of the way — bowel loops, a bronchus branching at
 // another angle, a knee flexed a little differently.
 //

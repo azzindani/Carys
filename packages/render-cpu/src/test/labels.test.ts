@@ -5,7 +5,7 @@ import { slabMask } from '../slab.js';
 import { obliqueBasis } from '../oblique.js';
 import type { Plane } from '../mpr.js';
 
-// F14 (docs/PHASES.md): segmentation outlines in the 2D panes, a colour
+// Segmentation outlines in the 2D panes, a colour
 // per label.
 
 type V3 = [number, number, number];

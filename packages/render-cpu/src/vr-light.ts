@@ -1,4 +1,4 @@
-// Cinematic lighting for the volume raycaster (F10, docs/PHASES.md): soft
+// Cinematic lighting for the volume raycaster: soft
 // shadows and ambient light, refined pass by pass.
 //
 // The transfer function makes the volume a field of extinction σ (per mm,

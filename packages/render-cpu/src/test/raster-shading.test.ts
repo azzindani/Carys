@@ -4,7 +4,7 @@ import { renderMesh } from '../raster.js';
 import type { TriMesh } from '../surface.js';
 import { uvSphere as sphereAt } from './phantoms.js';
 
-// F6 (docs/PHASES.md): per-pixel shading and supersampled edges.
+// Per-pixel shading and supersampled edges.
 
 const BG = 17;
 

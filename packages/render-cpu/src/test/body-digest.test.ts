@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { ATLAS_ATTRIBUTION } from '@carys/volume-core';
 import { BODY_SYSTEMS, unpackBody, validateBodyIndex } from '../body-pack.js';
 
-// H1 (docs/PHASES.md): the committed whole-body digest, as built by
+// The committed whole-body digest, as built by
 // scripts/build-body-atlas.mjs from BodyParts3D. The build measures each
 // part against its source (which is not committed); this checks what it
 // recorded and what shipped.

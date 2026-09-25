@@ -1,4 +1,4 @@
-// Ported from Gosling grammar subset (gosling.schema.ts, Phase 2 staged).
+// Ported from Gosling grammar subset (gosling.schema.ts).
 // SingleTrack core + Channel shorthand + Json/Csv data + minimal transforms.
 // Skips: HiGlass, tiles, circular, linking, overlays, themes, editor.
 

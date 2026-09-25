@@ -2,7 +2,7 @@
 // gradient shading, early termination, and AABB-bounded marching.
 // Same orbit/tilt convention as the mesh rasterizer (raster.ts).
 //
-// Quality (F8, docs/PHASES.md), both opt-in so a plain call renders as it
+// Quality, both opt-in so a plain call renders as it
 // always did:
 // - `alphaStep` corrects each sample's opacity for the step it stands
 //   for, α' = 1 − (1 − α)^(step / alphaStep), so a coarse draft is as

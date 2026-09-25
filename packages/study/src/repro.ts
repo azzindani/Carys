@@ -55,8 +55,8 @@ export interface ReproSidecar {
   /**
    * Digest pins (digest id → version pin, e.g. { 'z-anatomy': 'v2.1' }):
    * empty when no digest contributed to the figure. Carries the
-   * BIO-ATLAS-ROADMAP §3 contract so a figure built over atlas/provenance
-   * data regenerates against the same knowledge bytes.
+   * digest pins so a figure built over atlas/provenance data regenerates
+   * against the same knowledge bytes.
    */
   digestPins: Record<string, string>;
   maskVoxels: number;

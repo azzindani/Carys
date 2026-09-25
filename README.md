@@ -1,231 +1,132 @@
-# Carys — single CPU-only spatial viewer (prototype)
+# Carys
 
-**Location:** this repository — nothing outside it.
-**Rule for this prototype:** no GPU, no backend. Static TypeScript + Web Workers + WASM, served as static files (an nginx image in production). Live at **https://carys.casava.space** (see Production).
+Carys is a medical and life-science imaging viewer that runs entirely in the
+browser, on the CPU. It needs no GPU, no WebGL and no server-side code: the
+production build is static files behind nginx. Scans, structures and cell
+images open in the tab and stay there. Nothing a user opens is uploaded.
 
-## Vision
+> **For education and research. Not for diagnosis or any other clinical
+> use.** Carys has no regulatory clearance. Its measurements and renderings
+> are there to learn and explore with.
 
-One tool, one selection model, many loaders:
+Production: **https://carys.casava.space**. The site is token-gated and
+currently paused. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) explains how to
+resume and access it.
 
-```
-DICOM / NIfTI / OME-Zarr / PDB/mmCIF / FASTA / VCF  →  core volume/atom/cell model  →  CPU render  →  Canvas2D
-```
+## What it does
 
-Multimodal = features, not apps:
-- voxel ↔ residue ↔ cell share one annotation model (mask + label + measurement)
-- same brush, same undo, same export (NIfTI / STL / CSV / PNG / HTML report)
-- sequence ↔ 3D highlight, channel ↔ cell table, baseline ↔ follow-up diff
+The rail on the left has one route per task. Every route shares one data
+model, so a selection, mask or measurement made in one view means the same
+thing in the others.
 
-## Why CPU-only
-
-- Sandbox here has 4 vCPU, 15 GiB RAM, no GPU — so the prototype must run there.
-- Clinical / field / classroom machines are the same: weak GPU, strong need.
-- Proven: Papaya (pure JS orthogonal viewer), ITK-WASM (SIMD + thread pool, still CPU), tiled OME-Zarr slicing.
-
-## Packages (monorepo under `packages/`)
-
-```
-packages/
-  io/          DICOM series sort, NIfTI, OME-Zarr chunks, PDB/mmCIF, FASTA/VCF parsers
-  volume-core/ dims/spacing/origin/dtype, spatial index, selection model
-  render-cpu/  MPR reslice, MIP/minIP, software raycast, marching-cubes (WASM), tile slicer
-  editor-seg/  threshold, region-grow, watershed, connected-components, brush + undo
-  measure/     length, angle, volume, histogram, profile line
-  testkit/     test-only: locates samples/ fixtures, decides skip vs fail
-  ui/          4-pane layout, tracks, toolbar, report export (static only)
-```
-
-## Repos to digest (in order)
-
-1. `rii-mango/Papaya + Daikon + NIFTI-Reader-JS` — CPU volume model to copy
-2. `niivue/niivue + CACTAS` — NIfTI/mesh/overlay handling, drawing extension
-3. `cornerstonejs/cornerstone3D + @itk-wasm/dicom` — `readImageDicomFileSeries`, tools
-4. `Kitware/VolView` — architecture only (skip its GPU path)
-5. `hms-dbmi/viv + vizarr` — OME-Zarr loader (replace deck.gl layer with CPU slicer)
-6. `google/neuroglancer` — 4-pane linked navigation pattern
-7. `molstar/molstar + pdbe-molstar + rcsb-molstar` — sequence→3D selection, superposition
-8. `nglviewer/ngl` — simpler fallback reference for small proteins
-9. `igvteam/igv.js + jbrowse-components + gosling.js` — genome tracks (Phase 2)
-
-See `docs/` for architecture, CPU rendering recipe, phases, and tunnel preview.
-
-## Run (dev)
-
-```bash
-npm run ci       # what CI runs: build + typecheck + lint + unit + markers + app build
-npm run verify   # the full gate: adds e2e and REQUIRES samples/ (see below)
-npm run lint     # eslint, type-aware; --max-warnings 0
-npm run audit:a11y # axe-core WCAG 2.1 A/AA over every route, both breakpoints
-npm run test:unit  # unit suites; fixture-backed ones skip without samples/
-npm run gen:samples # synthetic volumes into samples/ — do this first on a fresh clone
-npm run serve    # static root on :8000
-# open http://localhost:8000/packages/app/dist/  (the app; run build:app first)
-# legacy static shell: http://localhost:8000/packages/ui/
-```
+| Route | What it is for |
+|---|---|
+| **Studies** | The worklist: the bundled studies, each showing whether its data is present, plus a DICOMweb client (QIDO search, then pull a series into the viewer). |
+| **Viewer** | Axial, coronal and sagittal reformats with a 3D view: surface or volume render, cinematic lighting, clipping and a curved reformat. Segmentation (threshold, region grow, brush, flood fill, watershed split, fill between slices), measurements, compare and time series. Exports a NIfTI mask, STL, PNG or CSV. |
+| **Report** | Validation checks and an HTML report of the study, its measurements and its data sources. |
+| **Protein** | PDB and mmCIF structures: residue queries, ligand pockets, interface contacts, pLDDT colouring for predicted models, pathogen teaching structures, and whole virus capsids built from their biological assemblies. |
+| **Cells** | OME-Zarr and OME-TIFF microscopy: channel compositing, plates and wells, per-channel statistics, and a catalog of public IDR screens. |
+| **Tracks** | Genome tracks (FASTA, VCF, BED, GFF/GTF) with a locus search and filter. |
+| **Atlas** | Brain region labels, and a whole-body atlas of 2,234 BodyParts3D structures by body system, with see-through layers, a posable skeleton, walking and running motion, and HuBMAP reference organs placed in the body. |
+| **Learn** | Mechanism-of-disease bundles and a microbiology library whose structures open in Protein. |
 
 ### Opening your own data
 
-**Open** (beside the file tabs) or drag onto the viewer: NIfTI (`.nii`, `.nii.gz`), NRRD,
-OME-TIFF, meshes (STL/MZ3/GIFTI), tracts (TCK/TRK/TRX) — and DICOM, by
-content rather than extension, so an extensionless PACS export or CD folder
-works. Drop a whole study folder: its files are grouped into the series they
-really are (by Series UID, orientation and matrix), ordered by position, and
-each opens as its own entry; a localizer never lands inside the axial stack.
+Use **Open** beside the file tabs, or drop files onto the viewer.
 
-What the viewer guarantees about geometry, and says on the image when it
-cannot:
+- **Volumes:** NIfTI (`.nii`, `.nii.gz`), NRRD and OME-TIFF.
+- **DICOM:** recognised by content, not extension, so an extensionless PACS
+  export or a CD folder works. Dropping a whole study folder groups its files
+  into their series by Series UID, orientation and matrix, orders each series
+  by position, and opens each as its own entry. A localizer never lands in
+  the axial stack.
+  - Supported transfer syntaxes: implicit and explicit VR (little and big
+    endian), deflated, RLE, JPEG Baseline 8-bit, JPEG Lossless (SOF3) and
+    JPEG-LS lossless.
+  - Anything else (JPEG 2000, JPEG-LS near-lossless, 12-bit baseline) is
+    refused with a named error, not drawn wrong.
+  - SEG and RTSTRUCT import as masks. DICOMDIR opens as an index.
+- **Surfaces and tracts:** meshes (STL, MZ3, GIFTI) and tractography (TCK,
+  TRK, TRX).
+- **Other data:** structures open in Protein and sequence tracks in Tracks.
+  OME-Zarr opens from a URL in Cells.
 
-- **Orientation.** A volume whose file carries it (NIfTI qform/sform, DICOM
-  Image Orientation/Position) is shown in radiological convention — patient
-  right on screen left, anterior up, superior up — with R/L, A/P, S/I at the
-  pane edges. Without it, the image is shown as stored, with no letters and
-  an "orientation unknown" caution.
+What the viewer guarantees about geometry, and what it says on the image when
+it cannot:
+
+- **Orientation.** A volume whose file records its orientation (NIfTI
+  qform/sform, DICOM Image Orientation/Position) is shown in radiological
+  convention: patient right on screen left, anterior up and superior up, with
+  R/L, A/P and S/I at the pane edges. A volume without one is shown as stored,
+  with no letters and an "orientation unknown" caution.
 - **Proportions.** Reformats, the 3D surface and the volume render are drawn
   in millimetres, so thick-slice series are not squashed.
 - **Honesty about stacks.** Non-contiguous slices, a tilted gantry and
-  repeated positions (e.g. DCE phases) are flagged in amber on the viewport:
-  reformats of those are approximate.
+  repeated positions (DCE phases, for example) are flagged in amber on the
+  viewport. Reformats of those stacks are approximate.
 - **Round trips.** An exported mask `.nii` goes back onto the source file's
   grid with its affine, so it overlays the scan in ITK-SNAP, 3D Slicer or
   nibabel.
 
-### Fixtures and what runs without them
+## Run it
 
-`samples/` is ~343MB of vendored imaging, mounted rather than committed
-(`samples/.gitkeep`) — 343MB does not belong in git and the privacy note
-forbids patient data in the repo. A clean clone has none, so **run
-`npm run gen:samples` first**: it writes synthetic phantoms with the repo's
-own writers (a head CT as NIfTI *and* as a 120-slice DICOM series, plus
-OME-Zarr cells and a plate) — enough to drive every route and the 3D
-surface, with no patient data. Then:
-
-- **`npm run ci` / `npm run test:unit`** — suites that need a fixture **skip**,
-  and the run prints the skip count. Green here means green, not "nothing ran":
-  a skip is reported as a skip, never as a pass.
-- **`npm run test:geometry`** — the geometry guarantees above, on the real
-  samples (part of `test:e2e`).
-- **`npm run test:synthetic`** — the e2e legs that need only what
-  `gen:samples` writes (boot, keyboard, DICOM→3D with the CT presets, the
-  worklist's availability). CI runs it on every push after generating the
-  set; it passes the same on the real one.
-- **`npm run verify`** — sets `CARYS_REQUIRE_SAMPLES=1`, which turns a missing
-  fixture into a **failure**. Use it before a release, with samples mounted; a
-  half-populated `samples/` fails loudly instead of quietly thinning coverage.
-- **`npm run samples:check`** (first step of `verify`) — compares `samples/`
-  with `packages/testkit/samples.manifest.json`, which names every file of a
-  complete set with its size and SHA-256, and lists everything missing, short
-  or changed, each with the command or data source that fills it. After
-  changing the set on purpose, `npm run samples:manifest` rewrites it.
-
-`@carys/testkit` is the one place that decides which of the two you get.
-
-## Run (production Docker)
+Requirements: Node 20, npm, and Python 3 for the local static server.
 
 ```bash
-docker build -t carys:latest .
-docker run --rm -p 8080:8080 \
-  -v /path/to/samples:/usr/share/nginx/html/samples:ro \
-  carys:latest
-# open http://localhost:8080/   (302 to the app at /packages/app/dist/)
+npm ci
+npm run build        # compile the packages (the sample generators use them)
+npm run gen:samples  # synthetic volumes into samples/: no patient data
+npm run build:app    # the app bundle, packages/app/dist/
+npm run serve        # the repo root on http://localhost:8000
 ```
 
-Multi-stage image (pinned `node:20` build, `nginx:1.27` serve, non-root
-`nginx` user, healthcheck on `/healthz`). The server listens on **8080**, not
-80: a non-root process cannot bind below 1024 on runtimes that withhold that
-capability. Every path nginx writes is under `/tmp`, so the container also
-runs locked down:
+Open http://localhost:8000/ (it redirects to the app). A fresh clone has no
+imaging. `gen:samples` writes enough to drive every route:
+- a head CT phantom as NIfTI and as a 120-slice DICOM series;
+- OME-Zarr cells;
+- a plate.
+
+Studies that need real public data say so in the worklist.
+
+To run the production container locally:
 
 ```bash
+docker build -t carys .
 docker run --rm -p 8080:8080 --read-only --tmpfs /tmp --cap-drop ALL \
-  -v /path/to/samples:/usr/share/nginx/html/samples:ro carys:latest
+  -v "$PWD/samples:/usr/share/nginx/html/samples:ro" carys
 ```
 
-Samples are never baked in — mount read-only. No GPU, no backend, no secrets
-in the image, and no third-party requests: fonts are bundled, so the app runs
-on an air-gapped network and no page view reaches Google. The image ships the
-React app, `digests/` (Atlas, Learn and the pathogen structures fetch it) and
-nothing else; the legacy static shell (`packages/ui`) is a dev page under
-`npm run serve`.
+Docker deployment, the access gate, the shared-router setup and operations
+are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-`deploy/nginx.conf` is the whole server config: gzip (imaging included), a
-cache policy (hashed assets immutable for a year, `index.html` always
-revalidated, `samples/` private and short-lived), types for `.nii` `.dcm`
-`.nrrd` `.mz3` and zarr metadata, and security headers. The CSP allows
-scripts, styles, fonts and workers from the image's own origin only;
-`connect-src` also allows any `https:` origin (plus `http://localhost` /
-`127.0.0.1`) because the app opens OME-Zarr stores and DICOMweb endpoints the
-user types in. A site that can name its hosts narrows it at start-up:
+## Documentation
 
-```bash
-docker run --rm -p 8080:8080 --read-only --tmpfs /tmp --cap-drop ALL \
-  -e CARYS_CONNECT_SRC="https://pacs.example.org https://*.s3.example.com" carys:latest
-```
+| Document | Contents |
+|---|---|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Packages, the data model, rendering on the CPU, the app shell and how it is served |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | The image, production at carys.casava.space, configuration, access keys, operations |
+| [SECURITY.md](docs/SECURITY.md) | Threat model, CSP and headers, the access gate, container hardening, privacy |
+| [DATA.md](docs/DATA.md) | Data licensing policy, the shipped data sets, the sample set and its manifest |
+| [TESTING.md](docs/TESTING.md) | The gates, CI, unit and browser suites, fixtures |
+| [CODING-STANDARDS.md](docs/CODING-STANDARDS.md) | The rules every change follows, and the checks that enforce them |
+| [THIRD-PARTY.md](docs/THIRD-PARTY.md) | Bundled packages, fonts and ported code, with their licences |
 
-`deploy/start.sh` checks every token (a scheme such as `https:`, or an origin
-with an optional `*.` subdomain, port and path) and refuses to start on
-anything else, so a typo cannot ship a broken policy and a `;` cannot smuggle
-a directive in. Hosts left out are refused by the browser, the Cells
-catalog's IDR stores included. A PACS on plain `http://` elsewhere on the LAN
-goes in the same list — `deploy/nginx.conf` explains the trade.
+## Privacy
 
-The build layer runs `tsc -b`, lint, the unit suites, `typecheck:app` and the
-app build, all without `samples/` (`.dockerignore` drops it). CI builds the
-image on every push, then runs it and points `npm run test:image` at it:
-headers, cache and compression over HTTP, then Chromium boots the app and
-visits every route under the real CSP. The image used to build green and exit
-at start-up, because nothing ever ran it.
+- Files a user opens are read in the browser and never sent anywhere. The
+  only outbound requests go to addresses the user types in: an OME-Zarr store
+  or a DICOMweb endpoint.
+- The app makes no third-party requests of its own. Fonts are bundled, and
+  there are no analytics or trackers.
+- The repository holds no patient data. Its sample volumes are synthetic,
+  and each public data set it ships is listed with its licence in
+  [docs/DATA.md](docs/DATA.md).
+- Do not put patient data into issues, fixtures or commits.
 
-## Production (carys.casava.space)
+## Licence
 
-This host serves Carys at **https://carys.casava.space**, behind the shared
-Caddy router in `/root/caddy-router` (repo `Caddy_Router`), which owns :80,
-:443 and TLS. It's the same arrangement as Thoth:
-
-```bash
-sh deploy/up.sh    # sample set, image, compose up, health + public check
-```
-
-- `deploy/docker-compose.yml` (project `carys`) runs one container,
-  `carys-app-1`, from `carys:prod`. It runs locked down: read-only root,
-  tmpfs `/tmp`, all capabilities dropped, no-new-privileges, one CPU and
-  256 MB. Its only network is `carys_edge`. The router joins that network
-  and proxies `carys.casava.space` to `carys-app-1:8080`, adding HSTS.
-  nginx owns everything else: CSP, cache policy, compression. The loopback
-  port `127.0.0.1:8090` is for host checks.
-- The site is behind an access token, as Thoth is, and the app does the
-  gating, not the router. nginx runs `deploy/gate.js` through njs:
-  - Open `https://carys.casava.space/?token=<key>` once. You get a signed
-    session cookie, checked for signature and expiry, lasting 30 days and
-    renewed on each page load, and are redirected to the same URL without
-    the token.
-  - Scripts send `Authorization: Bearer <key>` instead.
-  - Anything else gets a 401 page with no password prompt. `/healthz` stays
-    public.
-  - The key lives in `deploy/.env` (gitignored, mode 600). `deploy/up.sh`
-    creates it on the first run and never prints it; read it with
-    `cat deploy/.env`. To rotate it, edit the file and rerun `up.sh`: every
-    old session stops working.
-  - Without a key the image is open, which is what local runs and CI use.
-    The production compose file refuses to start without one.
-- The sample set is `/srv/carys/samples` (`CARYS_SAMPLES`), mounted
-  read-only. It holds the synthetic phantoms, generated there with
-  `CARYS_SAMPLES_DIR`, so a real `samples/` is never written over. It also
-  holds the real files whose licence is known to be CC0: the OpenNeuro
-  ds000001 crops and PDB 1CRN, each checked against its hash in the samples
-  manifest before copying. No other real sample is published, because its
-  licence is unverified; the worklist says "needs real data" for those.
-- Redeploy after a change with `sh deploy/up.sh`: it rebuilds the image,
-  which re-runs the gate, and keeps the sample set.
-- Check the live site with the key exported (`set -a; . deploy/.env`):
-  - `CARYS_URL=https://carys.casava.space npm run test:image` checks the
-    gate, headers and types, then every route under the CSP.
-  - `CARYS_URL=https://carys.casava.space npm run test:synthetic` checks
-    boot, keyboard, DICOM→3D and the worklist, logged in with `?token=`.
-- The router side is one site block in `/root/caddy-router/Caddyfile` plus
-  `carys_edge` in its compose networks. If the network is ever deleted,
-  reattach it without restarting the router:
-  `docker network connect carys_edge caddy-router`.
-
-## Privacy note
-
-Default dev model here (`muse-spark-1.3-contributor`) trains on prompts. Prototype with mock / public data (e.g. OpenNeuro, PDB 4HHB, OME-NGFF samples). No patient data, rotate any keys after.
+MIT, © 2026 azzindani ([LICENSE](LICENSE)). Bundled packages, fonts and code
+ported from other projects keep their own licences, listed in
+[docs/THIRD-PARTY.md](docs/THIRD-PARTY.md). Each data set's licence and
+attribution is in [docs/DATA.md](docs/DATA.md) and the `SOURCES.json` beside
+it.

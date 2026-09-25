@@ -1,4 +1,4 @@
-// Does a straight segment cross a surface (H5, docs/PHASES.md)? A uniform
+// Does a straight segment cross a surface? A uniform
 // grid over a mesh's triangles, so a segment tests only the triangles in the
 // cells it passes. The rig's weights use it with the skin: a vertex follows
 // no bone it could reach only through the air outside the body. Pure.

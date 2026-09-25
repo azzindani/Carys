@@ -1,4 +1,4 @@
-// Ported from igv.js track model + jbrowse plugin registry (Phase 2 staged).
+// Ported from igv.js track model + jbrowse plugin registry.
 // igv: TrackBase config + trackFactory map + registerTrackClass +
 // inferFileFormat. jbrowse: TypeRecord registry + Plugin install +
 // TrackType/DisplayType + preprocessTrackConfigSnapshot. No rendering/MST.

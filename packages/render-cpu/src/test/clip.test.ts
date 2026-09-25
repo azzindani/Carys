@@ -9,7 +9,7 @@ import { smoothSurface } from '../thick-slices.js';
 import type { TF } from '../tf.js';
 import { sampleIntensity, sphere, type V3 } from './phantoms.js';
 
-// F13 (docs/PHASES.md): a crop box and a clip plane for both 3D modes.
+// A crop box and a clip plane for both 3D modes.
 
 const hash = (a: Uint8ClampedArray): string => createHash('sha256').update(a).digest('hex').slice(0, 16);
 

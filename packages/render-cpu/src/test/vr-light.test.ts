@@ -5,7 +5,7 @@ import { addPass, renderVolume, type VrOpts, type VrVolume } from '../vr.js';
 import { extinctionGrid, passLight, transmittance, type ExtinctionGrid } from '../vr-light.js';
 import { sortTF, type TF } from '../tf.js';
 
-// F10 (docs/PHASES.md): cinematic lighting, soft shadows and ambient light
+// Cinematic lighting, soft shadows and ambient light
 // accumulated over refinement passes.
 
 function field(dims: [number, number, number], f: (x: number, y: number, z: number) => number): VrVolume {

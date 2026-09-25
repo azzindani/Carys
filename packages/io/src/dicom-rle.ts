@@ -1,4 +1,4 @@
-// DICOM RLE Lossless frame decoder — ported from Daikon src/rle.js (MIT),
+// DICOM RLE Lossless frame decoder — ported from Daikon src/rle.js (BSD-3-Clause),
 // shape trimmed for samplesPerPixel=1 (8-bit: 1 segment, 16-bit: 2 segments).
 // Header: u32 LE segment count + count u32 LE absolute segment offsets inside
 // a 64-byte header; each segment is PackBits rows for one byte-plane. Daikon's

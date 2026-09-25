@@ -1,4 +1,4 @@
-// Ported from Viv types/loaders + Vizarr utils (MIT/Apache-2).
+// Ported from Viv types/loaders + Vizarr utils (both MIT).
 // Steals: PixelSource interface, DTYPE max table, channel stats +
 // contrast math, hex/defaults, tile-size/interleave, 2D fit.
 // Replaces deck.gl/XRLayer compositing with CPU compositeChannelsViv.

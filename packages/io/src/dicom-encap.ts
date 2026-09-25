@@ -1,5 +1,5 @@
 // Encapsulated (compressed) pixel-data framing — item-tag walk ported from
-// Daikon Parser.parseEncapsulated + Image.getJpegs/getRLE (MIT). Layout after
+// Daikon Parser.parseEncapsulated + Image.getJpegs/getRLE (BSD-3-Clause). Layout after
 // the (7FE0,0010) header with undefined length: item (FFFE,E000) + u32 length
 // repeated — first item is the Basic Offset Table, the rest are fragments —
 // closed by a sequence delimiter (FFFE,E0DD). All LE (no BE encapsulated TS).

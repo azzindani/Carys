@@ -1,4 +1,4 @@
-// 3D → 2D picking (F12, docs/PHASES.md): which point of the volume a click
+// 3D → 2D picking: which point of the volume a click
 // on the 3D view lands on. Both picks use their renderer's own frame, so the
 // point is under the pixel that was drawn there.
 //

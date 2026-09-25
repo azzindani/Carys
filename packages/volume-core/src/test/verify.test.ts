@@ -17,13 +17,26 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 describe('verification', () => {
-  it('DIGEST receipts 1-10 present', () => {
-    for (let i = 1; i <= 10; i++) {
-      assert.ok(
-        existsSync(join(ROOT, `docs/DIGEST-GROUP${i}.md`)),
-        `missing docs/DIGEST-GROUP${i}.md`,
-      );
+  it('third-party notices name every project a source header ports from', () => {
+    // A header that says where its code came from ("Ported from X", "Port of
+    // X", "Digest: X", "Studied: X") must find X in the notices the
+    // production image ships with its licence (docs/THIRD-PARTY.md), so a
+    // new port cannot land without its attribution.
+    const path = join(ROOT, 'docs/THIRD-PARTY.md');
+    assert.ok(existsSync(path), 'missing docs/THIRD-PARTY.md');
+    const notices = readFileSync(path, 'utf8').toLowerCase();
+    const missing = new Set<string>();
+    let named = 0;
+    for (const f of walk(join(ROOT, 'packages'))) {
+      if (!/\.tsx?$/.test(f) || f.includes('/test/') || f.includes('/dist/')) continue;
+      for (const m of readFileSync(f, 'utf8').matchAll(/\/\/.*?\b(?:[Pp]orted from|Port of|Digest:|Studied:)[ \t]+([A-Za-z][\w.*-]*)/g)) {
+        const name = m[1]!.replace(/[.,:;]+$/, '').replace(/'s$/, '');
+        named++;
+        if (!notices.includes(name.toLowerCase())) missing.add(`${name} (${f.split('packages/')[1]})`);
+      }
     }
+    assert.ok(named >= 40, `only ${named} provenance headers found: is the pattern still matching?`);
+    assert.deepEqual([...missing], []);
   });
   it('700-line cap holds for every source file (packages/*/src)', () => {
     const over: string[] = [];

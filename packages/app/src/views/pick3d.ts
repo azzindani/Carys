@@ -1,4 +1,4 @@
-// 3D → 2D picking (F12, docs/PHASES.md): a tap on the 3D view moves every
+// 3D → 2D picking: a tap on the 3D view moves every
 // pane to the point under it — the surface's nearest face, or where the
 // volume render turns half opaque (render-cpu/pick.ts), past whatever the
 // clip removed — and the status says what was hit. A surface is hit on its

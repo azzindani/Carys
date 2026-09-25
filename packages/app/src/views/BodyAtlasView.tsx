@@ -1,4 +1,4 @@
-// The whole-body atlas (H2, docs/PHASES.md): BodyParts3D's 2,234 structures
+// The whole-body atlas: BodyParts3D's 2,234 structures
 // and the HRA organs placed among them (H3) by body system on the CPU
 // rasterizer. Systems switch on and off, a drag
 // orbits (a clustered copy at half size while moving, the full mesh

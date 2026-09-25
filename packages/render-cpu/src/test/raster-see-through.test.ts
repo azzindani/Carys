@@ -5,7 +5,7 @@ import { renderMesh, type RasterOpts } from '../raster.js';
 import type { TriMesh } from '../surface.js';
 import { uvSphere } from './phantoms.js';
 
-// H4 (docs/PHASES.md): see-through layers, weighted blended OIT.
+// See-through layers, weighted blended OIT.
 
 const DIMS: [number, number, number] = [40, 40, 40];
 const VIEW: RasterOpts = { width: 72, height: 72, angleY: 0.4, tiltX: 0.2, color: [0, 0, 0] };

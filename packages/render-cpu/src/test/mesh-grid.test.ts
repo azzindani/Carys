@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { TriangleGrid } from '../mesh-grid.js';
 import { uvSphere } from './phantoms.js';
 
-// H5 (docs/PHASES.md): whether a segment crosses a surface.
+// Whether a segment crosses a surface.
 
 describe('triangle grid (H5)', () => {
   it('tells a segment that leaves a closed surface from one that stays inside', () => {

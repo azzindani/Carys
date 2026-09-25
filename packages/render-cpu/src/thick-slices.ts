@@ -1,4 +1,4 @@
-// Surfaces from thick slices (F5, docs/PHASES.md).
+// Surfaces from thick slices.
 //
 // A 5 mm-slice series samples a shape once every 5 mm along z, so any
 // surface built on that grid steps at every slice. Here the gap is filled
@@ -20,7 +20,8 @@
 // intensities carry. Measured (test/thick-slices.test.ts), a 10 mm sphere
 // on 1×1×5 mm: image 0.45 mm / 14.9° of staircase → 0.15 mm / 6.2°, mask
 // 0.59 mm / 17.4° → 0.21 mm / 8.5°. Where a shape is cut by only a few
-// slices its ends stay a guess: see the F5 note in PHASES.md.
+// slices its ends stay a guess (the acceptance test in
+// test/thick-slices.test.ts records the bound this holds on 5 mm data).
 import { meshNeighbours, vertexNormals } from './mesh-smooth.js';
 import { maskNets, surfaceNets } from './surface-nets.js';
 import type { TriMesh } from './surface.js';

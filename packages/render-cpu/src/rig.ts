@@ -1,4 +1,4 @@
-// A rigged skeleton (H5, docs/PHASES.md): segments of rigid bones joined at
+// A rigged skeleton: segments of rigid bones joined at
 // fitted centres, posed by joint angles, the rest of the body skinned to
 // them. Pure, no DOM.
 //

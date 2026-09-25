@@ -7,7 +7,7 @@ import { smoothSurface } from '../thick-slices.js';
 import type { TF } from '../tf.js';
 import { sampleIntensity, sphere, type V3 } from './phantoms.js';
 
-// F12 (docs/PHASES.md): picking lands where the renderers drew.
+// Picking lands where the renderers drew.
 
 const dist = (a: V3, b: V3): number => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 

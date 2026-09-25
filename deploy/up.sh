@@ -76,12 +76,12 @@ curl -fsS -m 3 -o /dev/null "http://127.0.0.1:$PORT/healthz" || { echo "not heal
 echo "healthy on 127.0.0.1:$PORT"
 
 # The router must have joined carys_edge (docker network connect carys_edge
-# caddy-router) and carry the carys.casava.space block; see README.
+# caddy-router) and carry the carys.casava.space block; see docs/DEPLOYMENT.md.
 # /healthz is public; the app itself must refuse a caller with no key.
 if curl -fsS -m 10 -o /dev/null https://carys.casava.space/healthz; then
   code=$(curl -s -m 10 -o /dev/null -w '%{http_code}' https://carys.casava.space/packages/app/dist/)
   [ "$code" = 401 ] || { echo "the public site answered $code without a key, not 401" >&2; exit 1; }
   echo "LIVE: https://carys.casava.space/ (gated: open it once with ?token=<key from deploy/.env>)"
 else
-  echo "up locally, but https://carys.casava.space/healthz does not answer yet: check the router (README, Production)"
+  echo "up locally, but https://carys.casava.space/healthz does not answer yet: check the router (docs/DEPLOYMENT.md)"
 fi

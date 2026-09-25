@@ -43,7 +43,8 @@ export default tseslint.config(
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
 
-      // --- §26: the ledger owns the future, not a comment in the source.
+      // --- §26: deferred work is recorded where it is decided, not as a
+      // marker comment left in the source.
       // Exactly the two terms the standard names, and only as a marker at the
       // start of a comment: 'anywhere' matched a mask diagram drawn in Xs and
       // a sentence that happened to contain the word.

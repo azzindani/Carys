@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { conceptsOfElement, findBodyStructures, installTermTable, validateTermTable, type BodyRow } from '@carys/volume-core';
 
-// H2 (docs/PHASES.md): finding structures of the whole-body digest by name,
+// Finding structures of the whole-body digest by name,
 // FMA id or element, through the K1 PART-OF concepts.
 
 const ROOT = process.cwd();

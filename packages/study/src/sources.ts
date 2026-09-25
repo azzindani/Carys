@@ -1,4 +1,5 @@
-// Digest provenance foundation (BIO-ATLAS-ROADMAP §3 + §5 reuse ledger).
+// Digest provenance: the schemas behind DIGESTS.json and each digest's
+// SOURCES.json (docs/DATA.md).
 // Pure schemas + validators + registry helpers. No DOM, no fetch: digests
 // are vendored bytes + SOURCES.json sidecars the app already holds.
 //
@@ -46,7 +47,7 @@ export interface SourcesFile {
 export type DigestKind = 'digest' | 'reference' | 'tooling' | 'sidecar';
 export type DigestStatus = 'shipped' | 'proposed' | 'blocked';
 
-/** One row of the repo-root registry (BIO-ATLAS-ROADMAP §5 ledger). */
+/** One row of the repo-root registry, DIGESTS.json (docs/DATA.md). */
 export interface DigestRecord {
   id: string;
   kind: DigestKind;

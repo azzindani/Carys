@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { unpackBody, validateBodyIndex, type BodyPart } from '../body-pack.js';
 import { insideMesh, surfaceSamples } from '../organ-fit.js';
 
-// H3 (docs/PHASES.md): the HRA organs digest, as built by
+// The HRA organs digest, as built by
 // scripts/build-body-hra.mjs. The build fits and measures against the HRA
 // sources (not committed); this checks what it recorded and what shipped.
 

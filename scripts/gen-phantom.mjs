@@ -12,8 +12,8 @@
 // The anatomy lives in ./phantom.mjs so both generators emit the same head.
 //
 // Deterministic: a fixed LCG seed, fixed geometry, no timestamps. Rerunning
-// yields byte-identical files. Rung 1 of the fixture ladder
-// (docs/FIXTURE-FOUNDARY.md): hand-rolled bytes, every value intentional.
+// yields byte-identical files: hand-rolled bytes, every value intentional
+// (docs/TESTING.md, fixtures).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';

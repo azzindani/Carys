@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { addPass, renderVolume, type VrOpts, type VrVolume } from '../vr.js';
 import type { TF } from '../tf.js';
 
-// F8 (docs/PHASES.md): opacity corrected for the step, progressive jittered
+// Opacity corrected for the step, progressive jittered
 // refinement, and plain calls unchanged.
 
 /** A field on an nx×ny×nz grid from a function of the voxel centre. */

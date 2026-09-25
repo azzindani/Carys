@@ -1,5 +1,5 @@
 // Visual e2e: serve repo root, screenshot shell states with headless Chromium.
-// Run: npm run test:shots (needs playwright browsers; see test/e2e/README if missing).
+// Run: npm run test:shots (needs Playwright Chromium: npx playwright install chromium).
 // Shots land in test/e2e/shots/ (gitignored) for human + model review.
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';

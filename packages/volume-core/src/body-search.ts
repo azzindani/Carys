@@ -1,4 +1,4 @@
-// Whole-body atlas search (H2, docs/PHASES.md): a query to the BodyParts3D
+// Whole-body atlas search: a query to the BodyParts3D
 // element meshes it names, before any of their system files is fetched.
 // The body digest's index lists every part (element, own FMA concept, name,
 // system); the K1 term table (terms.ts, installed by the app) knows which

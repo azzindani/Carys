@@ -1,4 +1,4 @@
-// Screen-space depth cues (F7, docs/PHASES.md): a post-pass over the
+// Screen-space depth cues: a post-pass over the
 // rasterizer's depth and normal buffers. Ambient occlusion darkens
 // crevices and contact; silhouettes mark where one surface passes in front
 // of another. Orthographic view space: x right, y up, z towards the
