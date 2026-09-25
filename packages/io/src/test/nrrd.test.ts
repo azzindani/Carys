@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { isNrrdLike, makeNrrd, NrrdError, nrrdDetachedName, parseNrrd, parseNrrdDetached, type NrrdDType } from '../nrrd.js';
+import { makeNrrd, NrrdError, nrrdDetachedName, parseNrrd, parseNrrdDetached, type NrrdDType } from '../nrrd.js';
+import { isNrrdLike } from '../sniff.js';
 
 const DIMS: [number, number, number] = [3, 2, 2]; // n = 12
 const seq = (n: number, f: (i: number) => number): number[] => Array.from({ length: n }, (_, i) => f(i));

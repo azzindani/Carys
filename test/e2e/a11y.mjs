@@ -10,9 +10,15 @@
 // Runs without samples/: the imaging fails to load, but the chrome — rails,
 // toolbars, docks, panels, worklist, forms — is what axe inspects, and all of
 // it renders regardless. CI has no fixtures and still gets real coverage.
+//
+// axe cannot press a key or change a media setting, so the gate also tabs
+// through every desktop route (keyboard.mjs: reachable, visible, a focus
+// change at every stop, no trap) and reloads the viewer under
+// prefers-reduced-motion and forced colors (Windows high contrast).
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { launchChromium } from './browser.mjs';
+import { forcedAudit, motionAudit, tabCycle } from './keyboard.mjs';
 
 const require = createRequire(import.meta.url);
 const AXE = require.resolve('axe-core/axe.min.js');
@@ -29,6 +35,9 @@ const server = spawn('python3', ['-m', 'http.server', String(PORT), '--directory
 await new Promise((r) => setTimeout(r, 1500));
 
 const findings = [];
+/** Keyboard and media problems: [where, what]. */
+const kb = [];
+const tabStops = [];
 let browser;
 try {
   browser = await launchChromium();
@@ -61,10 +70,32 @@ try {
       for (const v of violations) {
         findings.push({ where: `${vp.name} #/${route || 'viewer'}`, ...v });
       }
+      if (!vp.touch) {
+        const { problems, stops } = await tabCycle(page);
+        tabStops.push(stops);
+        for (const p of problems) kb.push([`#/${route || 'viewer'}`, p]);
+        if (route === '') {
+          // the motion audit is only meaningful if it sees motion when
+          // motion is allowed: its probe animation must show up here
+          const moving = await motionAudit(page);
+          if (!moving.some((m) => m.startsWith('probe animation'))) kb.push(['#/viewer', `the motion audit sees no motion without reduced motion: ${moving.join('; ') || 'nothing'}`]);
+        }
+      }
       await page.close();
     }
     await ctx.close();
   }
+  const media = await browser.newContext({
+    viewport: { width: VIEWPORTS[0].width, height: VIEWPORTS[0].height },
+    reducedMotion: 'reduce', forcedColors: 'active',
+  });
+  const page = await media.newPage();
+  await page.goto(`${BASE}#/`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+  await page.waitForTimeout(9000);
+  for (const p of await motionAudit(page)) kb.push(['reduced motion', p]);
+  for (const p of await forcedAudit(page)) kb.push(['forced colors', p]);
+  for (const p of (await tabCycle(page, { countShadow: false })).problems) kb.push(['forced colors #/viewer', p]);
+  await media.close();
 } catch (e) {
   console.error('A11Y AUDIT DID NOT RUN:', e.message);
   server.kill();
@@ -74,6 +105,10 @@ try {
 await browser.close();
 server.kill();
 
+if (kb.length > 0) {
+  console.error(`KEYBOARD / MEDIA FAILURES (${kb.length}):`);
+  for (const [where, what] of kb) console.error(`  ${where}: ${what}`);
+}
 if (findings.length > 0) {
   const byRule = new Map();
   for (const f of findings) {
@@ -90,5 +125,7 @@ if (findings.length > 0) {
   }
   process.exit(1);
 }
+if (kb.length > 0) process.exit(1);
+console.log(`KEYBOARD CLEAN — ${tabStops.reduce((a, b) => a + b, 0)} Tab stops over ${tabStops.length} routes, each visible with a focus change; reduced motion and forced colors hold`);
 console.log(`A11Y CLEAN — 0 WCAG 2.1 A/AA violations across ${ROUTES.length} routes x ${VIEWPORTS.length} breakpoints`);
 process.exit(0);

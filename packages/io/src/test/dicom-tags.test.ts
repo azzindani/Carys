@@ -2,9 +2,10 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readDataset } from '../dcm-read.js';
 import {
-  fileMetaToSummary, fmtDicomDate, fmtDicomTime, sopClassName, summarizeDataset,
+  fileMetaToSummary, fmtDicomDate, fmtDicomTime, summarizeDataset,
   type DicomTagSummary,
 } from '../dicom-tags.js';
+import { sopClassName } from '../sop-names.js';
 import { writePart10, type DcmElement } from '../dcm-write.js';
 import type { DicomFileMeta } from '../dicom-parse.js';
 

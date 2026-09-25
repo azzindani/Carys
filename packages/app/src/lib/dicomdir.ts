@@ -5,7 +5,7 @@
 import { parseDicomDir, resolveDicomDirFiles, type DicomDir, type DicomDirSeries } from '@carys/io';
 import { groupDicomStacks, parseDicomFrames, type ParsedDicomSlice } from '@carys/io';
 import { addUploadedSeries } from './catalog';
-import { volumeFromStack } from './loaders';
+import { volumeFromStack } from './formatLoaders';
 import { loadSeries } from './sessionOps';
 import { session } from './session';
 import { setStatus } from './status';

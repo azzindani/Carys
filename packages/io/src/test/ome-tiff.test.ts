@@ -1,8 +1,9 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  isOmeTiffLike, isTiffLike, makeOmeTiff, parseOmeTiff,
+  isOmeTiffLike, makeOmeTiff, parseOmeTiff,
 } from '../ome-tiff.js';
+import { isTiffLike } from '../sniff.js';
 import { lzwDecodeTiff, OmeTiffError } from '../tiff-lzw.js';
 import { JPEG_GRAY_EXPECTED_B64, JPEG_GRAY_JPG, b64ToBytes } from './fixtures-jpeg.js';
 

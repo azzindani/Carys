@@ -7,25 +7,17 @@
 // parses, group it into stacks (io/dicom-stack.ts decides what a stack is),
 // open the largest, and list the rest as series of their own. The catalog's
 // sample sets take the same path, so they can no longer pass five exams off
-// as one volume either.
+// as one volume either. Imported on first use (it parses DICOM); what the
+// boot path needs is heldStacks.ts.
 import { groupDicomStacks, parseDicomFrames, stackLabel, type DicomStack, type ParsedDicomSlice } from '@carys/io';
 import { addUploadedSeries, SERIES } from './catalog';
-import { volumeFromStack } from './loaders';
+import { volumeFromStack } from './formatLoaders';
+import { holdStack } from './heldStacks';
 import { session } from './session';
 import { setStatus } from './status';
 import { toast } from './toasts';
 import { bump } from './version';
 import type { SeriesSpec, Volume } from './types';
-
-/** Upload stacks held by series name: an upload cannot be re-fetched, so a
- *  sibling series builds its volume from here when it is first opened. */
-const held = new Map<string, DicomStack>();
-
-/** Volume of a held upload stack, or null when `name` is not one. */
-export function heldStackVolume(name: string): { vol: Volume; stack: DicomStack } | null {
-  const stack = held.get(name);
-  return stack ? { vol: volumeFromStack(stack), stack } : null;
-}
 
 function siblingName(base: string, k: number, stacks: DicomStack[]): string {
   return `${base} · ${k + 1}/${stacks.length} ${stackLabel(stacks[k]!)}`;
@@ -44,11 +36,6 @@ export function registerSiblingStacks(name: string, spec: SeriesSpec, stacks: Di
     };
   }
   toast(`${name}: these files are ${stacks.length} separate series, not one volume — the others are in the series list`);
-}
-
-/** True when the bytes look like DICOM Part 10 (the "DICM" preamble tag). */
-export function isDicomPart10(head: Uint8Array): boolean {
-  return head.length >= 132 && head[128] === 0x44 && head[129] === 0x49 && head[130] === 0x43 && head[131] === 0x4d;
 }
 
 /**
@@ -78,7 +65,7 @@ export async function openDicomFiles(
   const root = files.length === 1 ? files[0]!.name : `${files.length} files`;
   const names = stacks.map((s, k) => (stacks.length === 1 ? `uploaded: ${root}` : siblingName(`uploaded: ${root}`, k, stacks)));
   stacks.forEach((s, k) => {
-    held.set(names[k]!, s);
+    holdStack(names[k]!, s);
     addUploadedSeries(names[k]!, undefined, { modality: s.meta.modality ?? undefined });
     session.seriesMeta.set(names[k]!, { meta: s.meta, warnings: s.warnings.map((w) => w.message) });
   });

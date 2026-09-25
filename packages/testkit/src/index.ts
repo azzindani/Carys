@@ -13,11 +13,62 @@
 // there and isn't is a failure, which is what CARYS_REQUIRE_SAMPLES turns on
 // for `npm run verify` — otherwise a half-populated samples/ would quietly
 // skip real coverage and still look clean.
-import { existsSync, readdirSync } from 'node:fs';
+//
+// What "complete" means is samples.manifest.json beside this package: every
+// file with its size and SHA-256 (scripts/samples-manifest.mjs checks a disk
+// against it). A required run that finds a gap names the whole missing set,
+// not just the first file a suite happened to open.
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /** The samples root, resolved against the repo root the runner was started from. */
 export const SAMPLES_DIR = join(process.cwd(), 'samples');
+
+/** The checked-in fixture manifest (package root, next to dist/). */
+export const MANIFEST_PATH = fileURLToPath(new URL('../samples.manifest.json', import.meta.url));
+
+export interface SampleEntry {
+  /** Relative to samples/, '/'-separated. */
+  path: string;
+  bytes: number;
+  sha256: string;
+  /** The npm script that writes this file; absent for real data. */
+  gen?: string;
+}
+
+/** The manifest's file list. Throws on a malformed manifest (fail loud). */
+export function sampleManifest(path = MANIFEST_PATH): SampleEntry[] {
+  const doc = JSON.parse(readFileSync(path, 'utf8')) as { files?: unknown };
+  if (!Array.isArray(doc.files)) throw new Error(`${path}: no "files" array`);
+  for (const f of doc.files as SampleEntry[]) {
+    if (typeof f.path !== 'string' || !Number.isInteger(f.bytes) || f.bytes < 0 || !/^[0-9a-f]{64}$/.test(f.sha256 ?? '')) {
+      throw new Error(`${path}: malformed entry ${JSON.stringify(f)}`);
+    }
+  }
+  return doc.files as SampleEntry[];
+}
+
+/** Manifest entries with no file under `root`. */
+export function missingSamples(root = SAMPLES_DIR, entries = sampleManifest()): SampleEntry[] {
+  return entries.filter((f) => !existsSync(join(root, f.path)));
+}
+
+/**
+ * The missing set as a short report: one line per top-level entry (a series
+ * of 120 slices is one line), with what fills it.
+ */
+export function describeMissing(missing: readonly SampleEntry[]): string {
+  const groups = new Map<string, { n: number; gen?: string }>();
+  for (const f of missing) {
+    const top = f.path.includes('/') ? `${f.path.split('/')[0]}/` : f.path;
+    const g = groups.get(top) ?? { n: 0, gen: f.gen };
+    g.n++;
+    groups.set(top, g);
+  }
+  return [...groups].map(([top, g]) =>
+    `samples/${top}${g.n > 1 ? ` (${g.n} files)` : ''}: ${g.gen ? `npm run ${g.gen}` : 'real data, see samples/.gitkeep'}`).join('\n  ');
+}
 
 /** True when the run demands a complete fixture set (npm run verify). */
 export function samplesRequired(): boolean {
@@ -33,7 +84,11 @@ export function sample(rel: string): string | null {
   const path = join(SAMPLES_DIR, rel);
   if (existsSync(path)) return path;
   if (samplesRequired()) {
-    throw new Error(`CARYS_REQUIRE_SAMPLES=1 but samples/${rel} is missing`);
+    const entries = sampleManifest();
+    const missing = missingSamples(SAMPLES_DIR, entries);
+    throw new Error(
+      `CARYS_REQUIRE_SAMPLES=1 but samples/${rel} is missing; ${missing.length} of ${entries.length} manifest files are absent:\n  ${describeMissing(missing)}`,
+    );
   }
   return null;
 }

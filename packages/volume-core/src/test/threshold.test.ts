@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { autoThreshold } from '../threshold.js';
+import { autoThreshold, CT_SURFACE_PRESETS, ctSurfacePresetAt } from '../threshold.js';
 
 /** A head-shaped CT in Hounsfield units: air, soft tissue, cortical bone. */
 function ctHead(n = 4096): Float64Array {
@@ -58,5 +58,20 @@ describe('auto threshold', () => {
     const d = new Float64Array(1000);
     for (let i = 0; i < d.length; i++) d[i] = i < 500 ? 0.25 : 180.5;
     assert.equal(autoThreshold(d).kind, 'otsu');
+  });
+
+  it('CT presets rise skin < soft tissue < bone, and the default is the bone preset', () => {
+    assert.deepEqual(CT_SURFACE_PRESETS.map((p) => p.id), ['skin', 'soft', 'bone']);
+    for (let i = 1; i < CT_SURFACE_PRESETS.length; i++) {
+      assert.ok(CT_SURFACE_PRESETS[i]!.hu > CT_SURFACE_PRESETS[i - 1]!.hu, 'presets must rise');
+    }
+    const t = autoThreshold(ctHead());
+    assert.equal(ctSurfacePresetAt(t.value), 'bone');
+    // every preset is reachable on a head CT's own slider range, and each
+    // one separates two of its tissues: skin air|soft, soft fat|muscle, bone
+    for (const p of CT_SURFACE_PRESETS) assert.ok(p.hu > t.lo && p.hu < t.hi, `${p.id} outside [${t.lo}, ${t.hi}]`);
+    assert.ok(CT_SURFACE_PRESETS[0]!.hu > -1000 && CT_SURFACE_PRESETS[0]!.hu < -100);
+    assert.ok(CT_SURFACE_PRESETS[1]!.hu > 0 && CT_SURFACE_PRESETS[1]!.hu < 100);
+    assert.equal(ctSurfacePresetAt(301), null, 'a dragged threshold is no preset');
   });
 });

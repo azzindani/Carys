@@ -7,6 +7,7 @@
 import { inflateSync, deflateSync } from 'fflate';
 import { lzwDecodeTiff, lzwEncodeTiff, OmeTiffError } from './tiff-lzw.js';
 import { decodeJpegBaseline } from './jpeg-baseline.js';
+import { isTiffLike } from './sniff.js';
 
 export type OmeTiffDType = 'uint8' | 'int8' | 'uint16' | 'int16';
 
@@ -423,16 +424,6 @@ export function parseOmeTiff(buf: ArrayBuffer): { meta: OmeTiffMeta | null; plan
     });
   });
   return { meta, planes };
-}
-
-/** Content sniff: TIFF magic (any OME-TIFF is a TIFF). */
-export function isTiffLike(bytes: Uint8Array): boolean {
-  if (bytes.length < 4) return false;
-  const le = bytes[0] === 0x49 && bytes[1] === 0x49;
-  const be = bytes[0] === 0x4d && bytes[1] === 0x4d;
-  if (!le && !be) return false;
-  const v = le ? bytes[2]! | (bytes[3]! << 8) : (bytes[2]! << 8) | bytes[3]!;
-  return v === 42;
 }
 
 /** OME sniff: TIFF magic + an OME-XML marker in the first 256 KiB. */

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { JSX } from 'react';
 import { addPass, filterTracts, presetTF, renderMesh, TF_PRESETS, type TF, type TFPresetName } from '@carys/render-cpu';
 import {
-  presetRois, tractPresetById, TRACT_PRESETS,
+  CT_SURFACE_PRESETS, ctSurfacePresetAt, presetRois, tractPresetById, TRACT_PRESETS, type CtSurfacePresetId,
 } from '@carys/volume-core';
 import { EDUCATION_BADGE } from '@carys/study';
 import { SERIES } from '../lib/catalog';
@@ -508,6 +508,23 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
           <>
             <SliderRow label="Threshold" min={session.autoThreshold?.lo ?? 0} max={session.autoThreshold?.hi ?? 1000} step={1} value={ui.threshold} onInput={(v) => setUi({ threshold: v })} onCommit={() => { session.meshPinned = null; bump(); }} />
             <Chip><span id="tval">{ui.threshold}</span></Chip>
+            {session.autoThreshold?.kind === 'hounsfield' && (
+              // skin / soft tissue / bone without dragging across 2200 HU;
+              // a dragged threshold presses none of them
+              <div className="grp">
+                <span className="lbl">CT</span>
+                <Seg<CtSurfacePresetId | 'custom'>
+                  id="ctpreset" dataKey="ct" ariaLabel="CT surface preset"
+                  value={ctSurfacePresetAt(ui.threshold) ?? 'custom'}
+                  onChange={(v) => {
+                    // 'custom' is never an option, so v is always a preset
+                    const p = CT_SURFACE_PRESETS.find((q) => q.id === v)!;
+                    setUi({ threshold: p.hu }); session.meshPinned = null; bump();
+                  }}
+                  options={CT_SURFACE_PRESETS.map((p) => ({ value: p.id, label: p.label, title: `${p.label}: cut at ${p.hu} HU` }))}
+                />
+              </div>
+            )}
             <div className="grp">
               <span className="lbl">Surface</span>
               <Seg<Method>

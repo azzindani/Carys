@@ -42,12 +42,6 @@ const TYPE_MAP: Record<string, { dtype: NrrdDType; bpe: number }> = {
   'double': { dtype: 'float64', bpe: 8 },
 };
 
-/** Content sniff: NRRD magic line (any 0001-0005 version). */
-export function isNrrdLike(bytes: Uint8Array): boolean {
-  if (bytes.length < 8) return false;
-  return /^NRRD000[1-5]/.test(new TextDecoder().decode(bytes.slice(0, 8)));
-}
-
 function splitHeader(bytes: Uint8Array, allowEofHeader = false): { fields: Map<string, string>; dataOffset: number } {
   // Byte-level line scan (binary-safe: data may contain \n\n itself).
   const lines: string[] = [];

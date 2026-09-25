@@ -26,6 +26,27 @@ export interface ThresholdSuggestion {
 /** Bone. The conventional cut for a CT surface render, and what a radiologist
  *  means by "3D reconstruction" of a head or a skeleton. */
 const BONE_HU = 300;
+/** Skin: the air/soft-tissue boundary. Halfway between air (-1000) and fat
+ *  (~-100), so partial-volume voxels at the surface fall on the right side. */
+const SKIN_HU = -300;
+/** Soft tissue: above fat and water, below enhanced vessels and bone, so the
+ *  cut leaves muscle and organs and drops the fat between them. */
+const SOFT_TISSUE_HU = 50;
+
+export type CtSurfacePresetId = 'skin' | 'soft' | 'bone';
+
+/** The three cuts a reader wants on a CT surface, in rising order; bone is
+ *  also autoThreshold's Hounsfield default, so the default is a preset. */
+export const CT_SURFACE_PRESETS: readonly { id: CtSurfacePresetId; label: string; hu: number }[] = [
+  { id: 'skin', label: 'Skin', hu: SKIN_HU },
+  { id: 'soft', label: 'Soft tissue', hu: SOFT_TISSUE_HU },
+  { id: 'bone', label: 'Bone', hu: BONE_HU },
+];
+
+/** The preset a threshold sits on, or null after a drag off every preset. */
+export function ctSurfacePresetAt(threshold: number): CtSurfacePresetId | null {
+  return CT_SURFACE_PRESETS.find((p) => p.hu === threshold)?.id ?? null;
+}
 /** Below this the volume carries air, so the scale is Hounsfield, not stored. */
 const AIR_HU = -500;
 /** A label map: small non-negative integers and nothing else. */

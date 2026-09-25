@@ -73,6 +73,9 @@ export interface SeriesSpec {
   stackIndex?: number;
   /** PACS-pulled series: resolved on demand via DICOMweb. */
   remote?: { endpoint: string; studyUID: string; seriesUID: string };
+  /** The npm script that writes a synthetic stand-in for this entry's files
+   *  (samples/ is never committed). Absent: only real data opens it. */
+  gen?: 'gen:phantom' | 'gen:ct';
 }
 
 export type ProjMode = 'slice' | 'mip' | 'minip' | 'mean';

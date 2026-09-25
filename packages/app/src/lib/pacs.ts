@@ -1,7 +1,8 @@
 import { DicomWebClient } from '@carys/dicomweb';
 import { groupDicomStacks, parseDicomFrames, type ParsedDicomSlice } from '@carys/io';
 import { SERIES } from './catalog';
-import { loadDicomSeries, loadNii, volumeFromStack } from './loaders';
+import { loadDicomSeries, volumeFromStack } from './formatLoaders';
+import { loadNii } from './loaders';
 import { session } from './session';
 import type { Volume } from './types';
 

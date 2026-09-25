@@ -686,9 +686,15 @@ Not a feature lane — the spine that the other lanes are checked against.
   not committed. Owner: whoever owns fixture hosting. Unblock: publish a
   small licensed fixture pack (or a generator covering the wire/journey
   paths) that CI can fetch, then add an e2e job.
-- OPEN — **`samples/` has no manifest.** `CARYS_REQUIRE_SAMPLES=1` fails on
-  the first missing file rather than listing the expected set. Unblock: a
-  checked-in fixture manifest (name + size + hash) that testkit reads.
+- DONE — **`samples/` has a manifest.** `packages/testkit/samples.manifest.json`
+  names the 206 files of a complete set (366.5 MB) with size and SHA-256, and
+  for the 155 synthetic ones the npm script that writes them. `npm run
+  samples:check` (the first step of `verify`) lists what is missing, short or
+  changed, one line per top-level entry with what fills it; on a 7-file set it
+  reported "199 of 206 files missing" in 56 lines, a truncated `tiny.ome.tif`
+  and a stray file. Under `CARYS_REQUIRE_SAMPLES=1`, `sample()` throws with
+  the whole missing set instead of the first name. A unit test holds the
+  manifest to every fixture a suite asks for by name.
 
 ## Accessibility (2026-09-22)
 
@@ -710,13 +716,31 @@ Not a feature lane — the spine that the other lanes are checked against.
   pinned to the Playwright version, which is why `audit:mobile` had become
   un-runnable in sandboxes carrying a different revision. `CARYS_CHROMIUM`
   overrides the executable; unset, nothing changes.
-- OPEN — **Keyboard navigation is unaudited.** axe checks roles and contrast,
-  not whether a keyboard can reach and drive the viewport, the docks and the
-  deck. Unblock: a wire leg that tabs through each route asserting focus
-  order and a visible focus ring, then a `:focus-visible` pass.
-- OPEN — **No reduced-motion or forced-colors handling.** Unblock: honour
-  `prefers-reduced-motion` for the pulse/shimmer animations and test the
-  Windows high-contrast path.
+- DONE — **Keyboard navigation is audited** (`test/e2e/keyboard.mjs`, run by
+  `audit:a11y`, so in CI). Tab goes round every desktop route: 375 stops over
+  8 routes, each on screen, outside aria-hidden/inert and with a visible focus
+  change (outline, border, background, colour or shadow on the element, its
+  parents, or the sibling an opacity-0 switch input draws on); no positive
+  tabindex, no fall to `<body>`, no trap. The `:focus-visible` pass found
+  nothing to fix. Its one finding was the audit's own: a border that fades
+  in over 110 ms reads as the resting style on the first frame, so
+  transitions are finished before each read. Proven to fail: `outline: none`
+  on `:focus-visible` gave 331 findings. Wire leg 44: Tab alone reaches the
+  axial slice control (88 stops) and ArrowUp moves the slice.
+- DONE — **Reduced motion and forced colors.** The reduced-motion rule in
+  base.css was already there, but nothing tested it. Under emulated `reduce`,
+  nothing animates for longer than 1 ms or loops, including a probe
+  animation injected to prove the rule reaches any element (without the rule:
+  the status pulse, 2.2 s × infinite). Forced colors (Windows high contrast)
+  was broken: the palette swap maps backgrounds to Canvas and drops
+  box-shadow, so 9 segmented controls on the viewer showed pressed and
+  resting alike, a checked switch looked unchecked, and 5 switches lost
+  their focus ring. A forced-colors block in components.css (system colours,
+  as `--fc-*` tokens) gives each a cue the palette cannot erase; the scrub
+  field's value becomes a Highlight bar under its label. The audit compares
+  the colour that shows (the first opaque background up the tree), because
+  Chrome keeps the author's alpha, and a transparent button and an opaque
+  one both paint Canvas.
 
 ## 3D from DICOM (2026-09-22)
 
@@ -743,14 +767,17 @@ defaults conspired to make DICOM look unsupported.
   with RescaleIntercept -1024; the round trip back through `parseDicomSlice`
   returns -1000…1200 HU exactly. A fresh clone can now demonstrate the DICOM
   lane end to end without any patient data.
-- OPEN — **No wire leg for the DICOM→3D journey.** The unit test pins the
-  threshold maths and the path was verified by hand in a real browser, but
-  §19 wants a leg. Unblock: add one to `test/e2e/wire.mjs` that opens
-  `ct-head-dicom` and asserts the tri count chip is non-zero.
-- OPEN — **CT surface presets.** Bone is the right default, but skin (~-300
-  HU) and soft tissue (~50 HU) are the other two cuts a reader wants, and
-  reaching them means dragging a slider across 2200 units. Unblock: a preset
-  trio in the 3D dock driven by the same Hounsfield constants.
+- DONE — **Wire leg 43, DICOM→3D.** `ct-head-dicom` (`npm run gen:ct`) opens
+  through the DICOM lane. The 3D source falls to the image, the Hounsfield
+  cut presses the bone preset and extracts 242,616 tris, and the skin
+  preset extracts 136,892 at -300 HU. Those are the NIfTI phantom's counts
+  (above), so the DICOM lane builds the same volume.
+- DONE — **CT surface presets.** `CT_SURFACE_PRESETS` in volume-core
+  (skin -300, soft tissue 50, bone 300 HU; bone is autoThreshold's
+  Hounsfield default, so the default is a preset) drive a CT segment in the
+  3D dock, shown only when the volume reads as Hounsfield. A dragged
+  threshold presses none of them. A unit test checks the order and that each
+  preset sits inside a head CT's range.
 
 ## First run on a clean clone (2026-09-22)
 
@@ -769,11 +796,15 @@ defaults conspired to make DICOM look unsupported.
 - DONE — **`samples/.gitkeep` says what is expected**, not just where to put
   it: the two ways to fill the directory, the size, and that `npm run verify`
   needs the real set rather than the phantoms.
-- OPEN — **Catalog entries with no generator still 404** (lung_ct, cardiac,
-  prostate_mri and the other vendored series). They now fail with an
-  actionable message instead of a parser error, but the worklist still lists
-  13 studies when only some can open. Unblock: mark catalog entries that need
-  real data and show it in the worklist, or generate phantoms for them too.
+- DONE — **The worklist says which studies can open.** `SeriesSpec.gen`
+  marks the four entries a generator fills (`gen:phantom` ×3, `gen:ct`). The
+  worklist sends one HEAD per entry (`lib/sampleAvailability.ts`); its title
+  reads "N of 21 can open here", and a missing row carries a chip with
+  `npm run gen:…` or "needs real data". Checked against a server with an
+  empty `samples/`: "0 of 21", 4 generator chips and 17 real-data chips; with
+  only `ct-head-series/`, "1 of 21". The same run caught missing rows
+  showing "335 B", the size of the server's 404 page; a size is now taken
+  only from a 2xx.
 
 ## Production serving (2026-09-23)
 
@@ -801,13 +832,28 @@ defaults conspired to make DICOM look unsupported.
   Radix have their own. Entry 722.30 kB → 296.00 kB (gzip 237.28 → 100.53);
   everything fetched at boot 722.30 → 564.59 kB (gzip 237.28 → 187.31).
   Both build warnings (the 500 kB chunk, the mixed `@carys/io` import) gone.
-- OPEN — **`connect-src` allows any https origin**, because the PACS and zarr
-  hosts a user types in are unknowable at build time. Owner: whoever deploys
-  to a site. Unblock: a per-site origin list (an env var rendered into the
-  config at start-up) once a deployment can name its hosts.
-- OPEN — **The entry is mostly the parsers the viewer boots with**
-  (`@carys/io` alone is ~190 kB before minification). Owner: the imaging
-  lane (`lib/loaders`). Unblock: import format decoders on first use.
+- DONE — **A per-site `connect-src`.** `deploy/start.sh` (the image's CMD)
+  renders `CARYS_CONNECT_SRC` into a `/tmp` include that nginx.conf reads,
+  then execs nginx; unset, the header is unchanged. Every token must be a
+  scheme or an origin (optional `*.`, port, path), or the container exits 64
+  before serving. Run locally on the pinned nginx image, locked down
+  (`--read-only --tmpfs /tmp --cap-drop ALL`): the default header came out
+  byte-for-byte as before, a three-origin list came out exact, and
+  `https://x;script-src` stopped the start. CI runs the same two cases on
+  the built image, and `test:image` asserts the default. Which hosts a site
+  lists is still the deployer's call.
+- DONE — **Format decoders load on first use.** Entry 359.7 → 268.5 kB
+  (gzip 95.1 kB), with `@carys/io`'s share 83.8 → 9.8 kB (NIfTI, the
+  sniffers, SOP names). DICOM, NRRD, OME-TIFF, SEG/RTSTRUCT and the PACS
+  client moved to `lib/formatLoaders.ts` and modules reached only through
+  `import()`. Moving the calls was not enough: rollup assigns chunks by
+  module, so the `SEG_SOP_CLASS` constant kept all of `seg.ts` (and through
+  it the dataset parser and every JPEG decoder) in the entry, and `isTiffLike`
+  kept all of `ome-tiff.ts`. The sniffers and name tables now live in io
+  modules with no imports (`sniff.ts`, `sop-names.ts`, `us-names.ts`).
+  `npm run check:entry` (in `ci`) fails on a 300 kB budget or on a decoder's
+  string literal in the built entry; proven to fail on a planted SEG
+  literal.
 
 ## Clinical geometry on the real samples (2026-09-23)
 

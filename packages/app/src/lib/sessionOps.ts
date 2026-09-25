@@ -3,20 +3,16 @@ import {
   keepLargest, open, regionGrow, smoothMask, splatFramePoint, strokeFrameLine, watershedSplit,
 } from '@carys/editor-seg';
 import {
-  fileMetaToSummary, isNrrdLike, nrrdDetachedName,
-  readDataset, RTSTRUCT_SOP_CLASS, SEG_SOP_CLASS,
-  writeNifti1, type DicomFileMeta,
+  isNrrdLike, RTSTRUCT_SOP_CLASS, SEG_SOP_CLASS, writeNifti1, type DicomFileMeta,
 } from '@carys/io';
-import { uploadDicomFile } from './dicomUpload';
-import { importDicomSeg } from './segImport';
 import { fillBetweenSlices, fitMeshToBox, fitPointsToBox, isGiftiLike, isMz3Like, isStlLike, isTckLike, isTrkLike, isTrxLike, parseGifti, parseMz3, parseStl, parseTck, parseTrk, parseTrx, type SliceFill } from '@carys/render-cpu';
 import { autoThreshold, histogram, PRESETS } from '@carys/volume-core';
 import { DEFAULT_HANGING, HANGING_RULES, hangingProtocol } from '@carys/study';
 import { addUploadedSeries, SERIES } from './catalog';
 import { idle, session } from './session';
-import { autoWindow, fileWindow, loadDicomSeries, loadNiiRaw, loadNrrdDetached, volumeFromNifti } from './loaders';
+import { autoWindow, fileWindow, loadNiiRaw, volumeFromNifti } from './loaders';
 import { alongside, toSourceOrder } from './orient';
-import { heldStackVolume, isDicomPart10, openDicomFiles, registerSiblingStacks } from './dicomSets';
+import { heldStack, isDicomPart10 } from './heldStacks';
 import { loadVolumeUrl, parseUpload } from './parseClient';
 import { readFrame } from '@carys/io';
 import { paintBus } from './paintBus';
@@ -71,6 +67,8 @@ export async function loadSeries(name: string, uploadedVol?: Volume): Promise<Sl
       session.timeNt = raw.hdr.nt;
       img = volumeFromNifti(raw.hdr, readFrame(raw.hdr, raw.buf, 0));
     } else if (!uploadedVol && !cached && spec.dicom) {
+      // DICOM decoders load with the first DICOM series, not with the viewer
+      const { loadDicomSeries } = await import('./formatLoaders');
       const loaded = await loadDicomSeries(spec.dicom, { signal, pick: spec.stackIndex });
       if (signal.aborted) return null;
       img = loaded.vol;
@@ -79,10 +77,11 @@ export async function loadSeries(name: string, uploadedVol?: Volume): Promise<Sl
       session.seriesMeta.set(name, { meta: dicomMeta, warnings: session.stackWarnings });
       // Files that turned out to be several series open as several series.
       if (spec.stackIndex == null && loaded.stacks.length > 1) {
-        registerSiblingStacks(name, spec, loaded.stacks);
+        (await import('./dicomSets')).registerSiblingStacks(name, spec, loaded.stacks);
       }
     } else {
-      img = uploadedVol ?? cached ?? heldStackVolume(name)?.vol ?? await loadVolumeUrl(spec.img![0], { signal });
+      const held = uploadedVol || cached ? null : heldStack(name);
+      img = uploadedVol ?? cached ?? (held ? (await import('./formatLoaders')).volumeFromStack(held) : await loadVolumeUrl(spec.img![0], { signal }));
       // A revisit (cache) or an upload arrives without its file identity;
       // the meta recorded when its files were read rides along instead.
       const known = session.seriesMeta.get(name);
@@ -136,7 +135,7 @@ export async function loadSeries(name: string, uploadedVol?: Volume): Promise<Sl
     }
     if (session.rawNii) note += ` · 4D cine (${session.timeNt} frames, mask overlays current frame)`;
     session.seriesNote = note;
-    if (dicomMeta) session.dcmMeta = fileMetaToSummary(dicomMeta, dicomMeta.sopClassUID);
+    if (dicomMeta) session.dcmMeta = (await import('./ioLazy')).fileMetaToSummary(dicomMeta, dicomMeta.sopClassUID);
     session.seg = { dims: img.dims, data: session.editMask };
     undo.clear();
     undo.push(session.editMask);
@@ -360,13 +359,14 @@ async function routeVolumeFiles(files: File[]): Promise<void> {
     if (/\.dcm$/i.test(f.name) || isDicomPart10(new Uint8Array(await f.slice(0, 132).arrayBuffer()))) dicom.push(f);
   }
   if (dicom.length > 1) {
+    const { openDicomFiles } = await import('./dicomSets');
     await openDicomFiles(dicom, async (name, vol) => {
       const init = await loadSeries(name, vol);
       if (init) session.pendingSliceInit = init;
     });
     return;
   }
-  if (dicom.length === 1) { await uploadDicomFile(dicom[0]!); return; }
+  if (dicom.length === 1) { await (await import('./dicomUpload')).uploadDicomFile(dicom[0]!); return; }
   await uploadNiiFile(files[0]!);
 }
 
@@ -377,10 +377,10 @@ export async function uploadNiiFile(f: File): Promise<void> {
     // arrive without one. SEG/RTSTRUCT win on SOP UID, else NIfTI.
     let sop: string | null = null;
     try {
-      sop = readDataset(buf.slice(0)).text('00080016');
+      sop = (await import('./ioLazy')).readDataset(buf.slice(0)).text('00080016');
     } catch { /* not a dataset: fall through to NIfTI */ }
     if (sop === SEG_SOP_CLASS || sop === RTSTRUCT_SOP_CLASS) {
-      await importDicomSeg(buf, f.name);
+      await (await import('./segImport')).importDicomSeg(buf, f.name);
       return;
     }
     // uploads decode in the parse worker (main-thread fallback inside)
@@ -416,6 +416,7 @@ export async function uploadNrrdPair(files: File[]): Promise<void> {
     if (heads.length > 1) throw new Error(`ambiguous headers: ${heads.map((f) => f.name).join(', ')}`);
     const h = heads[0]!;
     const headerBuf = await h.arrayBuffer();
+    const { nrrdDetachedName } = await import('./ioLazy');
     let want: string | null = null;
     try {
       want = nrrdDetachedName(headerBuf.slice(0));
@@ -425,7 +426,7 @@ export async function uploadNrrdPair(files: File[]): Promise<void> {
     const dataFile = others.find((f) => f.name === want)
       ?? (others.length === 1 ? others[0]! : undefined);
     if (!dataFile) throw new Error(`${h.name} wants "${want}" — select it alongside the header`);
-    const v = loadNrrdDetached(headerBuf, new Uint8Array(await dataFile.arrayBuffer()));
+    const v = (await import('./formatLoaders')).loadNrrdDetached(headerBuf, new Uint8Array(await dataFile.arrayBuffer()));
     const name = `uploaded: ${h.name} + ${dataFile.name}`;
     addUploadedSeries(name);
     const init = await loadSeries(name, v);

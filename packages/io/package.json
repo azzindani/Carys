@@ -4,6 +4,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "dependencies": {
     "fflate": "^0.8.2"
   }

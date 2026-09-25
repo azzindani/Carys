@@ -295,3 +295,6 @@
 .wl-tabs { margin-left: auto; }
 .wl-search-sm { width: 220px; }
 .pacs { padding-bottom: var(--sp-7); }
+/* A catalog entry whose files this server does not have: the chip names what
+   fills it (lib/sampleAvailability.ts), in the caution colour. */
+.chip.wl-missing { color: var(--color-warn); border-color: var(--color-warn); }

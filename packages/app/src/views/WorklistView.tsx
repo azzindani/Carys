@@ -21,6 +21,7 @@ import { SERIES } from '../lib/catalog';
 import { openDicomDirSeries, parseDicomDirFile } from '../lib/dicomdir';
 import { autoWindow } from '../lib/loaders';
 import { resolveVolume } from '../lib/pacs';
+import { missingHint, probeSamples } from '../lib/sampleAvailability';
 import { setStatus } from '../lib/status';
 import { toast } from '../lib/toasts';
 import { Chip, DarkSelect, Seg } from '../ui/primitives';
@@ -48,6 +49,16 @@ export function WorklistView({ onOpen }: { onOpen: (key: string) => void }): JSX
   const [source, setSource] = useState<WorklistQuery['source']>('all');
   const [sort, setSort] = useState<WorklistQuery['sort']>('name');
   const [tab, setTab] = useState<'local' | 'pacs'>('local');
+  // Which entries this server can open: null until every probe answers.
+  const [avail, setAvail] = useState<Map<string, boolean> | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    probeSamples(SERIES, ctrl.signal).then(setAvail, (e: Error) => {
+      if (e.name !== 'AbortError') setStatus(`sample probe failed: ${e.message}`, 'error');
+    });
+    return () => ctrl.abort();
+  }, [records.length]);
+  const openable = avail ? [...avail.values()].filter(Boolean).length : null;
 
   // Fetch cheap identity: first DICOM slice meta per DICOM row (parallel).
   useEffect(() => {
@@ -145,7 +156,12 @@ export function WorklistView({ onOpen }: { onOpen: (key: string) => void }): JSX
     <section className="worklist" data-page={PAGE}>
       <div className="view-title">
         <h1>Studies</h1>
-        <p>{rows.length} of {records.length} series — search, filter, open, anonymize</p>
+        <p>
+          {rows.length} of {records.length} series — search, filter, open, anonymize
+          {openable !== null && (
+            <> · <span id="wl-avail" title="Series whose files this server has; the rest say what fills them">{openable} of {avail!.size} can open here</span></>
+          )}
+        </p>
         <span className="wl-tabs">
           <Seg ariaLabel="Study source" value={tab} onChange={setTab} options={[
             { value: 'local', label: 'Local' }, { value: 'pacs', label: 'PACS' },
@@ -222,7 +238,7 @@ export function WorklistView({ onOpen }: { onOpen: (key: string) => void }): JSX
       <QcSection />
       <div className="wl-rows">
         {rows.map((r) => (
-          <WorklistRow key={r.key} record={r} onOpen={() => onOpen(r.key)} onStats={(patch) =>
+          <WorklistRow key={r.key} record={r} available={avail?.get(r.key)} onOpen={() => onOpen(r.key)} onStats={(patch) =>
             setRecords((all) => all.map((x) => (x.key === r.key ? { ...x, ...patch } : x)))} />
         ))}
         {rows.length === 0 && <div className="wl-empty">No series match. Clear the search or filters.</div>}
@@ -435,8 +451,8 @@ function ReadButtons({ rowKey }: { rowKey: string }): JSX.Element {
   );
 }
 
-function WorklistRow({ record: r, onOpen, onStats }: {
-  record: StudyRecord; onOpen: () => void; onStats: (patch: Partial<StudyRecord>) => void;
+function WorklistRow({ record: r, available, onOpen, onStats }: {
+  record: StudyRecord; available: boolean | undefined; onOpen: () => void; onStats: (patch: Partial<StudyRecord>) => void;
 }): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rowRef = useRef<HTMLElement>(null);
@@ -473,7 +489,8 @@ function WorklistRow({ record: r, onOpen, onStats }: {
           try {
             const head = await fetch(firstFile, { method: 'HEAD', signal });
             const len = Number(head.headers.get('content-length'));
-            if (!cancelled && Number.isFinite(len) && len > 0) onStats({ bytes: len });
+            // a 404 page has a length too: it is not the series' size
+            if (!cancelled && head.ok && Number.isFinite(len) && len > 0) onStats({ bytes: len });
           } catch { /* size stays unknown */ }
         }
         const vol = await resolveVolume(r.key, signal);
@@ -528,6 +545,10 @@ function WorklistRow({ record: r, onOpen, onStats }: {
           <Chip>{r.source}</Chip>
           {r.hasSeg && <Chip>seg</Chip>}
           {r.anonymized && <Chip>anonymized</Chip>}
+          {available === false && SERIES[r.key] && (() => {
+            const hint = missingHint(SERIES[r.key]!);
+            return <Chip className="wl-missing" title={hint.title}>{hint.label}</Chip>;
+          })()}
         </div>
         <div className="wl-meta">
           <span>{r.patientName ?? 'no identity'} · {r.patientID ?? '—'}</span>

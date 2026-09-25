@@ -4,8 +4,8 @@
 // 1-bit frames, MSB first, rows byte-padded.
 import { readDataset, type Dataset } from './dcm-read.js';
 import { makeUID, writePart10, type DcmElement, type DcmItem } from './dcm-write.js';
+import { SEG_SOP_CLASS } from './sniff.js';
 
-export const SEG_SOP_CLASS = '1.2.840.10008.5.1.4.1.1.66.4';
 
 export interface SegSegment {
   number: number; // 1-based

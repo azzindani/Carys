@@ -2,7 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { writePart10 } from '../dcm-write.js';
 import { parseDicomFrames } from '../dicom-parse.js';
-import { fileMetaToSummary, sopClassName, summarizeDataset } from '../dicom-tags.js';
+import { fileMetaToSummary, summarizeDataset } from '../dicom-tags.js';
+import { sopClassName } from '../sop-names.js';
 import { readDataset } from '../dcm-read.js';
 import {
   BTO_SOP_CLASS, BREAST_PROJ_PRESENTATION_SOP_CLASS, BREAST_PROJ_PROCESSING_SOP_CLASS,

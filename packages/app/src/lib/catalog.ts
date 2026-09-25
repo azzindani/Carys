@@ -3,12 +3,16 @@ import type { SeriesSpec } from './types';
 export type { SeriesSpec };
 
 // NOTE: liver_33 naming is swapped upstream (img=labels, seg=CT).
+// `gen` names the script that writes a stand-in for an entry's files (the
+// phantoms reuse the real names, so `npm run gen:phantom` must not run over
+// a real set); entries without one open only on real data, and the worklist
+// says so (lib/sampleAvailability.ts).
 export const SERIES: Record<string, SeriesSpec> = {
   'brats-flair-seg': {
     img: ['/samples/brain_tumor_BraTS19_CBICA_AQN_1_flair.nii'],
     seg: ['/samples/brain_tumor_BraTS19_CBICA_AQN_1_seg.nii'],
     modality: 'MR', bodyPart: 'brain flair tumor',
-    axialFrac: 0.72, color: [230, 80, 80],
+    axialFrac: 0.72, color: [230, 80, 80], gen: 'gen:phantom',
   },
   'liver-ct-seg': {
     img: ['/samples/liver_33_seg.nii'], seg: ['/samples/liver_33_img.nii'], color: [90, 200, 120],
@@ -29,11 +33,11 @@ export const SERIES: Record<string, SeriesSpec> = {
   'skull-seg': {
     img: ['/samples/skull_case_0001_img.nii'],
     seg: ['/samples/skull_case_0001_seg.nii'], color: [225, 215, 200],
-    modality: 'CT', bodyPart: 'skull',
+    modality: 'CT', bodyPart: 'skull', gen: 'gen:phantom',
   },
   'skull-ct-bone': {
     img: ['/samples/skull_case_0001_img.nii'], color: [225, 215, 200], threshold3d: 250,
-    modality: 'CT', bodyPart: 'skull bone',
+    modality: 'CT', bodyPart: 'skull bone', gen: 'gen:phantom',
   },
   // D1 OpenNeuro ds000001 (CC0, Balloon Analog Risk-taking Task, sub-01):
   // center-cut teaching crops — T1 64³ + BOLD f0 64×64×33. World coords
@@ -52,7 +56,7 @@ export const SERIES: Record<string, SeriesSpec> = {
   // format-agnostic. Synthetic — no patient data (README privacy note).
   'ct-head-dicom': {
     dicom: Array.from({ length: 120 }, (_, i) => `/samples/ct-head-series/ct-head-${String(i).padStart(3, '0')}.dcm`),
-    color: [225, 215, 200], modality: 'CT', bodyPart: 'head (synthetic phantom)', axialFrac: 0.5,
+    color: [225, 215, 200], modality: 'CT', bodyPart: 'head (synthetic phantom)', axialFrac: 0.5, gen: 'gen:ct',
   },
   // The DICOM sample sets are picks, not whole series: single images lifted
   // from several exams. They load through the same grouping as a user's

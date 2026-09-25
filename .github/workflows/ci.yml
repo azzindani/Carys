@@ -111,6 +111,21 @@ jobs:
         env:
           CARYS_URL: http://127.0.0.1:8080
 
+      # CARYS_CONNECT_SRC (deploy/start.sh): a site's own origin list replaces
+      # the default connect-src, and a value that is not an origin list — here
+      # one smuggling a directive in after `;` — stops the container at start.
+      - name: Per-site connect-src
+        run: |
+          docker run -d --name carys-site -p 8081:8080 --read-only --tmpfs /tmp --cap-drop ALL \
+            -e CARYS_CONNECT_SRC="https://pacs.example.org https://*.s3.example.com" carys:ci
+          curl -fsS --retry 10 --retry-delay 1 --retry-all-errors -D - -o /dev/null http://127.0.0.1:8081/healthz \
+            | grep -i '^content-security-policy:' \
+            | grep -F "connect-src 'self' https://pacs.example.org https://*.s3.example.com;"
+          if docker run --rm --read-only --tmpfs /tmp --cap-drop ALL -e CARYS_CONNECT_SRC='https://x;script-src *' carys:ci; then
+            echo 'a connect-src value carrying ";" started the container' >&2
+            exit 1
+          fi
+
       - name: Container log
         if: always()
         run: docker logs carys 2>&1 | tail -50

@@ -107,6 +107,11 @@ surface, with no patient data. Then:
 - **`npm run verify`** — sets `CARYS_REQUIRE_SAMPLES=1`, which turns a missing
   fixture into a **failure**. Use it before a release, with samples mounted; a
   half-populated `samples/` fails loudly instead of quietly thinning coverage.
+- **`npm run samples:check`** (first step of `verify`) — compares `samples/`
+  with `packages/testkit/samples.manifest.json`, which names every file of a
+  complete set with its size and SHA-256, and lists everything missing, short
+  or changed, each with the command or data source that fills it. After
+  changing the set on purpose, `npm run samples:manifest` rewrites it.
 
 `@carys/testkit` is the one place that decides which of the two you get.
 
@@ -145,8 +150,19 @@ revalidated, `samples/` private and short-lived), types for `.nii` `.dcm`
 scripts, styles, fonts and workers from the image's own origin only;
 `connect-src` also allows any `https:` origin (plus `http://localhost` /
 `127.0.0.1`) because the app opens OME-Zarr stores and DICOMweb endpoints the
-user types in. A PACS on plain `http://` elsewhere on the LAN needs its origin
-added there — the file explains the trade.
+user types in. A site that can name its hosts narrows it at start-up:
+
+```bash
+docker run --rm -p 8080:8080 --read-only --tmpfs /tmp --cap-drop ALL \
+  -e CARYS_CONNECT_SRC="https://pacs.example.org https://*.s3.example.com" carys:latest
+```
+
+`deploy/start.sh` checks every token (a scheme such as `https:`, or an origin
+with an optional `*.` subdomain, port and path) and refuses to start on
+anything else, so a typo cannot ship a broken policy and a `;` cannot smuggle
+a directive in. Hosts left out are refused by the browser, the Cells
+catalog's IDR stores included. A PACS on plain `http://` elsewhere on the LAN
+goes in the same list — `deploy/nginx.conf` explains the trade.
 
 The build layer runs `tsc -b`, lint, the unit suites, `typecheck:app` and the
 app build, all without `samples/` (`.dockerignore` drops it). CI builds the

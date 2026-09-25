@@ -10,7 +10,7 @@ import {
   stackZGap, summarizeDataset, usRegionsFromBuffer, vlGridLabel,
 } from '@carys/io';
 import { addUploadedSeries } from './catalog';
-import { volumeFromStack } from './loaders';
+import { volumeFromStack } from './formatLoaders';
 import { importDicomSeg } from './segImport';
 import { loadSeries } from './sessionOps';
 import { session } from './session';
