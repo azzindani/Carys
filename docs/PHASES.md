@@ -617,9 +617,12 @@ That refactor needs the e2e suite re-run to re-validate, and e2e needs
 `npm run test:e2e` on a machine with `samples/`, then rewrite those legs to
 open the owning popover first.
 owner + unblock step, or accepted by design — verified 2026-09-14)
-- BLOCKED, owner: your machine — Docker image: `Dockerfile` ships but the
-  sandbox daemon fails every build with `unshare: operation not permitted`
-  (re-verified today). Unblock: `docker build` on your machine.
+- DONE (2026-09-25) — Docker image: this sandbox's daemon could not build
+  it (`unshare: operation not permitted`), but CI does on every push: the
+  image job builds from a clean tree, runs it locked down (`--read-only
+  --tmpfs /tmp --cap-drop ALL`), waits for the HEALTHCHECK, runs
+  `test:image` against it, and checks the per-site `connect-src` both ways
+  (see Production serving).
 - BLOCKED, owner: toolchain — JPEG-LS/2000, 12-bit baseline, SOF2
   progressive, blosc/zstd chunks: need openjpeg/charls or numcodecs plus a
   WASM toolchain; sandbox has no emcc/rustc/wasm-pack (verified today).
@@ -682,10 +685,23 @@ Not a feature lane — the spine that the other lanes are checked against.
 - DONE — `eslint-plugin-react-hooks` installed. The app already carried
   `eslint-disable-next-line react-hooks/exhaustive-deps` comments with no
   plugin behind them; they were decoration. One real finding behind them.
-- BLOCKED — **e2e in CI.** `test:e2e` needs real imaging, and `samples/` is
-  not committed. Owner: whoever owns fixture hosting. Unblock: publish a
-  small licensed fixture pack (or a generator covering the wire/journey
-  paths) that CI can fetch, then add an e2e job.
+- DONE — **e2e in CI, on generated samples.** The CI `synthetic` job runs
+  `npm run gen:samples` on the fresh runner and then `test/e2e/synthetic.mjs`,
+  the legs that read only generated files:
+  - the viewer boots on the head phantom (three planes, 7,016 tris);
+  - Tab reaches the axial slider in 88 stops and ArrowUp moves it;
+  - DICOM→3D: 242,616 tris for bone, 136,892 for skin;
+  - the worklist reads "4 of 21 can open here", with a chip on each of the
+    other 17.
+
+  The same suite passes on the real set ("21 of 21", 23,708 boot tris), so
+  it also runs in `test:e2e`. It fails on an empty `samples/`. The DICOM→3D
+  and keyboard legs moved here from wire.mjs.
+- BLOCKED — **The rest of e2e in CI.** wire, journeys and geometry read real
+  imaging (the liver, covid, cardiac and spine series), and `samples/` is not
+  committed. Owner: whoever owns fixture hosting. Unblock: publish a small
+  licensed fixture pack that CI can fetch (`samples.manifest.json` already
+  names and hashes every file), then run those suites in the synthetic job.
 - DONE — **`samples/` has a manifest.** `packages/testkit/samples.manifest.json`
   names the 206 files of a complete set (366.5 MB) with size and SHA-256, and
   for the 155 synthetic ones the npm script that writes them. `npm run
@@ -725,8 +741,9 @@ Not a feature lane — the spine that the other lanes are checked against.
   nothing to fix. Its one finding was the audit's own: a border that fades
   in over 110 ms reads as the resting style on the first frame, so
   transitions are finished before each read. Proven to fail: `outline: none`
-  on `:focus-visible` gave 331 findings. Wire leg 44: Tab alone reaches the
-  axial slice control (88 stops) and ArrowUp moves the slice.
+  on `:focus-visible` gave 331 findings. An e2e leg (landed in wire.mjs,
+  now in synthetic.mjs and run in CI): Tab alone reaches the axial slice
+  control (88 stops) and ArrowUp moves the slice.
 - DONE — **Reduced motion and forced colors.** The reduced-motion rule in
   base.css was already there, but nothing tested it. Under emulated `reduce`,
   nothing animates for longer than 1 ms or loops, including a probe
@@ -767,7 +784,8 @@ defaults conspired to make DICOM look unsupported.
   with RescaleIntercept -1024; the round trip back through `parseDicomSlice`
   returns -1000…1200 HU exactly. A fresh clone can now demonstrate the DICOM
   lane end to end without any patient data.
-- DONE — **Wire leg 43, DICOM→3D.** `ct-head-dicom` (`npm run gen:ct`) opens
+- DONE — **An e2e leg for DICOM→3D** (landed in wire.mjs, now in
+  synthetic.mjs and run in CI). `ct-head-dicom` (`npm run gen:ct`) opens
   through the DICOM lane. The 3D source falls to the image, the Hounsfield
   cut presses the bone preset and extracts 242,616 tris, and the skin
   preset extracts 136,892 at -300 HU. Those are the NIfTI phantom's counts

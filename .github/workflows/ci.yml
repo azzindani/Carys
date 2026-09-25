@@ -2,12 +2,13 @@
 # not by review" — but until now nothing ran them except a person who
 # remembered to. This runs them on every push.
 #
-# What is NOT here, and why: `npm run test:e2e` drives a real browser against
-# real imaging, and samples/ is 343MB of vendored fixtures that are
+# What is NOT here, and why: most of `npm run test:e2e` drives a real browser
+# against real imaging, and samples/ is 343MB of vendored fixtures that are
 # deliberately not committed (see samples/.gitkeep). There is nothing honest to
-# run it against on a clean runner, so e2e stays a local/pre-release gate via
-# `npm run verify`, which sets CARYS_REQUIRE_SAMPLES=1 and fails on a fixture
-# that is missing rather than skipping it.
+# run those legs against on a clean runner, so they stay a local/pre-release
+# gate via `npm run verify`, which sets CARYS_REQUIRE_SAMPLES=1 and fails on a
+# fixture that is missing rather than skipping it. The legs that need only
+# what the repo's own generators write run here (the synthetic job).
 #
 # The accessibility audit IS here: it inspects chrome — rails, toolbars, docks,
 # panels, forms — which renders with or without imaging, so a fixture-free
@@ -59,6 +60,32 @@ jobs:
       - name: Report skipped suites
         if: always()
         run: npm run test:unit 2>&1 | grep -E '^# (tests|pass|fail|skipped)'
+
+  synthetic:
+    name: e2e on generated samples
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+
+      # The generators import the io writers, so the packages build first.
+      # gen:samples writes the head phantom under the catalog's real BraTS and
+      # skull names, which is only safe where no real set exists: a fresh
+      # runner is exactly that (never run it over a mounted samples/).
+      - run: npm run build
+      - run: npm run gen:samples
+      - run: npm run build:app
+
+      # Boot on the phantom, the keyboard driving the slice, DICOM -> 3D with
+      # the CT presets, and the worklist naming what fills the other 17
+      # studies. test/e2e/synthetic.mjs; the real-imaging legs stay local.
+      - run: npm run test:synthetic
 
   image:
     name: docker build + run (sample-free)
