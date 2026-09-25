@@ -27,7 +27,7 @@ thing in the others.
 | **Protein** | PDB and mmCIF structures: residue queries, ligand pockets, interface contacts, pLDDT colouring for predicted models, pathogen teaching structures, and whole virus capsids built from their biological assemblies. |
 | **Cells** | OME-Zarr and OME-TIFF microscopy: channel compositing, plates and wells, per-channel statistics, and a catalog of public IDR screens. |
 | **Tracks** | Genome tracks (FASTA, VCF, BED, GFF/GTF) with a locus search and filter. |
-| **Atlas** | Brain region labels, and a whole-body atlas of 2,234 BodyParts3D structures by body system, with see-through layers, a posable skeleton, walking and running motion, and HuBMAP reference organs placed in the body. |
+| **Atlas** | A skeleton atlas with FMA term search, and a whole-body atlas of 2,234 BodyParts3D structures by body system, with see-through layers, a posable skeleton, walking and running motion, and HuBMAP reference organs placed in the body. |
 | **Learn** | Mechanism-of-disease bundles and a microbiology library whose structures open in Protein. |
 
 ### Opening your own data

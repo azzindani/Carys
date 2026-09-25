@@ -107,16 +107,6 @@
    "source_url": "https://idr.openmicroscopy.org/"
   },
   {
-   "id": "openanatomy-brain",
-   "kind": "digest",
-   "license_spdx": "UNVERIFIED",
-   "license_note": "atlas page names '3D Slicer License section B' (redistributable with attribution, verified 2026-09-17 by reading the Slicer License Part B grant); SPDX mapping still unchecked by a human \u2014 row stays honest-proposed until then",
-   "mode": "digest",
-   "lane": "A3",
-   "status": "proposed",
-   "source_url": "https://github.com/mhalle/spl-brain-atlas"
-  },
-  {
    "id": "openneuro-ds000001",
    "kind": "digest",
    "license_spdx": "CC0-1.0",

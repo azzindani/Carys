@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { JSX, ReactNode } from 'react';
 import {
   ATLAS_ATTRIBUTION, ATLAS_BOUNDS, ATLAS_DIGEST_ID, ATLAS_DIGEST_PIN,
-  ATLAS_STRUCTURES, atlasById, BRAIN_ATTRIBUTION, BRAIN_DIGEST_ID, BRAIN_DIGEST_PIN,
-  glossaryCard, isaAncestors, isaChildren, partofChildren, searchBrainLabels, searchTerms, structureTerm,
+  ATLAS_STRUCTURES, atlasById,
+  glossaryCard, isaAncestors, isaChildren, partofChildren, searchTerms, structureTerm,
   termByFma, treeName, TERMS_DIGEST_ID, TERMS_DIGEST_PIN,
 } from '@carys/volume-core';
 import { EDUCATION_BADGE, validateKnowledgeEntry, type KnowledgeEntry } from '@carys/study';
@@ -153,11 +153,6 @@ function BonesAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Element 
   const [err, setErr] = useState('');
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<ReturnType<typeof searchTerms>>([]);
-  // A3 brain regions: label-value search over the 335 SPL rows. A hit
-  // reports its RadLex id + color (teaching facts); the mesh view stays
-  // on the skeleton — the big SPL volume is never vendored.
-  const [bquery, setBquery] = useState('');
-  const [bhits, setBhits] = useState<ReturnType<typeof searchBrainLabels>>([]);
   // K2 glossary popover: FMA id open in the card, null = closed.
   // Ephemeral like cine flags (never persisted); Esc / ✕ / re-tap exits.
   const [gloss, setGloss] = useState<string | null>(null);
@@ -269,27 +264,6 @@ function BonesAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Element 
     );
   };
 
-  /** A3 search: SPL brain labels by name or RadLex id. Hits stay loud
-   *  facts (label + value + RadLex) with the Slicer-license attribution —
-   *  region geometry lives in the remote SPL volume, never here. */
-  const runBrainSearch = async (): Promise<void> => {
-    try {
-      await ensureTerms();
-    } catch (e) {
-      setStatus(`brain labels failed: ${(e as Error).message}`, 'error');
-      return;
-    }
-    const found = searchBrainLabels(bquery, 25);
-    setBhits(found);
-    if (found.length === 0) {
-      setStatus(`no brain labels match "${bquery}"`);
-      return;
-    }
-    const top = found[0]!;
-    session.digestPins = { ...session.digestPins, [BRAIN_DIGEST_ID]: BRAIN_DIGEST_PIN };
-    setStatus(`${top.label} (label ${top.v}${top.rid ? ` · ${top.rid}` : ''}) · ${found.length} hit(s) · SPL region (volume remote) · ${EDUCATION_BADGE}`);
-  };
-
   return (
     <>
       <div className="view-title" id="title-atlas">
@@ -317,20 +291,6 @@ function BonesAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Element 
         {hits.length > 0 && (
           <div className="grp">
             <Chip><span id="ro-atlas-hits">{hits.length} hit(s){hits[0] ? ` · top ${hits[0].name} (${hits[0].fma})` : ''}</span></Chip>
-          </div>
-        )}
-        <div className="grp">
-          <span className="lbl">Brain</span>
-          <input id="atlas-brain-search" className="urlinput" value={bquery} placeholder="putamen, thalamus, RID…"
-            title="Search 335 SPL brain labels by name or RadLex id"
-            aria-label="Search brain labels"
-            onChange={(e) => setBquery((e.target as HTMLInputElement).value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') void runBrainSearch(); }} />
-          <IconBtn title="Search brain labels" onClick={() => { void runBrainSearch(); }}>Go</IconBtn>
-        </div>
-        {bhits.length > 0 && (
-          <div className="grp">
-            <Chip><span id="ro-brain-hits">{bhits.length} hit(s){bhits[0] ? ` · top ${bhits[0].label} (label ${bhits[0].v}${bhits[0].rid ? ` · ${bhits[0].rid}` : ''})` : ''}</span></Chip>
           </div>
         )}
         <div className="sep" />
@@ -364,7 +324,6 @@ function BonesAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Element 
               role="img" aria-label="Atlas bone rendering (education overlay)" />
           </div>
           <div className="hint" id="atlas-src">{ATLAS_ATTRIBUTION}</div>
-          <div className="hint" id="atlas-brain-src">{BRAIN_ATTRIBUTION}</div>
         </div>
       </div>
     </>

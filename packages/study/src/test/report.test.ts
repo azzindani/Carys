@@ -42,15 +42,16 @@ describe('validator + report', () => {
     assert.ok(html.startsWith('<!doctype html>'));
     assert.ok(html.includes('BP3D-4.0-partof-obj99'), 'digest pins render');
   });
-  it('X4 attribution table mirrors the registry (7 rows, all licensed)', () => {
-    assert.equal(ATTRIBUTION_ROWS.length, 7);
-    assert.equal(new Set(ATTRIBUTION_ROWS.map((r) => r.id)).size, 7);
+  it('X4 attribution table mirrors the registry (6 rows, all licensed)', () => {
+    assert.equal(ATTRIBUTION_ROWS.length, 6);
+    assert.equal(new Set(ATTRIBUTION_ROWS.map((r) => r.id)).size, 6);
     for (const r of ATTRIBUTION_ROWS) {
       assert.ok(r.license.length > 0 && r.lane.length > 0, `${r.id} row thin`);
     }
     const html = attributionRowsHtml();
     assert.ok(html.includes('bodyparts3d-longbones') && html.includes('CC-BY-4.0'));
-    assert.ok(html.includes('openanatomy-brain') && html.includes('UNVERIFIED'));
+    // only CC0 or CC BY 4.0 data ships (docs/DATA.md)
+    for (const r of ATTRIBUTION_ROWS) assert.ok(['CC0-1.0', 'CC-BY-4.0'].includes(r.license), `${r.id}: ${r.license}`);
     assert.ok(html.includes('idr-screens') && html.includes('M2'));
   });
 });
@@ -62,7 +63,7 @@ describe('F2 teaching sheets', () => {
       labels: ['left putamen · label 12 · RID21015'],
       notes: ['Mid axial third: basal ganglia.'],
       quiz: [{ prompt: 'Which plane?', options: ['Axial', 'Coronal'] }],
-      provenance: ['SPL labels (Slicer B)'],
+      provenance: ['Teaching text (authored here)'],
     });
     assert.ok(html.startsWith('<!doctype html>'));
     assert.ok(html.includes('Left putamen') && html.includes('RID21015'));

@@ -15,10 +15,7 @@ __pycache__/
 # The production access key (deploy/up.sh writes it, mode 600)
 deploy/.env
 
-# Runtime state of a local preview: logs and the live quick-tunnel URL
 *.log
-.deploy/
-LIVE_URL.txt
 
 # Sample volumes are mounted, never committed (see samples/.gitkeep)
 samples/*

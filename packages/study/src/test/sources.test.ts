@@ -98,7 +98,8 @@ describe('digest provenance', () => {
     }
     assert.deepEqual(unverifiedShipped(rows), []);
     assert.ok(rows.some((r) => r.id === 'bodyparts3d-longbones' && r.status === 'shipped'));
-    assert.ok(rows.some((r) => r.id === 'openanatomy-brain' && r.status === 'proposed'));
+    // only CC0 or CC BY 4.0 data ships (docs/DATA.md)
+    for (const r of rows) assert.ok(['CC0-1.0', 'CC-BY-4.0'].includes(r.license_spdx), `${r.id}: ${r.license_spdx}`);
   });
   it('repro sidecar carries digest pins beside meshKey', () => {
     // Contract pin: the sidecar gains digestPins (digest id -> version pin)

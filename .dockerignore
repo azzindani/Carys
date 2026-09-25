@@ -20,5 +20,3 @@ probe*.tmp.mjs
 # Local agent state, including whole worktree checkouts with their own
 # node_modules — hundreds of MB the image never reads.
 .claude/
-# Not to be confused with .deploy/ (gitignored tunnel state): deploy/ holds
-# the serve stage's nginx.conf and must stay in the context.
