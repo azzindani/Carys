@@ -170,6 +170,27 @@ frame the same physical box.
   with the first motion. The Body dock's Motion picker, Play, cycle
   slider and Stretch switch play them through the pose path, each frame
   the one real time has reached.
+- Virus capsids (H7): `volume-core/cif-tokens.ts` lexes CIF for both
+  mmCIF readers (`io/cif.ts` and `assembly-cif.ts`) and reads a category
+  from a loop or from single items alike. `assembly-cif.ts` reads what an
+  assembly needs from an entry (the first model's atoms, ligands and
+  waters too; chains, polymer residues, entities, assemblies, operators)
+  and `buildAssembly` expands it at three levels of detail: atoms, a bead
+  per polymer residue and a bead per polymer chain, each bead the
+  centroid of its atoms at their volume (`assembly.ts`: oper_expression
+  products, `assemblyCopies` named as RCSB's assembly files name them,
+  `expandPoints`, `beadsOf`; beads are made on the asymmetric unit and
+  expanded like atoms). `render-cpu/spheres.ts` draws spheres into a
+  z-buffer, only the winning sphere's index per pixel, then shades each
+  pixel once from its disc (light, fog to the background at the far side,
+  screen-space occlusion from `screen-space.ts`); the id buffer is the
+  pick. `scripts/build-capsids.mjs` vendors seven PDB capsids (CC0) as
+  RCSB serves them into `digests/rcsb-capsids/`, checks each expansion
+  against RCSB's atom count and every atom against RCSB's own expanded
+  file, and records each copy's first and last atom there
+  (`capsids.json`). The Protein route's Capsid mode
+  (`views/CapsidView.tsx`, `lib/capsids.ts`) draws residue beads while
+  the shell turns (Auto) and atoms once it settles; a tap names the copy.
 - Placing another body's organs (H3): `glb.ts` reads glTF binary meshes
   (node transforms applied; Draco, sparse accessors and non-triangle
   primitives refused). `organ-fit.ts` fits organs both bodies have

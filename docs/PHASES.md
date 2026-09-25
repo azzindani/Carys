@@ -1709,12 +1709,44 @@ merged into main 2026-09-24; work is on main only since).
   - Wire leg 41d (the skull CT's level of detail) read its readout twice
     and could catch a later extraction's "extracting…"; it now keeps the
     text it matched.
-- OPEN — **H7. Whole virus capsids.** mmCIF biological assemblies
+- DONE — **H7. Whole virus capsids.** mmCIF biological assemblies
   expanded from their symmetry operators, and a coarse-grained level
   (per residue, then per chain) so million-atom capsids render on the
   CPU. Accept: the expanded atom count equals the RCSB assembly's; every
   copy within 0.01 Å of its operator image; render time measured at 1 M
   atoms.
+  - `digests/rcsb-capsids/`: seven icosahedral capsids from the PDB
+    (CC0), each the asymmetric unit exactly as RCSB serves it (1.43 MB of
+    .cif.gz, sha256 recorded), built by `scripts/build-capsids.mjs`
+    (35 s from cache): SV40 1SVA (T=7d), Norwalk virus 1IHM (T=3),
+    poliovirus 2PLV and rhinovirus 14 4RHV (pseudo T=3), hepatitis B core
+    1QGT (T=4), phage MS2 2MS2 (T=3) and satellite panicum mosaic virus
+    1STM (T=1, an entry whose assembly takes 12 operators on 10 chains).
+  - Atom counts: every expansion of assembly 1 equals RCSB's
+    `rcsb_assembly_info.atom_count` — 958,980 / 677,040 / 429,720 /
+    392,520 / 273,600 / 183,900 / 67,596 (ligands and waters counted as
+    RCSB counts them). The build fails otherwise; the unit test pins them.
+  - Operator images: the build compares every atom of every copy with
+    RCSB's own expanded file (`-assembly1.cif.gz`, chains "A", "A-2", …):
+    the largest distance is 0.0007–0.0009 Å per entry, the 3-decimal
+    rounding of that file. Each copy's first and last atom there are in
+    `capsids.json`, and the unit test holds all 2,340 copies to them
+    within 0.01 Å (and every copy's matrix to a rotation within 1e-3:
+    1IHM's operators are deposited orthonormal to 4.5e-4).
+  - Levels: a bead per polymer residue and per polymer chain at the
+    volume of its atoms (1.57 Å·∛n, protein density). SV40: 958,980 atoms,
+    123,420 residue beads, 360 chain beads (the VP1 pentamers show as
+    rings of five).
+  - Render time, SV40 at 640×560 on the shared 4-core host (load 3–5,
+    two runs), `render-cpu/spheres.ts`: atoms 121–183 ms (227–279 ms with
+    occlusion), residue beads 42–59 ms (96–112 ms), chain beads 18–28 ms
+    (58–74 ms), printed by the digest test. In the app the settled frame
+    (atoms with occlusion) took 273 ms; while turning, Auto draws residue
+    beads.
+  - Wire leg 30d: the Protein route's Capsid mode opens SV40 (settled
+    atoms in 271 ms), a tap names the copy ("chain D-34 · … · GLU 72 ·
+    operator 34 of 60"), turning by keys draws residue beads (123,420 in
+    49 ms), then chain beads and 1STM, and the Model mode comes back.
 - OPEN — **H8. A microbiology library.** Cards for virus families and
   bacteria (structure, genome, morphology, Gram stain, examples), written
   here or from CC BY/CC0 sources, each linked to its PDB structures and

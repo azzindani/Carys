@@ -76,6 +76,25 @@ export const BODY_STRETCH_SHORT: readonly [number, number, number] = [70, 110, 2
 export const BODY_STRETCH_LONG: readonly [number, number, number] = [250, 215, 70];
 export const BODY_STRETCH_SPAN = 0.15;
 
+/** Capsids (H7): a colour per asymmetric-unit chain — its quasi-
+ *  equivalent position, so all sixty copies of chain A share one — none
+ *  near the teal accent that marks the picked copy; ligands and waters
+ *  grey. */
+export const CAPSID_CHAIN_COLORS: readonly (readonly [number, number, number])[] = [
+  [96, 165, 250], [250, 204, 21], [248, 113, 113], [192, 132, 252], [251, 146, 60],
+  [244, 114, 182], [163, 230, 53], [226, 232, 240], [180, 130, 90], [129, 140, 248],
+];
+export const CAPSID_OTHER: readonly [number, number, number] = [150, 150, 150];
+/** Radial colouring, the shell's inner surface to its outer. */
+export const CAPSID_RADIAL_INNER: readonly [number, number, number] = [70, 90, 210];
+export const CAPSID_RADIAL_MID: readonly [number, number, number] = [235, 235, 225];
+export const CAPSID_RADIAL_OUTER: readonly [number, number, number] = [220, 70, 55];
+export const CAPSID_PICK_COLOR: readonly [number, number, number] = [45, 212, 191];
+/** The capsid clear (the protein view's) and how far the far side fades
+ *  into it. */
+export const CAPSID_BG: [number, number, number] = [16, 18, 20];
+export const CAPSID_FOG = 0.5;
+
 /** A body system's tint as CSS. */
 export function bodyCss(s: BodySystem): string {
   const [r, g, b] = BODY_SYSTEM_COLORS[s];

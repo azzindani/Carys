@@ -2180,6 +2180,46 @@ try {
   console.log('allergen landmarks:', await page18c.locator('#ro-sel').textContent());
   await page18c.close();
 
+  // ---- 30d. H7 capsids: the Capsid mode expands SV40 (1SVA) to RCSB's
+  // 958,980 atoms and draws them; a tap names the copy; turning draws
+  // residue beads (Auto); chain beads and another entry follow; the Model
+  // mode comes back. Readouts only — the pixels are the unit tests'.
+  const page18d = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page18d.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
+  await page18d.goto(`${BASE}#/protein`, { waitUntil: 'networkidle' });
+  await page18d.waitForSelector('#seqstrip button[data-res]', { timeout: 90000 });
+  await page18d.click('#protein-mode button[data-protein-mode="capsid"]');
+  const capsidRo = (re) => page18d.waitForFunction(
+    (src) => new RegExp(src).test(document.getElementById('ro-capsid')?.textContent ?? ''),
+    re.source, { timeout: 120000 },
+  );
+  await capsidRo(/^958,980 atoms · 360 chains · settled: atoms 958,980 in \d+ ms/);
+  console.log('capsid SV40:', await page18d.locator('#ro-capsid').textContent());
+  const capsidSrc = await page18d.locator('#capsid-src').textContent();
+  if (!/1SVA/.test(capsidSrc) || !/CC0/.test(capsidSrc) || !/Stehle/.test(capsidSrc) || !/RCSB's own assembly/.test(capsidSrc)) {
+    fail(`capsid citation wrong: ${capsidSrc}`);
+  }
+  const capsidBox = await page18d.locator('#c-capsid').boundingBox();
+  await page18d.mouse.click(capsidBox.x + capsidBox.width * 0.45, capsidBox.y + capsidBox.height * 0.45);
+  await page18d.waitForFunction(
+    () => /^chain \S+ · .+ · operator \d+ of 60$/.test(document.getElementById('ro-capsid-pick')?.textContent ?? ''),
+    null, { timeout: 30000 },
+  );
+  console.log('capsid tap:', await page18d.locator('#ro-capsid-pick').textContent());
+  await page18d.locator('#dock-capsid input[aria-label="Orbit"]').focus();
+  for (let k = 0; k < 3; k++) await page18d.keyboard.press('ArrowRight');
+  await capsidRo(/turning: residue beads 123,420 in \d+ ms/);
+  console.log('capsid turning:', await page18d.locator('#ro-capsid').textContent());
+  await page18d.click('#capsid-level button[data-capsid-level="chains"]');
+  await capsidRo(/settled: chain beads 360 in \d+ ms/);
+  await page18d.selectOption('#capsid-entry', 'spmv');
+  await capsidRo(/^67,596 atoms · 60 chains · settled: chain beads 60 in \d+ ms/);
+  if (!/1STM/.test(await page18d.locator('#capsid-src').textContent())) fail('capsid 1STM not cited');
+  console.log('capsid SPMV:', await page18d.locator('#ro-capsid').textContent());
+  await page18d.click('#protein-mode button[data-protein-mode="model"]');
+  await page18d.waitForSelector('#seqstrip button[data-res]', { timeout: 60000 });
+  await page18d.close();
+
   // ---- 31. Double-oblique: tilt plane switch moves the obl tag panes.
   const page19 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page19.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));

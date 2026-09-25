@@ -60,6 +60,16 @@
    "source_url": "https://doi.org/10.6084/m9.figshare.5722711.v6"
   },
   {
+   "id": "rcsb-capsids",
+   "kind": "digest",
+   "license_spdx": "CC0-1.0",
+   "license_note": "seven icosahedral virus capsids (1SVA, 1IHM, 2PLV, 4RHV, 1QGT, 2MS2, 1STM) as RCSB serves them, PDB archive data under CC0 1.0 (wwPDB policy); each entry's primary citation is in digests/rcsb-capsids/SOURCES.json and shown with the capsid",
+   "mode": "digest",
+   "lane": "H7",
+   "status": "shipped",
+   "source_url": "https://www.rcsb.org/"
+  },
+  {
    "id": "rcsb-pathogens",
    "kind": "digest",
    "license_spdx": "CC0-1.0",

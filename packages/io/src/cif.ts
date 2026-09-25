@@ -1,15 +1,15 @@
-// Minimal mmCIF reader: tokenize (quotes + semicolon text blocks) → first
+// Minimal mmCIF reader: tokens (volume-core cif-tokens) → first
 // loop_ carrying _atom_site.Cartn_x → ProteinModel. Row mapping mirrors
 // parsePdb exactly (ATOM only, xyz-guarded, auth→label fallbacks, same
 // residue keys) so the CIF/PDB equivalence test holds field-for-field.
 // Scope: single data block; multi-model files keep every model (parsePdb
 // keeps every MODEL too); save_ frames end row runs. Loud CifError.
 
-export class CifError extends Error {
-  constructor(public kind: string, detail: string) {
-    super(`CIF ${kind}: ${detail}`);
-  }
-}
+import { CifError, cifLoops, cifTokens } from '@carys/volume-core';
+import type { ResidueRef } from '@carys/volume-core';
+import type { ProteinModel } from './pdb.js';
+
+export { CifError };
 
 /** Content sniff for the open dialog (mirrors isStlLike). */
 export function isCifLike(text: string): boolean {
@@ -17,73 +17,9 @@ export function isCifLike(text: string): boolean {
   return t.startsWith('data_') && text.includes('_atom_site.');
 }
 
-/** CIF 1.1 tokenize: whitespace split + '...'/\"...\" quotes + ;blocks. */
-function tokenize(text: string): string[] {
-  const toks: string[] = [];
-  const n = text.length;
-  let p = 0;
-  const atLineStart = (): boolean => p === 0 || text[p - 1] === '\n' || text[p - 1] === '\r';
-  const atTokenStart = (): boolean => p === 0 || ' \t\r\n'.includes(text[p - 1]!);
-  while (p < n) {
-    const c = text[p]!;
-    if (c === ' ' || c === '\t' || c === '\r' || c === '\n') { p++; continue; }
-    if (c === '#' && atTokenStart()) {
-      while (p < n && text[p] !== '\n') p++;
-      continue;
-    }
-    if ((c === "'" || c === '"') && atTokenStart()) {
-      const end = text.indexOf(c, p + 1);
-      if (end < 0) throw new CifError('bad-quote', `unterminated ${c} at ${p}`);
-      toks.push(text.slice(p + 1, end));
-      p = end + 1;
-      continue;
-    }
-    if (c === ';' && atLineStart()) {
-      const end = text.indexOf('\n;', p + 1);
-      if (end < 0) throw new CifError('bad-quote', `unterminated ;block at ${p}`);
-      toks.push(text.slice(p + 1, end + 1));
-      p = end + 2;
-      continue;
-    }
-    let q = p;
-    while (q < n && !' \t\r\n'.includes(text[q]!)) q++;
-    toks.push(text.slice(p, q));
-    p = q;
-  }
-  return toks;
-}
-
-const isTag = (t: string): boolean => t.startsWith('_');
-const isStruct = (t: string): boolean =>
-  t === 'loop_' || t.startsWith('data_') || t.startsWith('save_');
-
-/** Split tokens into loop_ blocks: {tags, rows}. Values stop a row run. */
-function loopsOf(toks: string[]): { tags: string[]; rows: string[][] }[] {
-  const out: { tags: string[]; rows: string[][] }[] = [];
-  let i = 0;
-  while (i < toks.length) {
-    if (toks[i] !== 'loop_') { i++; continue; }
-    i++;
-    const tags: string[] = [];
-    while (i < toks.length && isTag(toks[i]!)) tags.push(toks[i++]!);
-    const rows: string[][] = [];
-    while (i + tags.length <= toks.length) {
-      const head = toks[i]!;
-      if (isTag(head) || isStruct(head) || head === 'loop_' || head === 'stop_') break;
-      rows.push(toks.slice(i, i + tags.length));
-      i += tags.length;
-    }
-    out.push({ tags, rows });
-  }
-  return out;
-}
-
-import type { ProteinModel } from './pdb.js';
-import type { ResidueRef } from '@carys/volume-core';
-
 /** First atom_site loop → model. Throws CifError when absent/unusable. */
 export function parseCif(text: string): ProteinModel {
-  const loops = loopsOf(tokenize(text));
+  const loops = cifLoops(cifTokens(text));
   const loop = loops.find((l) => l.tags.includes('_atom_site.Cartn_x'));
   if (!loop) throw new CifError('no-atom-site', 'no loop_ with _atom_site.Cartn_x');
   const col = (names: string[]): number => {
