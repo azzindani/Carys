@@ -1,4 +1,4 @@
-// The whole-body atlas package (H1, docs/PHASES.md): BodyParts3D meshes,
+// The whole-body atlas package: BodyParts3D meshes,
 // one file per body system, in a compact binary the app fetches as is.
 //
 // Layout ("carys-body/1", little-endian): the magic "CBDY", a u32 version,

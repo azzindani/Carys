@@ -1,4 +1,4 @@
-// The body rig digest (H5, docs/PHASES.md): the H1 skeleton cut into rigid
+// The body rig digest: the H1 skeleton cut into rigid
 // segments, joint centres fitted from the bones, and every other part's
 // vertices weighted to the segments.
 //

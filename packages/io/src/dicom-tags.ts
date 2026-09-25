@@ -1,5 +1,6 @@
 // Ported from Daikon src/tag.js (TAG_* table), src/parser.js (Transfer Syntax
-// UIDs + VR state machine constants), src/series.js (sorting keys). MIT.
+// UIDs + VR state machine constants), src/series.js (sorting keys). BSD-3-Clause
+// (notice in docs/THIRD-PARTY.md).
 // Slim VR dict (~30 entries) instead of 3,712-line dictionary.js.
 
 import type { Dataset } from './dcm-read.js';

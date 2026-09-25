@@ -1,6 +1,8 @@
 # Coding standards (enforced, not suggested)
 
-Rules below are load-bearing: most are checked by tests, not by review.
+The rules every change to Carys follows. Source comments cite them by number
+(`§22`, `§29`), so the numbering is stable. Rules below are load-bearing:
+most are checked by tests, not by review.
 A rule with a checker names it. Follow the letter; when two rules collide,
 prefer the one with a test behind it.
 
@@ -68,7 +70,7 @@ prefer the one with a test behind it.
 18. **Tests use the paths users use** — real key events, real file inputs,
     real taps. Synthetic `input`/`change` dispatches miss React handlers;
     fresh pages beat reloads for file inputs.
-19. **New UI lands with a wire leg** — tabs, fullscreen, toolbar toggle all
+19. **New UI lands with a wire leg** — tabs, fullscreen, the pop-outs all
     shipped with assertions (`test/e2e/wire.mjs`), not screenshots.
 
 ## UI discipline
@@ -94,12 +96,16 @@ prefer the one with a test behind it.
 
 ## Docs & process
 
-24. **Docs land with the feature** — PHASES + DIGEST entries in the same
-    change, not after.
-25. **Deferred work gets an owner + unblock step** — "blocked" is a
-    terminal state with a name on it (see the PHASES closeout ledger),
-    never a vague TODO.
-26. **No TODO/FIXME in source** — the ledger owns the future. Checked by
+24. **Docs land with the feature** — the production doc a change affects
+    (`docs/ARCHITECTURE.md`, `DEPLOYMENT.md`, `SECURITY.md`, `DATA.md`,
+    `TESTING.md`, `THIRD-PARTY.md`) changes in the same commit, not after.
+    Ported code names its upstream in its header and in
+    `docs/THIRD-PARTY.md` (checked by `verify.test.ts`).
+25. **Deferred work gets an owner + unblock step** — recorded where it is
+    decided (the commit or issue that defers it), with a name on it, never
+    a vague TODO.
+26. **No TODO/FIXME in source** — deferred work lives in the tracker, not in
+    the code. Checked by
     `no-warning-comments` in `eslint.config.js`, at the start of a comment
     (so a sentence that mentions the word, or a mask diagram drawn in Xs,
     is not a violation).

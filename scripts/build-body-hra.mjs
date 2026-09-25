@@ -1,4 +1,4 @@
-// The HRA organs digest (H3, docs/PHASES.md): the organs BodyParts3D lacks,
+// The HRA organs digest: the organs BodyParts3D lacks,
 // from the HuBMAP Human Reference Atlas 3D reference organs, placed in
 // BodyParts3D's body.
 //

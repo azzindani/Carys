@@ -7,7 +7,7 @@ import { surfaceNets } from '../surface-nets.js';
 import type { TriMesh } from '../surface.js';
 import { uvSphere } from './phantoms.js';
 
-// F7 (docs/PHASES.md): ambient occlusion and outlines as a post-pass.
+// Ambient occlusion and outlines as a post-pass.
 
 /** A depth buffer with every normal facing the viewer. */
 function gbuf(W: number, H: number, z: (x: number, y: number) => number): GBuffer {

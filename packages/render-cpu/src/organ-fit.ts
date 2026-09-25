@@ -1,4 +1,4 @@
-// Placing one body's organs in another's frame (H3, docs/PHASES.md): the
+// Placing one body's organs in another's frame: the
 // HuBMAP reference organs come from the Visible Human male, the atlas is
 // BodyParts3D's body, and two people's organs sit differently (their
 // spacing differs by up to 40%). Organs both have are "anchors": each gets

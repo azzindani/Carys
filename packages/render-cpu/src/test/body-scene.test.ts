@@ -6,7 +6,7 @@ import { pickSurface } from '../pick.js';
 import { renderMesh } from '../raster.js';
 import { uvSphere, type V3 } from './phantoms.js';
 
-// H2 (docs/PHASES.md): the whole body as one scene.
+// The whole body as one scene.
 
 /** A ball as a BodyParts3D part: mm, z up. */
 function ball(element: string, c: V3, r: number, system: BodyPart['system'] = 'skeletal'): BodyPart {

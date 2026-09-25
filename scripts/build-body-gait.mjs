@@ -1,4 +1,4 @@
-// The gait motions digest (H6, docs/PHASES.md): a mean walking and a mean
+// The gait motions digest: a mean walking and a mean
 // running cycle from two CC BY 4.0 gait data sets, written as BVH for the
 // H5 rig to play.
 //

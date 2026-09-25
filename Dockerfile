@@ -32,10 +32,11 @@ RUN npm ci --no-audit --no-fund
 COPY packages/ ./packages/
 COPY eslint.config.js ./
 # Committed inputs the gate reads and the build context was missing: the
-# provenance registry (digests/ + DIGESTS.json), the DIGEST receipts the
-# architecture test counts (docs/), and the hand-packed DICOM foundry frames
-# (test/e2e/foundry). ~15MB. Of these only digests/ reaches the serve stage,
-# because the app fetches it at runtime (below). These are repo content,
+# provenance registry (digests/ + DIGESTS.json), the third-party notices the
+# architecture test checks source headers against (docs/THIRD-PARTY.md), and
+# the hand-packed DICOM foundry frames (test/e2e/foundry). ~15MB. Of these,
+# digests/ reaches the serve stage because the app fetches it at runtime, and
+# the notices because they ship with the code they cover (below). These are repo content,
 # always present in a checkout, not the mounted samples/ fixtures.
 COPY DIGESTS.json ./
 COPY digests/ ./digests/
@@ -76,6 +77,8 @@ COPY --from=build /app/packages/app/dist /usr/share/nginx/html/packages/app/dist
 # table in production; dev serves the whole repo root, which hid it.
 COPY --from=build /app/digests /usr/share/nginx/html/digests
 COPY README.md /usr/share/nginx/html/
+# The licences of the bundled packages, fonts and ported code travel with it.
+COPY docs/THIRD-PARTY.md /usr/share/nginx/html/
 # Compress the app once, at -9, for gzip_static; nginx gzips anything else on
 # the fly. Each .gz is written in the same layer as its source and nothing
 # writes the web root afterwards, so the two cannot drift.

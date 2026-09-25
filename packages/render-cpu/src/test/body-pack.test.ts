@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { bodyBounds, packBody, unpackBody, type BodyPart } from '../body-pack.js';
 
-// H1 (docs/PHASES.md): the whole-body atlas package format.
+// The whole-body atlas package format.
 
 /** A part: an n × n grid of vertices, two triangles a cell. */
 function grid(element: string, n: number, at: [number, number, number], size: number): BodyPart {

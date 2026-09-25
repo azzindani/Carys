@@ -1,4 +1,4 @@
-// BVH motion (H6, docs/PHASES.md): read and write Biovision hierarchy files
+// BVH motion: read and write Biovision hierarchy files
 // and turn a frame into the H5 rig's pose. Pure, no DOM.
 //
 // A BVH names a hierarchy of joints, each with an offset from its parent

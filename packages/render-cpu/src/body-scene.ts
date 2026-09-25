@@ -1,4 +1,4 @@
-// The whole body as one scene (H2, docs/PHASES.md): the parts of the shown
+// The whole body as one scene: the parts of the shown
 // systems merged into one mesh in the renderer's frame, knowing which part
 // every triangle is (a tap names it), a colour per triangle, a coarse copy
 // for the frames drawn while the view moves, and the view that frames a few

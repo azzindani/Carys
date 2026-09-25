@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { fillBetweenSlices, type Axis } from '../slice-fill.js';
 
-// F15 (docs/PHASES.md): paint every few slices, fill between with the F5
+// Paint every few slices, fill between with the F5
 // distance-field interpolation.
 
 type V3 = [number, number, number];

@@ -4,7 +4,7 @@ import { maskNets, surfaceNets } from '../surface-nets.js';
 import { sliceFactor, smoothSurface, thickSliceNets } from '../thick-slices.js';
 import { ellipsoid, sampleIntensity, sampleMask, scoreMesh, sphere, type V3 } from './phantoms.js';
 
-// F5 (docs/PHASES.md): surfaces from thick slices. Each case is scored
+// Surfaces from thick slices. Each case is scored
 // against the path it replaces — the one-grid surface of F2 (image) or F3
 // (mask) — on the same samples.
 
@@ -55,7 +55,7 @@ describe('thick slices (F5)', () => {
   it('F5 acceptance: the 12×9×7 ellipsoid on 1×1×5 mm, on the bound for 5 mm data', () => {
     // Three slices cross this 14 mm-tall shape, so its ends fall inside a
     // 5 mm gap the data does not resolve; even perfect ends would leave a
-    // 0.14 mm mean (PHASES.md, F5). The F2/F3 bounds (0.1 mm; 0.25 mm / 8°)
+    // 0.14 mm mean. The 1 mm-grid bounds (0.1 mm; 0.25 mm / 8°)
     // were set for 1 mm grids. The bound for 5 mm data (the owner's call,
     // 2026-09-25) keeps F2's ratio, a mean error of a tenth of the slice
     // gap, and 13° on the normals, on both paths. Measured: image 0.460 mm /

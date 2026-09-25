@@ -7,7 +7,7 @@ import { parseBvh, retargetFrame } from '../bvh.js';
 import { footSlip, muscleEnds, muscleLength, solePoints } from '../gait.js';
 import { segmentTransforms, unpackWeights, type Rig } from '../rig.js';
 
-// H6 (docs/PHASES.md): the gait motions digest, as built by
+// The gait motions digest, as built by
 // scripts/build-body-gait.mjs, played on the H5 rig and body.
 
 const D = join(process.cwd(), 'digests');

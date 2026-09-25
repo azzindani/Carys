@@ -6,7 +6,7 @@ import {
 } from '../organ-fit.js';
 import { uvSphere } from './phantoms.js';
 
-// H3 (docs/PHASES.md): placing the reference organs in the atlas body.
+// Placing the reference organs in the atlas body.
 
 /** A deterministic spread of points. */
 function cloud(n: number, seed = 1): Float64Array {

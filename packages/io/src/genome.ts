@@ -1,4 +1,4 @@
-// Ported from igv.js parsers (Phase 2 staged): GFF3/GTF decode subset,
+// Ported from igv.js parsers: GFF3/GTF decode subset,
 // BED decode, DataWrapper nextLine, inferFileFormat ext sniff.
 // FASTA/VCF already in seq.ts.
 

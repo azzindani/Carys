@@ -2,7 +2,7 @@
 // z-buffer, backface culling. Output -> putImageData / PNG.
 // Camera looks along -z; larger rotated z = nearer.
 //
-// Shading (F6, docs/PHASES.md): the three vertex normals are interpolated
+// Shading: the three vertex normals are interpolated
 // across each triangle and renormalized per pixel, then lit Blinn-Phong —
 // the same ambient + Lambert terms the per-face shader used, plus a soft
 // white highlight — so a surface reads by its curvature, not its

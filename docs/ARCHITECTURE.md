@@ -1,6 +1,37 @@
-# Architecture — one core, many adapters
+# Architecture
 
-## Core types (TypeScript, `packages/volume-core`)
+Carys is a TypeScript monorepo. Pure engine packages parse, model, render and
+edit on the CPU. A React app composes them into the product, and nginx serves
+the result as static files. It has no GPU path and no server-side code.
+
+```
+files / URLs ──▶ io ──▶ volume-core model ──▶ render-cpu ──▶ Canvas2D
+                             ▲       │
+            editor-seg, measure      └──▶ study (worklist, report, provenance)
+                             ▲
+                            app (React: routes, docks, workers)
+```
+
+## Packages
+
+| Package | Role |
+|---|---|
+| `volume-core` | The shared model: volumes, patient geometry, selections, annotations, undo history, structures and sequences, tracks, atlases, caches. Pure, with no DOM. |
+| `io` | Readers and writers: DICOM (series, codecs, SEG, RTSTRUCT, DICOMDIR), NIfTI, NRRD, OME-TIFF, OME-Zarr, PDB/mmCIF, FASTA, VCF, BED, GFF/GTF. Pure: bytes in, typed data out. |
+| `render-cpu` | Reslicing, MIP, surface extraction, the rasterizer, the volume raycaster, picking, clipping, curved reformat, meshes and tracts, and the whole-body scene. |
+| `editor-seg` | Segmentation: threshold, region grow, connected components, fill holes, brush and flood fill, watershed split, multi-label masks. |
+| `measure` | Length, angle, ellipse and rectangle ROIs, RECIST, TID 1500 import and export, radiomics CSV import. |
+| `study` | Worklist and search, hanging protocols, the report, de-identification, the audit trail, and the data-set provenance registry. |
+| `dicomweb` | The DICOMweb client: QIDO-RS search, WADO-RS retrieve, STOW-RS store, and multipart. Transport comes through an injected `fetch`. |
+| `app` | The React product: the routes, the shell, the viewer's panes and docks, and the workers. The only package that touches the DOM. |
+| `testkit` | Test-only. Locates `samples/` and decides whether a missing fixture skips or fails. |
+| `ui` | The legacy static shell, a development page and an e2e fixture. It is not shipped. |
+
+Engine packages never import the DOM (checked by `verify.test.ts`), so every
+parser and renderer runs the same in a test, on the main thread or in a
+worker.
+
+## Core model (`volume-core`)
 
 ```ts
 type Volume = { dims:[number,number,number], spacing:[number,number,number],
@@ -12,341 +43,269 @@ type Annotation = { id:string, label:string, mask?: Uint8Array, meshRef?: string
   measurements: Record<string,number> }
 ```
 
-One undo stack owns `Annotation[]`. Views never own state — they project core.
+One undo stack owns the annotations, and views never own state: they project
+the model. Voxels, residues and cells share the same annotation model, so
+the same undo, export and linking work across the Viewer, Protein and Cells
+routes.
 
-## Adapters (`packages/io`)
+## Readers (`io`)
 
-| Adapter | In | Out | Source pattern | Status |
-|---|---|---|---|---|
-| `dicom-stack.ts` | parsed `.dcm` slices/frames | `DicomStack[]` (+ `stackVoxels`) | group by series + matrix + IOP + spacing; IPP·normal order and spacing; even repeats → phases; warns on gaps, tilt, dropped repeats | proven on the vendored picks (5 exams → 5 stacks) + synthetic geometry |
-| `dicom.ts` | `.dcm` slices | `Volume` (sort+stack) | `readImageDicomFileSeries` blocks-of-8, scan-normal sort | proven, 5 series |
-| `dicom-parse.ts` | single `.dcm` bytes | `DicomSlice` + meta | Daikon Parser/Series/Image + RLE + JPEG-baseline + JPEG-lossless + deflated-TS + multi-frame split + Enhanced functional groups (52009229/52009230 → per-frame IPP/IOP/DIV) | proven, 27 files + codec/enhanced tests |
-| `nifti1.ts` | plain `.nii` | header + image bytes | NIFTI-Reader-JS, all 8 dtypes | proven, 30 files |
-| `nifti-write.ts` | `Volume` (+ optional affine) | `.nii` bytes | inverse of reader; METHOD 0, or the affine as sform + qform (qfac) | proven, round-trip incl. oblique left-handed affine |
-| `nrrd.ts` | `.nrrd` (NRRD0001-0005 header) | `Volume` | NRRD spec: raw/ascii/gzip, all 8 dtypes, spacings, both endians | proven, synthetic round-trips |
-| `ome-tiff.ts` | `.tif`/`.ome.tif` (TIFF 6.0 + OME-XML) | planes | strips/tiles, raw/deflate/LZW/JPEG, 8/16-bit, LE/BE | proven (PIL-validated LZW), `samples/tiny.ome.tif` |
-| `ome-plate.ts` | NGFF plate/well `.zattrs` | well URLs | OME-NGFF 0.4 plates: lookup + resolve | proven, `samples/plate_demo.zarr` |
-| `genome.ts` | BED/GFF | features | igv.js parsers | proven, fixtures |
-| `omezarr.ts` | OME-Zarr store | tiled `Volume` chunks | Viv loader, chunk cache LRU | live path tested vs synthetic fetch + vendored `samples/cells_demo.zarr` (2 levels, raw+gzip) via disk fetch; blosc/zstd chunks rejected by name |
-| `pdb.ts` / `cif.ts` / `seq.ts` | `.pdb` / `.cif` / FASTA/VCF | atoms / tracks | Mol* / igv.js | ported, fixtures only (PDB≡CIF equivalence tested) |
-| `volume-core/mesh.ts` | — | mesh descriptors | NiiVue mesh path | types only (volume-core); STL/MZ3/GIFTI + TCK/TRK/TRX readers and fiber projection live in render-cpu |
+| Module | In | Out | Notes |
+|---|---|---|---|
+| `dicom-parse.ts` | One `.dcm` file | Slice plus metadata | Implicit and explicit VR (both endians), deflated, RLE, JPEG Baseline 8-bit, JPEG Lossless (SOF3), JPEG-LS lossless. Multi-frame split. Enhanced functional groups give per-frame position, orientation and spacing. |
+| `dicom-stack.ts` | Parsed slices | Stacks | Groups by series, matrix, orientation and spacing. Orders by position along the normal. Even repeats become phases. Warns on gaps, tilt and dropped repeats. |
+| `dicom.ts`, `dicom-series.ts` | A series | `Volume` | Sorting and stacking along the scan normal |
+| `seg.ts`, `rtstruct.ts`, `dicomdir.ts` | DICOM SEG, RTSTRUCT, DICOMDIR | Masks, contours, a study tree | |
+| `nifti1.ts`, `nifti-gzip.ts` | `.nii`, `.nii.gz` | Header plus image | All eight data types, qform and sform |
+| `nifti-write.ts` | `Volume` plus affine | `.nii` bytes | Writes the affine as both sform and qform, so a mask round-trips onto its source grid |
+| `nrrd.ts` | `.nrrd` | `Volume` | Raw, ASCII and gzip encodings, all eight types, both endians |
+| `ome-tiff.ts` | `.ome.tif` | Planes | Strips or tiles. Raw, deflate, LZW or JPEG. 8- and 16-bit, both endians. |
+| `omezarr.ts`, `ome-plate.ts` | An OME-Zarr store (URL) | Chunked `Volume`, plate wells | An LRU chunk cache over raw and gzip chunks. OME-NGFF 0.4 plates. |
+| `pdb.ts`, `cif.ts` | `.pdb`, `.cif` | Atoms and residues | The two readers agree on the same entry (tested) |
+| `genome.ts`, `seq.ts` | BED, GFF/GTF, FASTA, VCF | Features and tracks | |
 
-NOT supported: encapsulated syntaxes other than RLE + JPEG Baseline 8-bit
-+ JPEG Lossless SOF3 + deflated (JPEG-LS/2000, hierarchical, 12-bit
-baseline, SOF2 progressive throw named errors), shared/per-frame Pixel
-Measures overrides (file-level spacing stands), blosc/zstd OME-Zarr chunks,
-OME-TIFF, detached .nhdr.
+Not supported, and each case is refused with a named error:
 
-Heavy paths (surface extraction) run in a real Web Worker with transferables
-(`ui/extract.worker.js`) and main-thread fallback; parsers are pure functions
-usable in workers but currently called on the main thread in tests.
+- other encapsulated DICOM syntaxes: JPEG 2000, JPEG-LS near-lossless,
+  hierarchical and progressive JPEG, 12-bit baseline;
+- blosc- or zstd-compressed Zarr chunks;
+- detached `.nhdr` NRRD and inline NRRD data.
+
+Every decoder turns hostile input into a named error. `corrupt.test.ts`
+covers every format.
 
 ## Patient geometry (`volume-core/geometry.ts`, `app/lib/orient.ts`)
 
-A volume whose file says where it is (NIfTI qform/sform, DICOM IOP/IPP)
-carries `geometry` (LPS origin, spacing, direction) and is re-laid out once
-at load into LPS storage: +i patient Left, +j Posterior, +k Superior. The
-render and editor code maps voxel axes to the screen without knowing
-anatomy, and in LPS storage that mapping is radiological (axial: patient
-right on screen left, anterior up; coronal/sagittal drawn superior-up). The
-re-layout is a permutation + flips, so `source` keeps the file's own grid and
-exports invert it exactly. No geometry → stored as-is, no edge letters, an
-"orientation unknown" caution on the image.
+A volume whose file records its position carries `geometry`: LPS origin,
+spacing and direction, from NIfTI qform/sform or DICOM orientation and
+position. At load, such a volume is re-laid out once into LPS storage,
+where +i is patient Left, +j Posterior and +k Superior.
 
-Panes draw through `views/paneView.ts`: the canvas is the pane's pixels, the
-slice is fitted in millimetres (true aspect for anisotropic voxels), and the
-same mapping inverts every tap; what a pane draws over the image (crosshair,
-edge letters, scale bar, measurements) is `views/paneChrome.ts`. The mask
-keeps its labels (a catalog label map, a SEG import, Multi-Lbl): each pane
-takes its slice's labels (`render-cpu/labels.ts`, orthogonal, slab or
-oblique), tints them a colour each (`lib/palette.ts` LABEL_COLORS) and, in
-the default Outline look, draws each label's voxel-edge outline in screen px
-just inside the label (`views/paneLabels.ts`). The 3D
-surface, fibres and cursor are drawn in mm (`app/lib/physical3d.ts`), and the
-volume raycaster marches in mm (`renderVolume`'s `spacing`), so both 3D modes
-frame the same physical box.
+- **Rendering.** The render and editor code maps voxel axes to the screen
+  without knowing anatomy. In LPS storage that mapping is radiological:
+  axial with patient right on screen left and anterior up, coronal and
+  sagittal drawn superior-up.
+- **Export.** The re-layout is a permutation plus flips, so `source` keeps
+  the file's own grid and exports invert it exactly.
+- **No geometry.** The volume is stored as-is, with no edge letters and an
+  "orientation unknown" caution on the image.
 
-## Render (`packages/render-cpu`)
+Panes draw through `views/paneView.ts`. The canvas is the pane's pixels, and
+the slice is fitted in millimetres, so anisotropic voxels keep their true
+aspect. The same mapping inverts every tap. What a pane draws over the image
+comes from `views/paneChrome.ts`: the crosshair, edge letters, scale bar and
+measurements.
 
-- MPR: reslice → `ImageData` → `Canvas2D.putImageData`, window/level LUT.
-- MIP: thick-slab axial/coronal/sagittal (`slab.ts`: mip/minip/mean) +
-  rotating oblique MIP (`mip-rotate.ts`: same orbit/tilt as the raycaster).
-- 3D surfaces: surface nets (smooth, the default: vertices on the
-  voxel-centre convention, projected onto each cell's trilinear surface; a
-  binary mask's relaxed inside its cells instead, `maskNets`; thick-sliced
-  grids interpolated between slices first, `thick-slices.ts`) +
-  cuberille boundary faces (blocky, an option), orthographic z-buffer
-  rasterizer → RGBA, lit per pixel (interpolated normals, Blinn-Phong) and
-  2× supersampled; SurfaceView orbits at 1× and repaints at 2× once the
-  view settles (`views/orbitOverlay.ts` draws tracts and the cursor on
-  both). Depth cues are a post-pass over the depth and normal buffers
-  (`screen-space.ts`: ambient occlusion, silhouette outlines), opt-in per
-  render. The image and the mask keep separate
-  thresholds (`session.thresholds`). Optional smoothing (`mesh-smooth.ts`):
-  windowed-sinc filtering, then each closed piece restored to its volume.
-  Level of detail (`decimate.ts`): quadric-error decimation bounded in mm;
-  a surface over 100k triangles gets an orbit level on its own worker
-  (`lib/extractor.ts` `lod`), drawn on 1× orbit frames.
-- Surface accuracy is measured, not eyeballed: analytic phantoms (sphere,
-  ellipsoid, torus; `test/phantoms.ts`) sampled on isotropic and thick-slice
-  grids score every extraction path in mm — vertex distance to the true
-  surface, volume, normal deviation (`test/accuracy.test.ts`).
-- Export: binary STL from any TriMesh (re-parse verified).
-- Volume raycast: orthographic front-to-back CPU compositing (`vr.ts`). Rays
-  march in mm and sample in voxels; the step is in voxels of the finest axis,
-  and unit spacing is bit-identical to the old voxel-space renderer.
-  Opacity is corrected to a reference step (`alphaStep`), and a frame can
-  be one pass of a jittered progressive refinement (`jitter`, averaged by
-  `addPass`); SurfaceView shows pass 1 at once and refines to 4 while the
-  view is still. Empty 8³ bricks are skipped without moving a sample
-  (`brickRanges`), and the app splits a frame's rows across a worker pool
-  (`lib/extractor.ts`, `rows` + `mergeRows`), each worker holding the
-  field under a key so passes do not copy it again. Cinematic lighting
-  (`vr-light.ts`): soft shadows and ambient light propagated through a
-  coarse extinction grid, one jittered light and two sky directions per
-  pass, accumulated by the same refinement.
-- Picking (`pick.ts`): the point under a pixel of either 3D mode, from the
-  renderer's own frame (nearest drawn triangle; where a volume ray turns
-  half opaque). A tap on the 3D view (`views/orbitPointer.ts`,
-  `views/pick3d.ts`) moves the panes there through `paintBus.jumpTo`.
-- Whole-body atlas package (`body-pack.ts`, H1): BodyParts3D's 2,234
-  element meshes, one `carys-body/1` file per body system in
-  `digests/bodyparts3d-body/` (u16 positions on the body's grid, u16/u32
-  indices, a JSON header of parts with FMA id, name, system and the error
-  the build measured), built by `scripts/build-body-atlas.mjs` (system from
-  the IS-A and PART-OF trees, F11 decimation to 0.5 mm of the source,
-  measured with `mesh-distance.ts`). Its `index.json` lists every part
-  (element, FMA id, name, system; `validateBodyIndex`), so a structure is
-  found before its system file is fetched.
-- Whole-body scene (`body-scene.ts`, H2): parts turned to the renderer's
-  frame (BodyParts3D z-up to y-up, the body's front toward orbit 0), the
-  shown ones merged into one mesh that knows each triangle's part
-  (`pickSurface` returns the triangle, so a tap names the part), a colour
-  per triangle (`renderMesh`'s `triColor`), a vertex-clustered copy for
-  moving frames (clusters split by part and by normal octant, so a thin
-  shell's two sheets never merge) and the view that frames a few parts.
-  The Atlas route's Body mode (`views/BodyAtlasView.tsx`,
-  `lib/bodyAtlas.ts`) switches systems, draws moving frames at half size
-  on the clustered copy and the full mesh anti-aliased once still, and
-  finds structures through the K1 PART-OF concepts
-  (`volume-core/body-search.ts`).
-- See-through layers (H4): `renderMesh`'s `triAlpha` gives each triangle
-  an opacity. Opaque ones draw first, z-buffered, exactly as without it.
-  See-through ones then draw only their front faces (by screen winding),
-  hidden by the opaque depth but not by each other, into weighted blended
-  order-independent transparency (McGuire & Bavoil 2013; weight
-  opacity × 3e3·(1 − d)³ over the scene's depth). The opaque sample shows
-  by the product of their transparencies. `pickSurface` takes the same
-  opacities: a tap goes through see-through triangles to the nearest
-  opaque one, or lands on the nearest see-through one where nothing is
-  behind it. `sceneAlpha` maps a system's opacity to its triangles (null
-  when all are opaque), set from the Body dock's See-through picker and
-  Opacity slider.
-- A rigged skeleton (H5): `rig.ts` holds segments of rigid bones joined at
-  fitted centres (`fitSphere`, `fitCircle`), `segmentTransforms` for a
-  pose (flexion, abduction, twist per joint about axes the rig carries,
-  the spine and neck each spread over their disks), `poseMesh` (a bone
-  rigid, anything else blended by up to three segments' weights; an
-  unmoved segment leaves its vertices bit for bit) and the
-  `carys-body-weights/1` file. `mesh-grid.ts` tests whether a segment
-  crosses a surface. `scripts/build-body-rig.mjs` fits the joints to the
-  body digest's bones and weights every other vertex of both body
-  digests into `digests/body-rig/` (`rig.json` and a weights file per
-  digest and system). `lib/bodyRig.ts` fetches them with the first pose
-  and refuses a rig fitted to other digest pins; the Body dock's Pose
-  joint and sliders set the angles.
-- Motion (H6): `bvh.ts` reads and writes BVH and retargets a frame onto
-  the rig. It splits each mapped joint's rotation into that joint's
-  flexion, abduction and twist axes (`anglesAbout`) and measures what a
-  hinge drops. `gait.ts` holds the gait helpers: `groundRoot` sets the
-  feet in contact on the ground (a ballistic arc between), `plantRoot`
-  moves the body on as its grounded sole points slide back,
-  `footSlip` is the acceptance measure, and `muscleEnds`/`muscleLength`
-  and `stretchColor` colour the muscles by stretch.
-  `scripts/build-body-gait.mjs` averages two CC BY 4.0 gait data sets
-  (figshare; the walking archive's members read by byte range) into
-  `digests/gait-motions/` (`walk.bvh`, `run.bvh` with the root motion
-  solved for the H5 body, `gait.json`). `lib/bodyGait.ts` fetches them
-  with the first motion. The Body dock's Motion picker, Play, cycle
-  slider and Stretch switch play them through the pose path, each frame
-  the one real time has reached.
-- Virus capsids (H7): `volume-core/cif-tokens.ts` lexes CIF for both
-  mmCIF readers (`io/cif.ts` and `assembly-cif.ts`) and reads a category
-  from a loop or from single items alike. `assembly-cif.ts` reads what an
-  assembly needs from an entry (the first model's atoms, ligands and
-  waters too; chains, polymer residues, entities, assemblies, operators)
-  and `buildAssembly` expands it at three levels of detail: atoms, a bead
-  per polymer residue and a bead per polymer chain, each bead the
-  centroid of its atoms at their volume (`assembly.ts`: oper_expression
-  products, `assemblyCopies` named as RCSB's assembly files name them,
-  `expandPoints`, `beadsOf`; beads are made on the asymmetric unit and
-  expanded like atoms). `render-cpu/spheres.ts` draws spheres into a
-  z-buffer, only the winning sphere's index per pixel, then shades each
-  pixel once from its disc (light, fog to the background at the far side,
-  screen-space occlusion from `screen-space.ts`); the id buffer is the
-  pick. `scripts/build-capsids.mjs` vendors seven PDB capsids (CC0) as
-  RCSB serves them into `digests/rcsb-capsids/`, checks each expansion
-  against RCSB's atom count and every atom against RCSB's own expanded
-  file, and records each copy's first and last atom there
-  (`capsids.json`). The Protein route's Capsid mode
-  (`views/CapsidView.tsx`, `lib/capsids.ts`) draws residue beads while
-  the shell turns (Auto) and atoms once it settles; a tap names the copy.
-- Microbiology library (H8): `volume-core/microbes.ts` holds the cards
-  (virus families and bacteria: structure, genome, morphology, Gram
-  stain, examples), each with where its text comes from and its licence,
-  its references, the Learn bundles it links to and its structures as a
-  `StructureLink` (an M1 pathogen entry or a microbe-library entry for the
-  Model mode, an H7 capsid for the Capsid mode). `scripts/build-microbes.mjs`
-  checks every DOI's CC BY 4.0 licence at Crossref, every PDB reference's
-  first author at RCSB and each bacterial entry's organism, and vendors
-  those entries into `digests/microbe-library/` (`library.json` records
-  the checks). Learn shows the library (`views/MicrobeLibrary.tsx`) and
-  hands a structure link to the Protein route, which opens it in the
-  mode it needs (`lib/microbes.ts` fetches a bacterial entry).
-- Placing another body's organs (H3): `glb.ts` reads glTF binary meshes
-  (node transforms applied; Draco, sparse accessors and non-triangle
-  primitives refused). `organ-fit.ts` fits organs both bodies have
-  ("anchors"): deterministic area-uniform surface samples, a k-d tree for
-  nearest points, Horn's closed-form similarity, ICP (both ways, or one way
-  where a model covers only part of its match), a field that moves a
-  point by the anchors' fits blended by nearness, an inside test (ray
-  parity, three rays voting) and `holeCentre`, the middle of a hole
-  through a mesh (a vertebra's canal). `scripts/build-body-hra.mjs`
-  uses them to place the HuBMAP reference organs in the BodyParts3D body,
-  each anchor's similarity followed by a bend (`organ-warp.ts`: composed
-  steps of non-rigid ICP, each a sum of Wendland's compactly supported
-  functions on nodes over the organ, regularised, its gradient capped so
-  no step folds; `blendField` applies an anchor's bend after its
-  similarity, and a bend is zero past its radius), the spinal cord then
-  centred in the canal:
-  `digests/hra-organs/` holds them as `carys-body/1` files on the H1 body's
-  grid, with `fit.json` (every anchor's fit, alone, shared and from the
-  others) and a citation per organ in `SOURCES.json`. `lib/bodyAtlas.ts`
-  merges both digests into one atlas (same grid or it fails loud); a tapped
-  HRA structure's card cites its organ.
-- Curved reformat (`cpr.ts`): the Curve tool's clicks (voxels) become a
-  centripetal Catmull-Rom spline in mm; the straightened view samples
-  across it, perpendicular to the curve and to the pane it was drawn on
-  (turned about it on request), mm-true both ways, and maps any pixel back
-  to its voxel. The panes draw the same path (`views/paneCurve.ts`); the
-  view is `views/CprPanel.tsx`, under the 3D image, and a tap on it moves
-  the panes through `paintBus.jumpTo`.
-- Clipping (`clip.ts`): a crop box and a plane, one convex region, taken
-  by the rasterizer (back faces drawn darker as the inside; per-vertex
-  outcodes skip whole triangles), the raycaster (one kept interval per
-  ray, on the unclipped sample lattice), the cinematic light (clipped cells
-  cast nothing) and both picks. The app keeps it as fractions of the
-  volume (`lib/clip3d.ts`, `views/ClipPanel.tsx`); off, every render is
-  the unclipped one.
-- NOT built: WASM marching-cubes (CPU cuberille + surface nets cover it).
-- Proteins: project spheres/sticks on CPU, paint pLDDT / chain (proven to 5.4k atoms; `.pdb` + `.cif` open).
-- Cells: tile pyramid + channel composite on CPU.
+The mask keeps its labels, whether from a catalog label map, a SEG import or
+multi-label editing. Each pane:
 
-No WebGL import in v1. GPU is a future layer, not a fallback.
+1. takes its slice's labels (`render-cpu/labels.ts`: orthogonal, slab or
+   oblique);
+2. tints each label its own colour (`lib/palette.ts`);
+3. in the default Outline look, draws each label's voxel-edge outline just
+   inside the label (`views/paneLabels.ts`).
 
-## Editor (`packages/editor-seg` + `packages/measure`)
+The 3D surface, fibres and cursor are drawn in millimetres
+(`app/lib/physical3d.ts`), and the raycaster marches in millimetres, so both
+3D modes frame the same physical box.
 
-Port from Cornerstone tools + CACTAS brush + ITK-Wasm filters:
-threshold → region-grow → connected-components → fill-hole, plus brush
-paint/erase (Bresenham pen), flood fill, RLE undo stack, and a
-marker-free watershed split (Manhattan EDT + top-down flood; shape necks
-only, never adds voxels). Filling between painted slices is
-`render-cpu/slice-fill.ts` (F15): F5's exact 2D distance maps, a cubic
-across the painted slices, per label (labels painted together are one
-shape), across the axis the painting was sparse along.
-Every op = pure function, undoable, testable without UI. The mask's undo
-stack holds states: the loaded one, then a snapshot after every edit
-(stroke end, seg op, clear, import), and undo steps back one.
+## Rendering (`render-cpu`)
 
-## Design system (`packages/app/src/styles` + `src/ui`)
+Everything is rasterised on the CPU into a 2D canvas. No WebGL context is
+created and no three.js import exists: `verify.test.ts` enforces both.
 
-Tailwind v4 supplies utilities and the `@theme` token store; Radix backs the
-components whose hand-rolled versions were behaviourally wrong (popover:
-outside-click + Escape + focus restore; tooltip). Sliders stay native
-`<input type="range">` on purpose — the wire suite drives them with real key
-events and reads `.inputValue()`.
+- **Reformats.** Reslice to `ImageData`, then a window/level LUT.
+  - Thick-slab MIP, minIP and mean (`slab.ts`).
+  - A rotating oblique MIP (`mip-rotate.ts`) on the same orbit as the
+    raycaster.
+  - A curved reformat (`cpr.ts`): the Curve tool's points become a
+    centripetal Catmull-Rom spline in millimetres. The straightened view is
+    millimetre-true both ways and maps any pixel back to its voxel.
+- **Surfaces.**
+  - **Extraction.** Surface nets is the default. Vertices sit on the
+    voxel-centre convention and are projected onto each cell's trilinear
+    surface. A binary mask is relaxed inside its cells instead, and
+    thick-slice grids are interpolated between slices first
+    (`thick-slices.ts`). Cuberille faces are a blocky option.
+  - **Smoothing** (`mesh-smooth.ts`) is optional: windowed-sinc filtering,
+    with each closed piece restored to its original volume.
+  - **Level of detail** (`decimate.ts`): quadric-error decimation bounded in
+    millimetres. A surface over 100k triangles gets an orbit level built on
+    a worker.
+  - **Rasterizing.** An orthographic z-buffer, lit per pixel (interpolated
+    normals, Blinn-Phong) and 2× supersampled once the view settles.
+  - **Depth cues** (`screen-space.ts`) are an opt-in post-pass: ambient
+    occlusion and silhouette outlines.
+  - **See-through layers.** Opaque triangles draw first. See-through
+    triangles then draw their front faces into weighted blended
+    order-independent transparency (McGuire & Bavoil 2013).
+- **Volume rendering** (`vr.ts`). Orthographic front-to-back compositing,
+  with rays marched in millimetres and opacity corrected to a reference
+  step.
+  - Empty 8³ bricks are skipped.
+  - Each frame is a jittered progressive pass. The view shows pass 1 at
+    once and refines to 4 while it stays still.
+  - The app splits a frame's rows across a worker pool, and each worker
+    keeps the field between passes.
+  - Cinematic lighting (`vr-light.ts`): soft shadows and ambient light
+    propagated through a coarse extinction grid.
+- **Picking** (`pick.ts`): the point under a pixel, taken from the
+  renderer's own frame. For a surface it is the nearest drawn triangle; for
+  a volume, the depth where the ray turns half opaque. A tap in 3D moves the
+  panes there.
+- **Clipping** (`clip.ts`): a crop box and a plane forming one convex
+  region. It is honoured by the rasterizer, the raycaster, the lighting and
+  both picks.
+- **Accuracy is measured, not eyeballed.** Analytic phantoms (a sphere, an
+  ellipsoid, a torus) on isotropic and thick-slice grids score every
+  extraction path in millimetres: vertex distance, volume and normal
+  deviation (`test/accuracy.test.ts`).
+- **Meshes, tracts and export.** STL, MZ3 and GIFTI meshes; TCK, TRK and
+  TRX tracts with fibre projection; binary STL export.
+- **Proteins and capsids.** Proteins are drawn as spheres and sticks,
+  coloured by chain or pLDDT. Capsids go through `spheres.ts`: a z-buffer
+  that keeps the winning sphere per pixel, shaded once per pixel, with its
+  id buffer serving as the pick. `volume-core/assembly.ts` expands a
+  biological assembly from its mmCIF operators, as atoms, a bead per
+  residue or a bead per chain.
+- **Cells.** A tile pyramid with the channels composited on the CPU.
+
+### The whole-body atlas
+
+- **Package** (`body-pack.ts`). The BodyParts3D meshes are stored as one
+  `carys-body/1` file per body system: u16 positions on the body's grid,
+  u16/u32 indices, and a JSON header of parts giving each part's FMA id,
+  name, system and measured error. An `index.json` lists every part, so a
+  structure can be found before its system file is fetched.
+- **Scene** (`body-scene.ts`). The shown parts are merged into one mesh
+  that knows each triangle's part, so a tap names the part. A
+  vertex-clustered copy draws moving frames. Clusters are split by part and
+  by normal octant, so a thin shell's two sheets never merge.
+- **Rig and motion.**
+  - `rig.ts` joins rigid bones at fitted centres and poses each joint by
+    flexion, abduction and twist. `poseMesh` moves bones rigidly and blends
+    everything else by skin weights.
+  - `bvh.ts` reads BVH and retargets it onto the rig. `gait.ts` grounds the
+    feet and measures foot slip.
+  - Muscles can be coloured by stretch.
+- **Other bodies' organs.**
+  - `glb.ts` reads glTF binary meshes.
+  - `organ-fit.ts` fits the HuBMAP reference organs into the body with
+    anchors shared by both bodies: Horn's closed-form similarity, then ICP.
+  - `organ-warp.ts` adds a bend: regularised non-rigid steps built from
+    Wendland's compactly supported functions, with each step's gradient
+    capped so it cannot fold.
+
+## Editing (`editor-seg`, `measure`)
+
+Segmentation operations include:
+
+- threshold, region grow, connected components and fill holes;
+- brush paint and erase, and flood fill;
+- a marker-free watershed split, which only cuts shape necks and never adds
+  voxels;
+- filling between painted slices (`render-cpu/slice-fill.ts`): exact 2D
+  distance maps interpolated by a cubic across the painted slices, per
+  label.
+
+Every operation is a pure function, undoable, and testable without a UI. The
+mask's undo stack holds states: the loaded one, then a snapshot after every
+edit (a stroke, an operation, a clear, an import).
+
+Measurements are also pure: lengths, angles, ellipse and rectangle ROI
+statistics, Cobb angle, RECIST and TID 1500.
+
+## The app (`packages/app`)
+
+- **Routes.** `App.tsx` routes between Studies, Viewer, Report, Protein,
+  Cells, Tracks, Atlas and Learn.
+  - Only the viewer is in the entry chunk. The other routes are
+    `React.lazy` chunks behind `ui/RouteSuspense`, whose error boundary
+    turns a chunk that 404s after a redeploy into a "reload" card.
+  - React and Radix sit in their own chunks, so their hashes survive app
+    releases.
+- **Loading.** The viewer boots with NIfTI only (`lib/loaders.ts`). DICOM,
+  NRRD, OME-TIFF, SEG/RTSTRUCT and the PACS client load on first use,
+  reached only through `import()`.
+  - Rollup assigns chunks by module. A boot-path file that needs a format
+    sniffer or a SOP constant therefore imports it from an io module that
+    holds nothing else (`io/sniff.ts`, `sop-names.ts`, `us-names.ts`).
+  - `npm run check:entry` fails when the entry exceeds its byte budget or
+    contains a decoder's string literal.
+- **State.** One `UiState` store (`lib/store.ts`). Components subscribe to
+  it, and canvases paint imperatively from the same state.
+  - Appearance preferences persist to `localStorage`; view and session
+    state do not.
+  - Stale asynchronous results are dropped by token (`paintToken`,
+    `vrToken`).
+- **Workers.**
+  - `workers/extract.ts` runs surfaces, level of detail and volume-render
+    rows, through the pool in `lib/extractor.ts`.
+  - `workers/parse.ts` decodes uploads, through `lib/parseClient.ts`.
+  - Both are module workers emitted as files, not `blob:` URLs, so the CSP
+    can stay `worker-src 'self'`.
+- **Display tools.** The viewer's display tools sit behind pop-outs in its
+  bar (`ui/PopOut.tsx`): Display, Reformat, Compare, Time, Segment, 3D and
+  Export.
+  - Only one pop-out is open at a time. Escape or a press outside closes
+    it.
+  - A closed panel stays mounted but hidden, so its readouts keep their
+    values.
+
+### Design system (`src/styles`, `src/ui`)
+
+Tailwind v4 supplies utilities and the `@theme` token store. Radix backs the
+popover and tooltip, whose hand-rolled versions got outside-click, Escape
+and focus restore wrong. Sliders stay native `<input type="range">`, so
+keyboard and assistive technology work unchanged.
 
 ```
-styles/tokens.css      color / type / rhythm / rounding — the only literals
+styles/tokens.css      colour, type, rhythm and rounding: the only literals
 styles/base.css        reset, document chrome, focus, scrollbars
 styles/components.css  shared classes every view uses
-styles/shell.css       rail, topbar, main grid, inspector, status
-styles/viewport.css    viewport grid + the 3D-tool treatment
+styles/shell.css       rail, top bar, main grid, inspector, status
+styles/viewport.css    viewport grid and the 3D-tool treatment
 styles/responsive.css  desktop >1280 / tablet 981–1280 / mobile ≤980
 ```
 
-Layout has three real modes, not one squeezed twice: desktop pairs an icon
-rail with the viewport grid and the inspector column; tablet drops the
-inspector under the stage; mobile gives the top half to imaging and the
-bottom half to a permanent control deck, so tools never cover the image they
-act on. 980px is the mobile edge and is the twin of `lib/isMobile.ts` (§21).
+The layout has three real modes:
 
-The chrome is built to read as an instrument rather than a web page:
+- **Desktop** pairs an icon rail with the viewport grid and the inspector
+  column.
+- **Tablet** moves the inspector under the stage.
+- **Mobile** gives the top half to imaging and the bottom half to a
+  permanent control deck, so tools never cover the image they act on.
 
-- **Scrub fields, not slider rows.** `SliderRow` renders a compact rectangle
-  carrying its own label, a proportional fill and a right-aligned value,
-  dragged horizontally. It is still a native `<input type="range">` layered
-  at full size over the fill — the wire suite focuses these, sends real arrow
-  keys and reads `.inputValue()`, so a div-based slider would break it.
-- **A tool column, not a wrapping toolbar.** `#dock-mpr` renders in `column`
-  mode against the viewport edge on desktop, and flat inside the mobile
-  control deck. One dock, two layouts — `#undogrp` has to stay inside
-  `#dock-mpr` and `#modeseg` inside `#mpanel-tools`, which e2e addresses.
-- **Density scales by pointer, not breakpoint.** `--ctl-h` is 26px under a
-  mouse and 44px under a finger, so instrument tightness and the §22 touch
-  floor come from one variable instead of fighting.
-- **Rounding stays proportional but tight** (3→19px). Pills are reserved for
-  status dots and notifications; a pill-shaped control reads as a web page.
+980px is the mobile edge, shared with `lib/isMobile.ts`. Control height is
+26px under a mouse and 44px under a finger, set by one variable, so the
+touch-target floor and desktop density do not fight.
 
-The viewport borrows the look of a three.js/Blender-class viewport — graded
-stage, floor grid, corner brackets, orientation axis gizmo — but every pixel
-of imagery is still CPU-rasterised into a 2D canvas. The gizmo is SVG chrome
-that reflects orbit/tilt and is operable (clicking an axis snaps the camera),
-but it renders no imagery. No WebGL context is created and no `three` import
-exists, and `verify.test.ts` enforces both. Anatomical edge letters stay on
-the canvas (`lib/orient.ts edgeLabels`, drawn by `views/paneChrome.ts`) — the DOM HUD draws
-framing only, so there is one implementation, not two (§4). They come from
-the volume's patient geometry, not a DICOM tag, so NIfTI gets them too.
+The viewport borrows a 3D tool's look: a graded stage, a floor grid, corner
+brackets and an orientation gizmo. Every pixel of imagery is still
+CPU-rasterised. The gizmo is SVG chrome that reflects the orbit and snaps
+the camera when an axis is clicked. The anatomical edge letters are drawn on
+the canvas from the volume's patient geometry, so NIfTI gets them too.
 
-## UI (`packages/ui`, static, serve repo root)
+## Serving (`Dockerfile`, `deploy/`)
 
-- `slice.html` — MPR 3-view + seg overlay + paint/erase + undo + PNG/.nii export.
-- `surface.html` — orbit/tilt/threshold + blocky/smooth + `.nii` mask upload.
-- `viewer-lib.js` — shared loaders (NIfTI pixdims, DICOM spacing+z-gap).
-- `extract.worker.js` — extraction worker, transferables, main-thread fallback.
-- `index.html` — the product shell (MPR + 3D + inspector + palette).
-- `slice.html` / `surface.html` — kept as focused single-purpose pages AND a
-  duplication canary: logic must live in `viewer-lib.js`, pages stay thin.
-  If a fix lands in one page but not the others, that is the debt signal.
+The image is nginx serving three trees from one origin:
 
-## Serving (`Dockerfile` + `deploy/nginx.conf`)
+- the Vite bundle, at `/packages/app/dist/`;
+- `digests/`, the data sets the app fetches at runtime;
+- the read-only `samples/` mount.
 
-- The production image is nginx serving three trees: the Vite bundle
-  (`/packages/app/dist/`), `digests/` (fetched at runtime by Atlas, Learn and
-  the pathogen structures) and the read-only `samples/` mount. `/` is a 302
-  to the app; `/healthz` answers from nginx itself. The per-package tsc builds
-  and the legacy `packages/ui` shell are dev-only.
-- Only the viewer is in the entry chunk. The other seven routes are
-  `React.lazy` chunks behind `ui/RouteSuspense`, whose error boundary turns a
-  chunk that 404s after a redeploy into a "reload" card instead of a blank
-  shell. React and Radix sit in their own chunks so their hashes survive app
-  releases.
-- The viewer boots with NIfTI only (`lib/loaders.ts`). DICOM, NRRD, OME-TIFF,
-  SEG/RTSTRUCT and the PACS client load on first use: `lib/formatLoaders.ts`,
-  `dicomSets`, `dicomUpload`, `segImport`, `pacs` and `ioLazy` are reached
-  only through `import()`. Rollup assigns chunks by module, so a boot-path
-  file that needs a sniffer or a SOP constant imports it from an io module
-  that holds nothing else (`io/sniff.ts`, `sop-names.ts`, `us-names.ts`,
-  `app/lib/heldStacks.ts`): one constant taken from `seg.ts` put the SEG
-  reader, the dataset parser and every JPEG decoder back in the entry.
-  `npm run check:entry` (in `ci`) fails on a byte budget or on a decoder's
-  string literal found in the built entry.
-- Cache policy follows naming: hashed `assets/` are immutable for a year,
-  everything unhashed revalidates, `samples/` is private and short-lived.
-- The CSP is `'self'` for script, style, font and worker — no inline, no
-  eval, no blob workers — and fonts are bundled, so no request leaves the
-  origin except the stores a user types in (`connect-src https:`, or the
-  site's own list from `CARYS_CONNECT_SRC`, rendered by `deploy/start.sh`
-  into a `/tmp` include before nginx starts). A change
-  that needs more than that must change `deploy/nginx.conf` in the same
-  commit; `npm run test:image` (CI, image job) fails on any CSP violation.
+Beyond that:
+
+- `/` redirects to the app, and `/healthz` answers from nginx itself.
+- Cache policy follows naming:
+  - hashed assets are immutable for a year;
+  - everything unhashed revalidates;
+  - `samples/` is private and short-lived.
+- The CSP is `'self'` for scripts, styles, fonts and workers, with nothing
+  inline, no `eval` and no `blob:` workers. Fonts are bundled. No request
+  leaves the origin except to the stores a user types in (`connect-src`).
+- A change that needs a wider policy must change `deploy/nginx.conf` in the
+  same commit. `npm run test:image` fails on any CSP violation.
+
+[DEPLOYMENT.md](DEPLOYMENT.md) covers running it, and
+[SECURITY.md](SECURITY.md) covers the headers and the access gate.

@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseGlb, windOutward } from '../glb.js';
 
-// H3 (docs/PHASES.md): the HRA reference organs are GLB files.
+// The HRA reference organs are GLB files.
 
 /** A GLB from a glTF JSON and its binary chunk. */
 function glb(json: object, bin: Uint8Array): Uint8Array {

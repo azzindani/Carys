@@ -110,7 +110,7 @@ jobs:
       # Building is not shipping. This job only ever built the image, and the
       # image exited 1 at start-up for as long as it existed (the stock nginx
       # config cannot run as the non-root user the Dockerfile switches to).
-      # Run it the locked-down way the README documents; a start-up failure
+      # Run it the locked-down way docs/DEPLOYMENT.md documents; a start-up failure
       # fails here, before anything else is spent.
       - name: Run the image
         run: |

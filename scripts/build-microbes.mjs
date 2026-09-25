@@ -1,4 +1,4 @@
-// The microbiology library's digest (H8, docs/PHASES.md): the bacterial
+// The microbiology library's digest: the bacterial
 // PDB entries the cards link to, vendored as RCSB serves them (CC0), and
 // library.json with what the build checked about every card's sources.
 //

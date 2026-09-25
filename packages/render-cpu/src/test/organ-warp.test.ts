@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { applyFit, blendField, icpSimilarity, IDENTITY_FIT, PointTree } from '../organ-fit.js';
 import { GRAD_MAX, icpWarp, spreadNodes, WARP_DEFAULTS, Warp, wendland } from '../organ-warp.js';
 
-// H3 unblocked (docs/PHASES.md): the non-rigid rest of an anchor's fit.
+// The non-rigid rest of an anchor's fit.
 
 /** A tube's surface along z (radius 20 mm, 300 mm long), samples about
  *  4 mm apart; the part below z = 0 turned by `bend` about the x axis

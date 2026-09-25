@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { brickRanges, mergeRows, renderVolume, type VrOpts, type VrVolume } from '../vr.js';
 import { maxOpacity, sampleSortedTF, sampleTF, sortTF, type TF } from '../tf.js';
 
-// F9 (docs/PHASES.md): empty-space skipping and split rendering change no
+// Empty-space skipping and split rendering change no
 // pixel.
 
 const hash = (a: Uint8ClampedArray): string => createHash('sha256').update(a).digest('hex').slice(0, 16);

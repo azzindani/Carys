@@ -1,4 +1,4 @@
-// A gait cycle on the rig (H6, docs/PHASES.md): the root's rise and fall
+// A gait cycle on the rig: the root's rise and fall
 // from the feet's contact with the ground, how far a grounded foot slips,
 // and each muscle's length between its two attachments. Pure, no DOM.
 import { NO_SEG, segmentTransforms, type Pose, type Rig, type SkinWeights } from './rig.js';

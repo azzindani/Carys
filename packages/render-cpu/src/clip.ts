@@ -1,4 +1,4 @@
-// Clipping for both 3D modes (F13, docs/PHASES.md): a crop box and a clip
+// Clipping for both 3D modes: a crop box and a clip
 // plane. What is kept is the box intersected with the plane's inner side,
 // a convex region, so a ray keeps exactly one interval of it and a
 // fragment is kept or not by one test. Each renderer takes the clip in its

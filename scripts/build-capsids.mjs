@@ -1,4 +1,4 @@
-// The virus capsid digest (H7, docs/PHASES.md): seven icosahedral capsids
+// The virus capsid digest: seven icosahedral capsids
 // from the Protein Data Bank (CC0 1.0), each vendored as RCSB serves its
 // asymmetric unit (NAME.cif.gz, byte for byte), plus capsids.json with what
 // the tests hold the expansion to.

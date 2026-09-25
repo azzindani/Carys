@@ -1,4 +1,4 @@
-// glTF 2.0 binary (GLB) meshes (H3, docs/PHASES.md: the HuBMAP HRA 3D
+// glTF 2.0 binary (GLB) meshes (the HuBMAP HRA 3D
 // reference organs ship as GLB). Every node of the default scene that has a
 // mesh comes back as one mesh in the scene's frame, the node transforms
 // applied down the tree, its triangle primitives joined. Pure; throws

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { anglesAbout, parseBvh, retargetFrame, writeBvh, type Bvh } from '../bvh.js';
 import type { Rig } from '../rig.js';
 
-// H6 (docs/PHASES.md): BVH motion onto the rig.
+// BVH motion onto the rig.
 
 type V3 = [number, number, number];
 

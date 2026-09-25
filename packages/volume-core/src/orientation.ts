@@ -1,4 +1,5 @@
-// Ported from Papaya src/js/volume/orientation.js (364 lines, MIT).
+// Ported from Papaya src/js/volume/orientation.js (364 lines, BSD-3-Clause;
+// notice in docs/THIRD-PARTY.md).
 // 6-char orientation strings e.g. "XYZ+--": first 3 = axis permutation,
 // last 3 = flip sense. Strides + orientMat drive all voxel addressing.
 

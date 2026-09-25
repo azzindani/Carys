@@ -1,4 +1,4 @@
-// The whole-body atlas' data (H2, docs/PHASES.md): the BodyParts3D body
+// The whole-body atlas' data: the BodyParts3D body
 // digest and the HRA organs placed in it (H3), their indexes merged and
 // their system files fetched once each (module scope, like the bone
 // atlas' mesh cache) and turned to the renderer's frame. A failed fetch is

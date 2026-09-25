@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import type { Volume } from '@carys/volume-core';
 import { centerlineLength, cprPath, cprVoxel, straightenedCpr, type V3 } from '../cpr.js';
 
-// F16 (docs/PHASES.md): a straightened view along a clicked centreline.
+// A straightened view along a clicked centreline.
 
 const WL = { width: 1100, center: 500 };
 const SP: V3 = [0.8, 0.8, 2];

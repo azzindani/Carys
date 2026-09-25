@@ -1,4 +1,5 @@
-// Ported from Papaya src/js/viewer/colortable.js (238 lines, MIT).
+// Ported from Papaya src/js/viewer/colortable.js (238 lines, BSD-3-Clause;
+// notice in docs/THIRD-PARTY.md).
 // Faithful TS port: knot tables, updateLUT lerp, lookupRed/Green/Blue.
 // Skipped: ARROW_ICON/ICON_SIZE/COLOR_BAR_* canvas icon painting.
 

@@ -1,8 +1,8 @@
 // Single-file DICOM byte decoder — ported from Daikon Parser.parse +
-// Series.parseImage + Image.getInterpretedData (MIT), shape trimmed for a
+// Series.parseImage + Image.getInterpretedData (BSD-3-Clause), shape trimmed for a
 // CPU-only static viewer. Native syntaxes only (implicit/explicit LE, explicit
 // BE); encapsulated/compressed pixel data throws a named error instead of
-// misdecoding. No compression deps. See docs/DIGEST-GROUP1.md.
+// misdecoding. No compression deps. Provenance and licence: docs/THIRD-PARTY.md.
 
 import type { DicomSlice } from './dicom.js';
 import {

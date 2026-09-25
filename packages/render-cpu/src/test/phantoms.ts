@@ -1,4 +1,4 @@
-// Analytic phantoms and surface-accuracy metrics (F1, docs/PHASES.md).
+// Analytic phantoms and surface-accuracy metrics.
 //
 // A phantom is a shape with a known signed distance, normal and volume, so a
 // mesh extracted from its sampled field can be scored in millimetres instead

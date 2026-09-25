@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { footSlip, groundRoot, muscleEnds, muscleLength, plantRoot, solePoints, stretchColor } from '../gait.js';
 import { NO_SEG, segmentTransforms, type Pose, type Rig } from '../rig.js';
 
-// H6 (docs/PHASES.md): a gait cycle on the rig.
+// A gait cycle on the rig.
 
 /** Two legs (z up, facing −y): a thigh and a foot each, a hip at z 100
  *  (hinge at the knee dropped: the foot hangs from the hip). */

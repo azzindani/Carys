@@ -1,4 +1,4 @@
-// The whole-body atlas digest (H1, docs/PHASES.md), built from BodyParts3D.
+// The whole-body atlas digest, built from BodyParts3D.
 //
 //   npx tsc -b && node scripts/build-body-atlas.mjs   → digests/bodyparts3d-body/
 //

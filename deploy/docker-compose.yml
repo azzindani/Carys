@@ -36,7 +36,7 @@ services:
       - "127.0.0.1:${CARYS_PORT:-8090}:8080"
     networks:
       - edge
-    # the locked-down run the README documents and CI tests
+    # the locked-down run docs/DEPLOYMENT.md documents and CI tests
     read_only: true
     tmpfs:
       - /tmp

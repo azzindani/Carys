@@ -1,5 +1,4 @@
-// Quadric-error mesh decimation and the level-of-detail chain (F11,
-// docs/PHASES.md).
+// Quadric-error mesh decimation and the level-of-detail chain.
 //
 // Garland & Heckbert 1997: every vertex carries the sum of the squared
 // distance quadrics of its faces' planes; an edge collapses to the point

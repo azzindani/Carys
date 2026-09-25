@@ -6,7 +6,7 @@ import { smoothSurface } from '../thick-slices.js';
 import type { TriMesh } from '../surface.js';
 import { box, capsule, ellipsoid, sampleIntensity, sampleMask, sphere, surfaceDistance, torus, type Phantom, type V3 } from './phantoms.js';
 
-// F11 (docs/PHASES.md): quadric-error decimation and the orbit level chain.
+// Quadric-error decimation and the orbit level chain.
 
 /** The app's bound (lib/extractor.ts LOD_MAX_ERROR), mm. */
 const APP_MAX_ERROR = 0.5;
