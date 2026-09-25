@@ -10,7 +10,9 @@
 //   npm run build:app && npm run test:synthetic
 //
 // CARYS_URL runs the same legs against a deployment instead of a local
-// server: CARYS_URL=https://carys.casava.space npm run test:synthetic
+// server: CARYS_URL=https://carys.casava.space npm run test:synthetic. Behind
+// the access gate, add CARYS_ACCESS_KEY: the suite logs in once with
+// ?token= and every leg carries the session cookie that login set.
 //
 // Fails loud, prints PASS.
 // NOTE: waitForSelector takes (selector, options) — TWO args.
@@ -36,8 +38,19 @@ const fail = (msg) => {
 let browser;
 try {
   browser = await launchChromium();
+  let session = [];
+  const key = process.env.CARYS_ACCESS_KEY;
+  if (REMOTE && key) {
+    const login = await browser.newContext();
+    await (await login.newPage()).goto(`${REMOTE}/?token=${key}`, { waitUntil: 'domcontentloaded' });
+    session = (await login.cookies()).filter((c) => c.name === 'carys_session');
+    await login.close();
+    if (session.length === 0) throw new Error('the ?token= login set no carys_session cookie');
+  }
   const newPage = async () => {
-    const pg = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    if (session.length) await ctx.addCookies(session);
+    const pg = await ctx.newPage();
     pg.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
     return pg;
   };

@@ -15,8 +15,22 @@
 # 2. The image (Dockerfile, which runs the gate in its build stage), then
 #    `docker compose up` (project `carys`) on the `carys_edge` network.
 # 3. Checks: health over loopback, then the site over its public name.
+#
+# Access: deploy/.env holds CARYS_ACCESS_KEY (created here on the first run,
+# mode 600, never printed). Log in once per browser at
+# https://carys.casava.space/?token=<key>; read the key on this host with
+# `cat deploy/.env`. Rotate it by editing the file and rerunning this script:
+# every session signed with the old key stops working.
 set -eu
 cd "$(dirname "$0")/.."
+
+if [ ! -f deploy/.env ]; then
+  umask 077
+  printf 'CARYS_ACCESS_KEY=%s\n' "$(openssl rand -hex 32)" > deploy/.env
+  umask 022
+  echo "created deploy/.env with a new access key (cat deploy/.env to read it)"
+fi
+chmod 600 deploy/.env
 
 SAMPLES="${CARYS_SAMPLES:-/srv/carys/samples}"
 PORT="${CARYS_PORT:-8090}"
@@ -63,8 +77,11 @@ echo "healthy on 127.0.0.1:$PORT"
 
 # The router must have joined carys_edge (docker network connect carys_edge
 # caddy-router) and carry the carys.casava.space block; see README.
+# /healthz is public; the app itself must refuse a caller with no key.
 if curl -fsS -m 10 -o /dev/null https://carys.casava.space/healthz; then
-  echo "LIVE: https://carys.casava.space/"
+  code=$(curl -s -m 10 -o /dev/null -w '%{http_code}' https://carys.casava.space/packages/app/dist/)
+  [ "$code" = 401 ] || { echo "the public site answered $code without a key, not 401" >&2; exit 1; }
+  echo "LIVE: https://carys.casava.space/ (gated: open it once with ?token=<key from deploy/.env>)"
 else
   echo "up locally, but https://carys.casava.space/healthz does not answer yet: check the router (README, Production)"
 fi

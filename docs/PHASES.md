@@ -645,7 +645,25 @@ owner + unblock step, or accepted by design — verified 2026-09-14)
   7,016 tris; DICOM→3D 242,616 / 136,892; worklist "6 of 21 can open
   here"). The quick-tunnel scripts (`scripts/deploy.sh`, `update.sh`) stay
   as a dev preview.
-- BLOCKED, owner: you — auth / multi-user / training models / real PACS:
+- DONE (2026-09-25) — an access gate, Thoth's token model, in the image's
+  own nginx through njs (`deploy/gate.js`), not in the router:
+  - `?token=<key>` answers with a 302 to the same URL without the token, and
+    a session cookie `<exp>.<HMAC-SHA256>` (HttpOnly, SameSite=Lax, Secure
+    behind TLS, 30 days).
+  - The cookie is checked for its signature and its expiry, and is renewed on
+    page loads.
+  - A Bearer key works for scripts.
+  - Anything else gets a 401 page with no WWW-Authenticate. `/healthz` stays
+    public.
+  - A wrong token and tampered, expired or wrong-key cookies are all 401.
+  - The token stays out of nginx's log (`$uri`) and out of Caddy's (a query
+    filter).
+  - The production compose refuses to start without the key (`deploy/.env`,
+    mode 600, created by `up.sh`). Without a key the image is open, for
+    local runs and CI.
+  - CI runs the image gated, and `test:image` checks the contract, then runs
+    every check through it.
+- BLOCKED, owner: you — multi-user / training models / real PACS:
   need a backend, GPU/data, or PACS credentials; outside the static
   prototype by scope. Unblock: product decision + backend.
 - ACCEPTED, no action — WebGL2/VTK/cinematic paths conflict with the

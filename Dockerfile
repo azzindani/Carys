@@ -57,6 +57,8 @@ COPY deploy/nginx.conf /etc/nginx/nginx.conf
 # Renders the per-site connect-src (CARYS_CONNECT_SRC) into /tmp, the one
 # writable path, then execs nginx; nginx.conf includes what it wrote.
 COPY deploy/start.sh /usr/local/bin/carys-start
+# The njs access gate nginx.conf imports (off unless CARYS_ACCESS_KEY is set).
+COPY deploy/gate.js /etc/nginx/carys-gate.js
 # The base image's own site goes too: its "Welcome to nginx!" page would
 # still answer /index.html, announcing the server to anyone who asks.
 RUN rm /etc/nginx/conf.d/default.conf /usr/share/nginx/html/index.html /usr/share/nginx/html/50x.html \

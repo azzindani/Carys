@@ -8,11 +8,17 @@
 //   docker build -t carys:local . && docker run -d --name carys -p 8080:8080 carys:local
 //   CARYS_URL=http://127.0.0.1:8080 node test/e2e/image.mjs
 //
+// CARYS_ACCESS_KEY: the deployment runs the access gate (deploy/gate.js).
+// The gate's own contract is checked first; after that every request
+// authenticates the way its client would, a Bearer key for fetches and the
+// ?token= login (then the session cookie) for the browser.
+//
 // Headers first, over plain HTTP; then a real browser boots the app, visits
 // every route and fails on any CSP violation, any request that leaves the
 // origin, and any route chunk that does not load. Works with or without
 // samples mounted: without them the imaging checks report as skipped, never
 // as passed (CODING-STANDARDS §29).
+import { createHmac } from 'node:crypto';
 import { launchChromium } from './browser.mjs';
 
 const BASE = (process.env.CARYS_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
@@ -29,12 +35,45 @@ const fail = (m) => { failed++; console.error(`IMAGE FAIL: ${m}`); };
 const skip = (m) => { skipped++; console.log(`skip  ${m}`); };
 const expect = (cond, m) => { if (cond) console.log(`ok    ${m}`); else fail(m); };
 
-/** GET without following redirects; the body is dropped unless asked for. */
-async function get(path, { body = false } = {}) {
-  const res = await fetch(`${BASE}${path}`, { redirect: 'manual', headers: { 'accept-encoding': 'gzip' } });
+const KEY = process.env.CARYS_ACCESS_KEY ?? '';
+
+/** GET without following redirects; the body is dropped unless asked for.
+ *  Behind the gate it carries the Bearer key unless `auth` is false. */
+async function get(path, { body = false, auth = true, cookie = '' } = {}) {
+  const headers = { 'accept-encoding': 'gzip' };
+  if (KEY && auth) headers.authorization = `Bearer ${KEY}`;
+  if (cookie) headers.cookie = cookie;
+  const res = await fetch(`${BASE}${path}`, { redirect: 'manual', headers });
   const text = body ? await res.text() : (await res.body?.cancel(), '');
   const h = (k) => res.headers.get(k) ?? '';
   return { status: res.status, h, text };
+}
+
+// ---- 0. The access gate, when the deployment runs one
+if (KEY) {
+  const bare = await get('/packages/app/dist/', { body: true, auth: false });
+  expect(bare.status === 401 && bare.h('content-type').startsWith('text/html') && /\?token=/.test(bare.text),
+    `gate: no credentials, the 401 page (${bare.status})`);
+  expect(!bare.h('www-authenticate'), 'gate: no WWW-Authenticate, so no browser password prompt');
+  expect(/default-src 'none'/.test(bare.h('content-security-policy')), 'gate: the 401 page keeps the CSP');
+  expect((await get('/healthz', { auth: false })).status === 200, 'gate: /healthz stays public');
+  expect((await get('/packages/app/dist/?token=wrong', { auth: false })).status === 401, 'gate: a wrong ?token= is a 401');
+  const login = await get(`/packages/app/dist/?a=1&token=${KEY}`, { auth: false });
+  const setCookie = login.h('set-cookie');
+  expect(login.status === 302 && login.h('location') === '/packages/app/dist/?a=1',
+    `gate: ?token= redirects to the same URL without it (${login.status} ${login.h('location')})`);
+  expect(/^carys_session=\d+\.[\w-]+; Path=\/; HttpOnly; SameSite=Lax; Max-Age=2592000/.test(setCookie) && login.h('cache-control') === 'no-store',
+    'gate: the login sets a 30-day HttpOnly session and is not cached');
+  expect(!BASE.startsWith('https:') || /; Secure$/.test(setCookie), 'gate: the session cookie is Secure over https');
+  const session = setCookie.split(';')[0];
+  const opened = await get('/packages/app/dist/', { auth: false, cookie: session });
+  expect(opened.status === 200 && /^carys_session=/.test(opened.h('set-cookie')), 'gate: the cookie opens the app, and a page load renews it');
+  expect((await get('/packages/app/dist/', { auth: false, cookie: `${session.slice(0, -1)}x` })).status === 401, 'gate: a tampered cookie is a 401');
+  const past = Math.floor(Date.now() / 1000) - 60;
+  const expired = `carys_session=${past}.${createHmac('sha256', KEY).update(`carys-session.${past}`).digest('base64url')}`;
+  expect((await get('/packages/app/dist/', { auth: false, cookie: expired })).status === 401, 'gate: an expired session is a 401, whatever its signature');
+  const bearer = await get('/packages/app/dist/');
+  expect(bearer.status === 200 && !bearer.h('set-cookie'), 'gate: a Bearer key opens it, with no cookie for a script');
 }
 
 // ---- 1. HTTP: health, landing, headers, cache, compression, types
@@ -139,7 +178,8 @@ try {
     else fail(`${r.status()} ${p}`);
   });
 
-  await pg.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+  // behind the gate the browser logs in the way a reader does, once
+  await pg.goto(KEY ? `${BASE}/?token=${KEY}` : `${BASE}/`, { waitUntil: 'networkidle' });
   expect(pg.url() === `${BASE}/packages/app/dist/`, `browser lands on the app (${pg.url()})`);
   if (served.has(SAMPLE_NII)) {
     await pg.waitForFunction(() => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''), null, { timeout: 90000 })

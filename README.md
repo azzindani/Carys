@@ -192,8 +192,21 @@ sh deploy/up.sh    # sample set, image, compose up, health + public check
   and proxies `carys.casava.space` to `carys-app-1:8080`, adding HSTS.
   nginx owns everything else: CSP, cache policy, compression. The loopback
   port `127.0.0.1:8090` is for host checks.
-- The site is public on purpose. It has no backend and no secrets, and
-  uploads never leave the browser.
+- The site is behind an access token, as Thoth is, and the app does the
+  gating, not the router. nginx runs `deploy/gate.js` through njs:
+  - Open `https://carys.casava.space/?token=<key>` once. You get a signed
+    session cookie, checked for signature and expiry, lasting 30 days and
+    renewed on each page load, and are redirected to the same URL without
+    the token.
+  - Scripts send `Authorization: Bearer <key>` instead.
+  - Anything else gets a 401 page with no password prompt. `/healthz` stays
+    public.
+  - The key lives in `deploy/.env` (gitignored, mode 600). `deploy/up.sh`
+    creates it on the first run and never prints it; read it with
+    `cat deploy/.env`. To rotate it, edit the file and rerun `up.sh`: every
+    old session stops working.
+  - Without a key the image is open, which is what local runs and CI use.
+    The production compose file refuses to start without one.
 - The sample set is `/srv/carys/samples` (`CARYS_SAMPLES`), mounted
   read-only. It holds the synthetic phantoms, generated there with
   `CARYS_SAMPLES_DIR`, so a real `samples/` is never written over. It also
@@ -203,11 +216,11 @@ sh deploy/up.sh    # sample set, image, compose up, health + public check
   licence is unverified; the worklist says "needs real data" for those.
 - Redeploy after a change with `sh deploy/up.sh`: it rebuilds the image,
   which re-runs the gate, and keeps the sample set.
-- Check the live site with
-  `CARYS_URL=https://carys.casava.space npm run test:image` (headers, types,
-  every route under the CSP) and
-  `CARYS_URL=https://carys.casava.space npm run test:synthetic` (boot,
-  keyboard, DICOM→3D, worklist).
+- Check the live site with the key exported (`set -a; . deploy/.env`):
+  - `CARYS_URL=https://carys.casava.space npm run test:image` checks the
+    gate, headers and types, then every route under the CSP.
+  - `CARYS_URL=https://carys.casava.space npm run test:synthetic` checks
+    boot, keyboard, DICOM→3D and the worklist, logged in with `?token=`.
 - The router side is one site block in `/root/caddy-router/Caddyfile` plus
   `carys_edge` in its compose networks. If the network is ever deleted,
   reattach it without restarting the router:
