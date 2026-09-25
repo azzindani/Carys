@@ -71,33 +71,32 @@ export const TRACT_PRESETS: TractPreset[] = [
     provenance: 'N2 teaching preset (fractional viewBox, CC0, authored here)',
   },
   {
-    // A3 brain-named waypoints: the preset geometry is still fractional
-    // (never patient anatomy); only the NAMES come from the SPL label
-    // table (labels 10/49 left/right thalamus, 3004 corpus callosum).
-    // Teaching contract: "where the thalamus would be", not "the
-    // thalamus" — the status keeps saying so.
+    // Brain-named waypoints: the geometry is still fractional (never
+    // patient anatomy); only the names are anatomical. Teaching contract:
+    // "where the thalamus would be", not "the thalamus"; the status keeps
+    // saying so.
     id: 'thalamo-midline',
-    title: 'Thalami + callosal midline (SPL-named)',
-    lesson: 'Keep streamlines visiting the left-thalamus box then the midline callosal box (SPL labels 10 + 3004); right-thalamus strays pass too — names teach, geometry stays fractional.',
+    title: 'Thalami + callosal midline',
+    lesson: 'Keep streamlines visiting the left-thalamus box then the midline callosal box; right-thalamus strays pass too — names teach, geometry stays fractional.',
     waypoints: [
       { center: [0.38, 0.55, 0.5], radius: 0.1 },
       { center: [0.5, 0.5, 0.55], radius: 0.08 },
     ],
     exclusions: [{ center: [0.98, 0.5, 0.5], radius: 0.05 }],
-    provenance: 'A3 SPL-named waypoint (labels 10/3004, CC-BY-equivalent UNVERIFIED — see openanatomy-brain SOURCES)',
+    provenance: 'Teaching preset (fractional viewBox, CC0, authored here)',
   },
   {
-    // A3 second brain-named bundle: putamen pair (labels 12/51) as two
-    // AND waypoints — the corridor lesson retold with basal-ganglia names.
+    // Second brain-named bundle: the putamen pair as two AND waypoints,
+    // the corridor lesson retold with basal-ganglia names.
     id: 'putamen-pair',
-    title: 'Putamen pair corridor (SPL-named)',
-    lesson: 'Keep streamlines threading BOTH putamen boxes (SPL labels 12 + 51); the AND logic is the two-hop lesson with brain names.',
+    title: 'Putamen pair corridor',
+    lesson: 'Keep streamlines threading BOTH putamen boxes; the AND logic is the two-hop lesson with brain names.',
     waypoints: [
       { center: [0.35, 0.5, 0.5], radius: 0.1 },
       { center: [0.65, 0.5, 0.5], radius: 0.1 },
     ],
     exclusions: [],
-    provenance: 'A3 SPL-named waypoint (labels 12/51, CC-BY-equivalent UNVERIFIED — see openanatomy-brain SOURCES)',
+    provenance: 'Teaching preset (fractional viewBox, CC0, authored here)',
   },
 ];
 

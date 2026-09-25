@@ -72,7 +72,6 @@ export const ATTRIBUTION_ROWS: AttributionRow[] = [
   { id: 'rcsb-pathogens', license: 'CC0-1.0', lane: 'M1', status: 'shipped', note: 'PDB pathogen structures (5 entries)' },
   { id: 'idr-catalog', license: 'CC0-1.0', lane: 'C1', status: 'shipped', note: 'Pinned IDR screens catalog (4 entries)' },
   { id: 'idr-screens', license: 'CC-BY-4.0', lane: 'M2', status: 'shipped', note: 'SARS-CoV-2 organoid screen facts (2 fields)' },
-  { id: 'openanatomy-brain', license: 'UNVERIFIED (Slicer License B, human SPDX check owed)', lane: 'A3', status: 'proposed', note: 'SPL brain label table (335 rows)' },
   { id: 'openneuro-ds000001', license: 'CC0-1.0', lane: 'D1', status: 'shipped', note: 'Balloon-task T1 + BOLD crops (64³ / 64×64×33)' },
 ];
 

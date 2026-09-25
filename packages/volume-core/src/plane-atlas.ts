@@ -6,9 +6,8 @@
 // third (thirds split the slider range, never the patient's anatomy),
 // and the oblique caution when a tilt is active.
 //
-// Ledger: no new digest bytes (SPL label names + BodyParts3D region
-// words, both already pinned); this lane ships the card index. Prototype
-// scope: orientation teaching, never diagnosis.
+// Ledger: no digest bytes; the cards are standard anatomical terms written
+// here. Scope: orientation teaching, never diagnosis.
 //
 // Dependency-free by design (mirrors cohorts.ts): plain objects; the app
 // feeds its live {plane, tilted} state, the card answers.

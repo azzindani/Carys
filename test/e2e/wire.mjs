@@ -1847,7 +1847,7 @@ try {
   ]);
   const hpath = await hdl.path();
   const htext = readFileSync(hpath, 'utf8');
-  for (const needle of ['Provenance', 'Attribution', 'bodyparts3d-longbones', 'CC-BY-4.0', 'idr-screens', 'openanatomy-brain']) {
+  for (const needle of ['Provenance', 'Attribution', 'bodyparts3d-longbones', 'CC-BY-4.0', 'idr-screens']) {
     if (!htext.includes(needle)) fail(`report HTML missing ${needle}`);
   }
   console.log('report HTML carries provenance + attribution tables');
@@ -2539,31 +2539,6 @@ try {
     null, { timeout: 30000 },
   );
   console.log('atlas sacrum renders:', await page20.locator('#ro-atlas-term').textContent());
-  // A3 brain regions: SPL label search names the RadLex-backed hit; the
-  // skeleton mesh view is untouched (brain geometry lives remote).
-  await page20.fill('#atlas-brain-search', 'putamen');
-  await page20.click('#dock-atlas button[title="Search brain labels"]');
-  await page20.waitForFunction(
-    () => /putamen/i.test(document.getElementById('ro-brain-hits')?.textContent ?? ''),
-    null, { timeout: 30000 },
-  );
-  console.log('brain search hits:', await page20.locator('#ro-brain-hits').textContent());
-  await page20.waitForFunction(
-    () => /RID2101|label 1[12]/.test(document.getElementById('status-text')?.textContent ?? ''),
-    null, { timeout: 30000 },
-  );
-  console.log('brain status names RadLex:', await page20.locator('#status-text').textContent());
-  const brainSrc = await page20.locator('#atlas-brain-src').textContent();
-  if (!brainSrc.includes('Surgical Planning Laboratory')) fail(`brain attribution wrong: ${brainSrc}`);
-  else console.log('brain attribution pins SPL');
-  // RadLex-id search lands the same row (left putamen, RID21015)
-  await page20.fill('#atlas-brain-search', 'RID21015');
-  await page20.click('#dock-atlas button[title="Search brain labels"]');
-  await page20.waitForFunction(
-    () => /left putamen/.test(document.getElementById('ro-brain-hits')?.textContent ?? ''),
-    null, { timeout: 30000 },
-  );
-  console.log('RadLex search lands:', await page20.locator('#ro-brain-hits').textContent());
   await page20.close();
 
   // ---- 34b. H2 whole-body atlas: systems switch, taps name the structure

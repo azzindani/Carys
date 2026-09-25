@@ -47,25 +47,13 @@ Carys uses data in two places:
 | `microbe-library` | Microbiology cards and their structures. Card text is from CC BY 4.0 articles, each licence checked at Crossref; the structures are PDB entries. | CC BY 4.0 (text), CC0 (structures) | Journal of General Virology articles, RCSB PDB |
 | `idr-screens` | Metadata for two IDR idr0083 images. The pixels stay on IDR's servers. | CC BY 4.0 | Image Data Resource |
 | `openneuro-ds000001` | Provenance only. The two cropped volumes are in the sample set. | CC0 | OpenNeuro ds000001 1.0.0 |
-| `openanatomy-brain` | The SPL brain atlas label table: 335 region names with metadata | **Unverified**, see below | SPL brain atlas (github.com/mhalle/spl-brain-atlas) |
 
 `idr-catalog` in the registry (CC0) is the table of public IDR OME-Zarr
 stores in `packages/io/src/idr-catalog.ts`. Its pixels stay remote too.
 
-**Open item: `openanatomy-brain`.** The atlas names "3D Slicer License,
-section B" as its licence, which permits redistribution with attribution.
-That licence is neither CC0 nor CC BY 4.0, and it has not been mapped to an
-SPDX identifier. The registry therefore marks the set `UNVERIFIED` and
-`proposed`, and the Report route prints it that way.
-
-This file is still copied into the image with the rest of `digests/`, and
-the Atlas route fetches it for its brain region names. It is the one
-exception to the policy above. To resolve it, either:
-
-- confirm the licence and record its SPDX id in `SOURCES.json` and
-  `DIGESTS.json`; or
-- keep the file out of the image and let the Atlas route do without region
-  names.
+Tests hold the rule: every row of `DIGESTS.json` and of the report's
+attribution table must be `CC0-1.0` or `CC-BY-4.0`
+(`study/src/test/sources.test.ts`, `report.test.ts`).
 
 ### Rebuilding a data set
 

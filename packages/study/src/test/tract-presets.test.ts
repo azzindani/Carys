@@ -44,7 +44,7 @@ describe('N2 tract presets', () => {
     assert.deepEqual(filterTracts(PTS, OFF, left.waypoints, []), []);
     const two = presetRois(tractPresetById('two-hop')!, DIMS);
     assert.deepEqual(filterTracts(PTS, OFF, two.waypoints, two.exclusions), []);
-    // A3 SPL-named bundles validate + resolve like the N2 three (same
+    // The brain-named bundles validate + resolve like the N2 three (same
     // fractional contract, only the names are new).
     for (const id of ['thalamo-midline', 'putamen-pair']) {
       const p = tractPresetById(id)!;

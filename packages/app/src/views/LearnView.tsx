@@ -2,8 +2,7 @@ import { useState } from 'react';
 import type { JSX } from 'react';
 import {
   DISEASE_BUNDLES, PATHOGEN_ATTRIBUTION, buildSelfTestBank, gradeSelfTestAnswer,
-  installTermTable, installTreeTable, selfTestAuditDetail, shuffled,
-  validateTermTable, validateTreeTable,
+  selfTestAuditDetail, shuffled,
   bundleById, pathogenById, quizAuditDetail, type SelfTestQuestion, type StructureLink,
   buildPlaneDrills, gradePlaneDrill, PLANETRAINER_SERIES,
   type PlaneDrill,
@@ -13,24 +12,11 @@ import {
   trainerCaseById, type RecistCategory,
 } from '@carys/measure';
 import { audit, EDUCATION_BADGE } from '@carys/study';
+import { ensureTerms } from '../lib/atlasTerms';
 import { setStatus } from '../lib/status';
 import { toast } from '../lib/toasts';
 import { Chip, DarkSelect, IconBtn } from '../ui/primitives';
 import { MicrobeLibrary } from './MicrobeLibrary';
-
-// Term/tree install (module scope, once — same pattern as AtlasView):
-// the self-test bank needs the K1 tree for parent questions.
-let termsReady = false;
-async function ensureTerms(): Promise<void> {
-  if (termsReady) return;
-  const r = await fetch('/digests/bodyparts3d-terms/terms.json');
-  if (!r.ok) throw new Error(`terms fetch failed (${r.status})`);
-  installTermTable(validateTermTable(await r.json()));
-  const tr = await fetch('/digests/bodyparts3d-terms/tree.json');
-  if (!tr.ok) throw new Error(`tree fetch failed (${tr.status})`);
-  installTreeTable(validateTreeTable(await tr.json()));
-  termsReady = true;
-}
 
 /** E2 mechanism-of-disease bundles: story + pathway + quiz per bundle,
  *  provenance card per piece. Education pixels only (badged) — the 3D

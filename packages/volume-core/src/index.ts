@@ -49,7 +49,6 @@ export * from './terms.js';
 export * from './body-search.js';
 export * from './wsi-demo.js';
 export * from './selftest.js';
-export * from './brain-regions.js';
 export * from './plane-atlas.js';
 export * from './plane-trainer.js';
 export * from './geometry.js';
