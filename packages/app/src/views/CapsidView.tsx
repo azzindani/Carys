@@ -65,7 +65,7 @@ function colours(c: LoadedCapsid, l: AssemblyLevel, by: CapsidColor, pickCopy: n
 interface Drawn { level: Level; count: number; ms: number }
 interface Pick { copy: number; atom: number; level: Level }
 
-export function CapsidView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Element {
+export function CapsidView({ modeSwitch, initialKey }: { modeSwitch: ReactNode; initialKey?: string }): JSX.Element {
   const [index, setIndex] = useState<CapsidIndex | null>(null);
   const [key, setKey] = useState('');
   const [capsid, setCapsid] = useState<LoadedCapsid | null>(null);
@@ -169,7 +169,10 @@ export function CapsidView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Eleme
     void loadCapsidIndex().then((idx) => {
       if (!live) return;
       setIndex(idx);
-      choose(idx, idx.entries[0]!.key);
+      // a library card's capsid, else the largest
+      const known = initialKey !== undefined && idx.entries.some((e) => e.key === initialKey);
+      if (initialKey !== undefined && !known) setStatus(`unknown capsid: ${initialKey}`, 'error');
+      choose(idx, known ? initialKey : idx.entries[0]!.key);
     }).catch((err) => {
       setLoading(`capsid index failed: ${(err as Error).message}`);
       setStatus(`capsid index failed: ${(err as Error).message}`, 'error');

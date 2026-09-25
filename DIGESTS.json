@@ -70,6 +70,16 @@
    "source_url": "https://www.rcsb.org/"
   },
   {
+   "id": "microbe-library",
+   "kind": "digest",
+   "license_spdx": "CC0-1.0",
+   "license_note": "six bacterial PDB entries (2OMF, 7AHL, 1XTC, 3BTA, 1ACC, 1ENY) as RCSB serves them, PDB archive data under CC0 1.0; the library's virus-family cards (volume-core/microbes.ts) are adapted from four ICTV Virus Taxonomy Profiles in J Gen Virol whose CC BY 4.0 licence the build checks at Crossref, each cited on its card; the other cards are written in this repository (MIT)",
+   "mode": "digest",
+   "lane": "H8",
+   "status": "shipped",
+   "source_url": "https://www.rcsb.org/"
+  },
+  {
    "id": "rcsb-pathogens",
    "kind": "digest",
    "license_spdx": "CC0-1.0",

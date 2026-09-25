@@ -13,6 +13,7 @@ import { getUi, saveAppearance, setUi, useUiPick } from './lib/store';
 import { useIsMobile } from './lib/isMobile';
 import { bump } from './lib/version';
 import type { View } from './lib/types';
+import type { StructureLink } from '@carys/volume-core';
 import { Inspector } from './views/Inspector';
 import { ViewerView } from './views/ViewerView';
 import { Palette, buildCommands } from './ui/Palette';
@@ -38,7 +39,9 @@ export function App(): JSX.Element {
   const [route, go] = useRoute();
   const [palOpen, setPalOpen] = useState(false);
   const [sliceInit, setSliceInit] = useState<SliceInit | null>(null);
-  const [learnPathogen, setLearnPathogen] = useState('');
+  // A structure Learn asked for (a bundle's or a library card's): the
+  // Protein route opens it.
+  const [structureLink, setStructureLink] = useState<StructureLink | null>(null);
   const [extractor, setExtractorState] = useState<Extractor | null>(null);
   const axialCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const booted = useRef(false);
@@ -171,11 +174,11 @@ export function App(): JSX.Element {
   let content: JSX.Element;
   if (route === 'worklist') content = <WorklistView onOpen={openFromWorklist} />;
   else if (route === 'report') content = <ReportView />;
-  else if (route === 'protein') content = <ProteinView initialPathogen={learnPathogen} />;
+  else if (route === 'protein') content = <ProteinView initial={structureLink} />;
   else if (route === 'cells') content = <CellsView />;
   else if (route === 'tracks') content = <TracksView />;
   else if (route === 'atlas') content = <AtlasView />;
-  else if (route === 'learn') content = <LearnView onOpenPathogen={(id) => { setLearnPathogen(id); go('protein'); }} />;
+  else if (route === 'learn') content = <LearnView onOpenStructure={(l) => { setStructureLink(l); go('protein'); }} />;
   else {
     content = (
       <ViewerView

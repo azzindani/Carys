@@ -1,0 +1,206 @@
+{
+ "format": "carys-microbes/1",
+ "pin": "PDB-2OMF-7AHL-1XTC-3BTA-1ACC-1ENY",
+ "attribution": "Bacterial structures from the Protein Data Bank (PDB archive, CC0 1.0); virus-family cards adapted from ICTV Virus Taxonomy Profiles (CC BY 4.0)",
+ "cards": 11,
+ "structures": [
+  {
+   "pdbId": "2OMF",
+   "file": "2OMF.cif.gz",
+   "card": "escherichia-coli",
+   "sha256": "2c5634c09717a6e87ab0cd0aa7e5e940b9da07aae9ace03f1fe5512a4ea11e06",
+   "title": "OMPF PORIN",
+   "organism": "Escherichia coli K12",
+   "revision": "1.3 (2024-02-21)",
+   "resolutionA": 2.4,
+   "atoms": 2827,
+   "chains": 1,
+   "citation": "Cowan"
+  },
+  {
+   "pdbId": "7AHL",
+   "file": "7AHL.cif.gz",
+   "card": "staphylococcus-aureus",
+   "sha256": "68bd52590f7211200c31f0a28ed3d7108175fbb496a0b1d31c380ba3ffa40a5f",
+   "title": "ALPHA-HEMOLYSIN FROM STAPHYLOCOCCUS AUREUS",
+   "organism": "Staphylococcus aureus",
+   "revision": "1.3 (2024-03-06)",
+   "resolutionA": 1.89,
+   "atoms": 22778,
+   "chains": 7,
+   "citation": "Song"
+  },
+  {
+   "pdbId": "1XTC",
+   "file": "1XTC.cif.gz",
+   "card": "vibrio-cholerae",
+   "sha256": "fecaa94e70283ad69907a459bcbef568958c719a71a7d7fdbfd8c074a22bcac9",
+   "title": "CHOLERA TOXIN",
+   "organism": "Vibrio cholerae",
+   "revision": "1.4 (2024-11-06)",
+   "resolutionA": 2.4,
+   "atoms": 6135,
+   "chains": 7,
+   "citation": "Zhang"
+  },
+  {
+   "pdbId": "3BTA",
+   "file": "3BTA.cif.gz",
+   "card": "clostridium-botulinum",
+   "sha256": "8eb0e577cfc04f2223e6b2978678d0612e242b73c2241e5d7e86f138b7b9021f",
+   "title": "CRYSTAL STRUCTURE OF BOTULINUM NEUROTOXIN SEROTYPE A",
+   "organism": "Clostridium botulinum",
+   "revision": "1.4 (2024-10-30)",
+   "resolutionA": 3.2,
+   "atoms": 10402,
+   "chains": 1,
+   "citation": "Lacy"
+  },
+  {
+   "pdbId": "1ACC",
+   "file": "1ACC.cif.gz",
+   "card": "bacillus-anthracis",
+   "sha256": "c695089cf81f76e39d7360bc0156b3193b3782b466b7418f29d99941a614af5e",
+   "title": "ANTHRAX PROTECTIVE ANTIGEN",
+   "organism": "Bacillus anthracis",
+   "revision": "1.3 (2024-02-07)",
+   "resolutionA": 2.1,
+   "atoms": 5672,
+   "chains": 1,
+   "citation": "Petosa"
+  },
+  {
+   "pdbId": "1ENY",
+   "file": "1ENY.cif.gz",
+   "card": "mycobacterium-tuberculosis",
+   "sha256": "9c6b5ef6881895b543f948efa0a182b2f2ea6e69324d77c4d1b0507c3f0b503a",
+   "title": "CRYSTAL STRUCTURE AND FUNCTION OF THE ISONIAZID TARGET OF MYCOBACTERIUM TUBERCULOSIS",
+   "organism": "Mycobacterium tuberculosis",
+   "revision": "1.5 (2024-02-07)",
+   "resolutionA": 2.2,
+   "atoms": 2079,
+   "chains": 1,
+   "citation": "Dessen"
+  }
+ ],
+ "references": [
+  {
+   "doi": "10.1099/jgv.0.000911",
+   "title": "ICTV Virus Taxonomy Profile: Picornaviridae",
+   "firstAuthor": "Zell",
+   "year": 2017,
+   "journal": "Journal of General Virology",
+   "volume": "98",
+   "pages": "2421-2422",
+   "licenceUrl": "http://creativecommons.org/licenses/by/4.0/"
+  },
+  {
+   "pdbId": "2PLV",
+   "title": "STRUCTURAL FACTORS THAT CONTROL CONFORMATIONAL TRANSITIONS AND SEROTYPE SPECIFICITY IN TYPE 3 POLIOVIRUS",
+   "firstAuthor": "Filman",
+   "year": 1989
+  },
+  {
+   "pdbId": "4RHV",
+   "title": "THE USE OF MOLECULAR-REPLACEMENT PHASES FOR THE REFINEMENT OF THE HUMAN RHINOVIRUS 14 STRUCTURE",
+   "firstAuthor": "Arnold",
+   "year": 1988
+  },
+  {
+   "doi": "10.1099/jgv.0.001332",
+   "title": "ICTV Virus Taxonomy Profile: Caliciviridae",
+   "firstAuthor": "Vinjé",
+   "year": 2019,
+   "journal": "Journal of General Virology",
+   "volume": "100",
+   "pages": "1469-1470",
+   "licenceUrl": "http://creativecommons.org/licenses/by/4.0/"
+  },
+  {
+   "pdbId": "1IHM",
+   "title": "CRYSTAL STRUCTURE ANALYSIS OF NORWALK VIRUS CAPSID",
+   "firstAuthor": "Prasad",
+   "year": 1999
+  },
+  {
+   "doi": "10.1099/jgv.0.000839",
+   "title": "ICTV Virus Taxonomy Profile: Polyomaviridae",
+   "firstAuthor": "Moens",
+   "year": 2017,
+   "journal": "Journal of General Virology",
+   "volume": "98",
+   "pages": "1159-1160",
+   "licenceUrl": "http://creativecommons.org/licenses/by/4.0/"
+  },
+  {
+   "pdbId": "1SVA",
+   "title": "SIMIAN VIRUS 40",
+   "firstAuthor": "Stehle",
+   "year": 1996
+  },
+  {
+   "doi": "10.1099/jgv.0.001843",
+   "title": "ICTV Virus Taxonomy Profile: Coronaviridae 2023",
+   "firstAuthor": "Woo",
+   "year": 2023,
+   "journal": "Journal of General Virology",
+   "volume": "104",
+   "pages": "",
+   "licenceUrl": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  {
+   "pdbId": "6M0J",
+   "title": "Crystal structure of SARS-CoV-2 spike receptor-binding domain bound with ACE2",
+   "firstAuthor": "Lan",
+   "year": 2020
+  },
+  {
+   "pdbId": "6W41",
+   "title": "Crystal structure of SARS-CoV-2 receptor binding domain in complex with human antibody CR3022",
+   "firstAuthor": "Yuan",
+   "year": 2020
+  },
+  {
+   "pdbId": "1QGT",
+   "title": "HUMAN HEPATITIS B VIRAL CAPSID (HBCAG)",
+   "firstAuthor": "Wynne",
+   "year": 1999
+  },
+  {
+   "pdbId": "2OMF",
+   "title": "OMPF PORIN",
+   "firstAuthor": "Cowan",
+   "year": null
+  },
+  {
+   "pdbId": "7AHL",
+   "title": "ALPHA-HEMOLYSIN FROM STAPHYLOCOCCUS AUREUS",
+   "firstAuthor": "Song",
+   "year": 1996
+  },
+  {
+   "pdbId": "1XTC",
+   "title": "CHOLERA TOXIN",
+   "firstAuthor": "Zhang",
+   "year": 1995
+  },
+  {
+   "pdbId": "3BTA",
+   "title": "CRYSTAL STRUCTURE OF BOTULINUM NEUROTOXIN SEROTYPE A",
+   "firstAuthor": "Lacy",
+   "year": 1998
+  },
+  {
+   "pdbId": "1ACC",
+   "title": "ANTHRAX PROTECTIVE ANTIGEN",
+   "firstAuthor": "Petosa",
+   "year": 1997
+  },
+  {
+   "pdbId": "1ENY",
+   "title": "CRYSTAL STRUCTURE AND FUNCTION OF THE ISONIAZID TARGET OF MYCOBACTERIUM TUBERCULOSIS",
+   "firstAuthor": "Dessen",
+   "year": 1995
+  }
+ ]
+}

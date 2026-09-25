@@ -2220,6 +2220,44 @@ try {
   await page18d.waitForSelector('#seqstrip button[data-res]', { timeout: 60000 });
   await page18d.close();
 
+  // ---- 30e. H8 microbiology library: a virus-family card names its CC BY
+  // source and opens its capsid; a bacterium card (written here, MIT)
+  // opens its PDB entry in the Model mode; a card's bundle link selects
+  // the Learn bundle.
+  const page18e = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page18e.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
+  await page18e.goto(`${BASE}#/learn`, { waitUntil: 'networkidle' });
+  await page18e.selectOption('#microbe-card', 'picornaviridae');
+  const virusSrc = await page18e.locator('#microbe-src').textContent();
+  if (!/Adapted from the ICTV Virus Taxonomy Profile: Picornaviridae/.test(virusSrc) || !/\(CC BY 4\.0\)/.test(virusSrc)
+    || !/doi:10\.1099\/jgv\.0\.000911/.test(virusSrc)) fail(`picornavirus card source wrong: ${virusSrc}`);
+  await Promise.all([page18e.waitForURL('**#/protein', { timeout: 30000 }), page18e.click('span[data-structure="2PLV"]')]);
+  await page18e.waitForFunction(
+    () => /^429,720 atoms · 240 chains · settled: atoms/.test(document.getElementById('ro-capsid')?.textContent ?? ''),
+    null, { timeout: 120000 },
+  );
+  console.log('library → capsid:', await page18e.locator('#ro-capsid').textContent());
+  await page18e.goto(`${BASE}#/learn`, { waitUntil: 'networkidle' });
+  await page18e.selectOption('#microbe-card', 'vibrio-cholerae');
+  const gram = await page18e.locator('#microbe-gram').textContent();
+  const bacSrc = await page18e.locator('#microbe-src').textContent();
+  if (!/^Gram-negative/.test(gram) || !/Written for Carys \(this repository\) \(MIT\)/.test(bacSrc) || !/PDB 1XTC.*\(CC0 1\.0\)/.test(bacSrc)) {
+    fail(`cholera card wrong: ${gram} | ${bacSrc}`);
+  }
+  await Promise.all([page18e.waitForURL('**#/protein', { timeout: 30000 }), page18e.click('span[data-structure="1XTC"]')]);
+  await page18e.waitForFunction(
+    () => /^1XTC · cholera toxin · Vibrio cholerae · PDB \(CC0\)/.test(document.getElementById('ro-pathogen')?.textContent ?? '')
+      && /^\d+ atoms$/.test(document.getElementById('ro-protein')?.textContent ?? ''),
+    null, { timeout: 60000 },
+  );
+  console.log('library → model:', await page18e.locator('#ro-pathogen').textContent(), '·', await page18e.locator('#ro-protein').textContent());
+  await page18e.goto(`${BASE}#/learn`, { waitUntil: 'networkidle' });
+  await page18e.selectOption('#microbe-card', 'coronaviridae');
+  await page18e.click('span[data-bundle="ace2-entry"]');
+  const bundleNow = await page18e.locator('#dock-learn select[aria-label="Disease bundle"]').inputValue();
+  if (bundleNow !== 'ace2-entry') fail(`library bundle link landed on ${bundleNow}`);
+  await page18e.close();
+
   // ---- 31. Double-oblique: tilt plane switch moves the obl tag panes.
   const page19 = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page19.on('pageerror', (e) => fail(`pageerror: ${(e.stack || String(e)).slice(0, 600)}`));

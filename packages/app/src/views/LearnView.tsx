@@ -4,7 +4,7 @@ import {
   DISEASE_BUNDLES, PATHOGEN_ATTRIBUTION, buildSelfTestBank, gradeSelfTestAnswer,
   installTermTable, installTreeTable, selfTestAuditDetail, shuffled,
   validateTermTable, validateTreeTable,
-  bundleById, quizAuditDetail, type SelfTestQuestion,
+  bundleById, pathogenById, quizAuditDetail, type SelfTestQuestion, type StructureLink,
   buildPlaneDrills, gradePlaneDrill, PLANETRAINER_SERIES,
   type PlaneDrill,
 } from '@carys/volume-core';
@@ -16,6 +16,7 @@ import { audit, EDUCATION_BADGE } from '@carys/study';
 import { setStatus } from '../lib/status';
 import { toast } from '../lib/toasts';
 import { Chip, DarkSelect, IconBtn } from '../ui/primitives';
+import { MicrobeLibrary } from './MicrobeLibrary';
 
 // Term/tree install (module scope, once — same pattern as AtlasView):
 // the self-test bank needs the K1 tree for parent questions.
@@ -35,8 +36,9 @@ async function ensureTerms(): Promise<void> {
  *  provenance card per piece. Education pixels only (badged) — the 3D
  *  structures open in the protein view via the bundle's pathogen picker.
  *  Quiz answers log to the audit trail (K4 pattern): zero diagnostic
- *  surface by construction. */
-export function LearnView({ onOpenPathogen }: { onOpenPathogen: (id: string) => void }): JSX.Element {
+ *  surface by construction. The H8 microbiology library sits below the
+ *  bundles and links into them. */
+export function LearnView({ onOpenStructure }: { onOpenStructure: (link: StructureLink) => void }): JSX.Element {
   const [sel, setSel] = useState('ace2-entry');
   // picked option per question id (module-ephemeral like cine flags:
   // answers are attempts, not persisted chrome state).
@@ -58,6 +60,18 @@ export function LearnView({ onOpenPathogen }: { onOpenPathogen: (id: string) => 
     audit('quiz.answer', b.pathogenId, quizAuditDetail(b.id, qid, correct, opt));
     toast(correct ? `Correct — ${q.rationale}` : `Not quite — ${q.rationale}`);
     setStatus(`quiz ${b.id}/${qid}: ${correct ? 'correct' : 'wrong'} · attempt logged · ${EDUCATION_BADGE}`);
+  };
+
+  /** A library card's bundle link: that bundle, its quiz fresh, in view. */
+  const openBundle = (id: string): void => {
+    if (!bundleById(id)) {
+      setStatus(`unknown bundle: ${id}`);
+      return;
+    }
+    setSel(id);
+    setPicks({});
+    setShown({});
+    document.getElementById('dock-learn')?.scrollIntoView({ block: 'start' });
   };
 
   const score = b ? b.quiz.filter((q) => picks[q.id] === q.answer).length : 0;
@@ -126,7 +140,9 @@ export function LearnView({ onOpenPathogen }: { onOpenPathogen: (id: string) => 
           <div className="grp">
             <IconBtn
               title={`Open the ${b.pathogenId} structure in the protein view`}
-              onClick={() => onOpenPathogen(b.pathogenId)}>
+              onClick={() => onOpenStructure({
+                kind: 'pathogen', id: b.pathogenId, pdbId: pathogenById(b.pathogenId)?.pdbId ?? '', label: b.title,
+              })}>
               Open structure
             </IconBtn>
             <Chip><span id="ro-learn-score">{answered > 0 ? `${score}/${b.quiz.length} correct` : `${b.quiz.length} questions`}</span></Chip>
@@ -182,6 +198,7 @@ export function LearnView({ onOpenPathogen }: { onOpenPathogen: (id: string) => 
       ) : (
         <div className="hint">Unknown bundle.</div>
       )}
+      <MicrobeLibrary onOpenStructure={onOpenStructure} onOpenBundle={openBundle} />
       <div className="dock" id="dock-selftest">
         <div className="grp">
           <span className="lbl">Self-test</span>

@@ -2,6 +2,7 @@
 // three levels of detail. Each entry is RCSB's own .cif.gz, unchanged; the
 // expansion must come to RCSB's atom count or the load fails.
 import { buildAssembly, parseAssemblyCif, vdwRadius, type AsymUnit, type BuiltAssembly } from '@carys/volume-core';
+import { gzipText } from './gzipText';
 
 export const CAPSID_DIGEST_ID = 'rcsb-capsids';
 const BASE = `/digests/${CAPSID_DIGEST_ID}`;
@@ -52,18 +53,10 @@ export interface LoadedCapsid {
   radial: [number, number];
 }
 
-/** Bytes to text, un-gzipping unless the server already did. */
-async function gunzipText(buf: ArrayBuffer): Promise<string> {
-  const bytes = new Uint8Array(buf);
-  if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) return new TextDecoder().decode(bytes);
-  const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Response(stream).text();
-}
-
 export async function loadCapsid(e: CapsidEntry): Promise<LoadedCapsid> {
   const r = await fetch(`${BASE}/${e.file}`);
   if (!r.ok) throw new Error(`${e.file}: ${r.status}`);
-  const unit = parseAssemblyCif(await gunzipText(await r.arrayBuffer()));
+  const unit = parseAssemblyCif(await gzipText(await r.arrayBuffer()));
   if (unit.id !== e.pdbId) throw new Error(`${e.file} holds entry ${unit.id}, not ${e.pdbId}`);
   const asm = buildAssembly(unit, e.assemblyId, vdwRadius);
   const p = asm.atoms.points;

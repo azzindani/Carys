@@ -56,3 +56,4 @@ export * from './geometry.js';
 export * from './cif-tokens.js';
 export * from './assembly.js';
 export * from './assembly-cif.js';
+export * from './microbes.js';
