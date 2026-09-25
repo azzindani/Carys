@@ -50,6 +50,16 @@
    "source_url": "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html"
   },
   {
+   "id": "gait-motions",
+   "kind": "digest",
+   "license_spdx": "CC-BY-4.0",
+   "license_note": "mean walking and running cycles computed from two figshare data sets by Fukuchi, Fukuchi & Duarte (running 2017, 10.6084/m9.figshare.4543435.v5; walking 2018, 10.6084/m9.figshare.5722711.v6), each CC BY 4.0 per its figshare record; both cited in digests/gait-motions/SOURCES.json and shown with the motion",
+   "mode": "digest",
+   "lane": "H6",
+   "status": "shipped",
+   "source_url": "https://doi.org/10.6084/m9.figshare.5722711.v6"
+  },
+  {
    "id": "rcsb-pathogens",
    "kind": "digest",
    "license_spdx": "CC0-1.0",

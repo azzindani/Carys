@@ -1633,11 +1633,82 @@ merged into main 2026-09-24; work is on main only since).
     skin) and arms out with the head turned. What is left is linear blend
     skinning's own stretch at the armpit, and the BodyParts3D muscles
     that show through its skin at rest too.
-- OPEN — **H6. Motion playback.** BVH import retargeted onto the H5 rig,
+- DONE — **H6. Motion playback.** BVH import retargeted onto the H5 rig,
   walk and run from a CC BY motion source (CMU mocap is not CC BY; if no
   CC BY source exists this item is Blocked), muscles coloured by how far
   they stretch. Accept: feet slip under 2 cm per gait cycle in contact;
   a muscle's length over the cycle deterministic and pinned.
+  The source is two gait data sets by Fukuchi, Fukuchi and Duarte on
+  figshare, both CC BY 4.0 (checked against each record by the build):
+  - running, 2017, 10.6084/m9.figshare.4543435.v5: treadmill running at
+    3.5 m/s, 39 subjects;
+  - walking, 2018, 10.6084/m9.figshare.5722711.v6: treadmill walking at
+    each subject's comfortable speed (trial T05, 1.23 m/s on average), 51
+    subjects.
+  Other sources were ruled out: the CMU and Bandai Namco sets (the latter
+  CC BY-NC-ND) are not CC BY, and a CC0 re-upload of CMU does not change
+  CMU's terms.
+  `scripts/build-body-gait.mjs` builds `digests/gait-motions/` (40 KB),
+  deterministic:
+  - Each subject's hip, knee and ankle angles over a normalised gait
+    cycle are averaged across subjects. The data use ISB axes: Z flexion,
+    X adduction, Y rotation. Flexion of all three joints and the hip's
+    ab/adduction are kept. The rotations carry marker offsets of up to 25°
+    (the knee's Y sits near −22° all cycle) and are left out, as are the
+    pelvis and the upper body, which the data do not have. The arms
+    therefore hang still.
+  - The cycle's duration comes from the heels' fore-aft swing on the
+    treadmill in 10 subjects' marker trials: 1.037 s walking, 0.700 s
+    running. The left side's phase is 0.505 and 0.500 of the cycle.
+    Contact is where the mean vertical ground force exceeds 0.5 N/kg:
+    walking has 23 frames of double support, running 41 of flight.
+  - The walking archive's members are read by byte range (not the 690 MB
+    zip), with figshare's short-lived signed links followed afresh for
+    each read.
+  - Written as BVH (`walk.bvh`, `run.bvh`: Hips and three joints a leg,
+    100 frames).
+  - On the H5 body, the root's Y channel carries the rise and fall that
+    sets the feet in contact on the ground, with a ballistic arc through
+    running's flight. Its X and Z channels carry the move across the
+    ground that keeps grounded sole points planted, less the cycle's mean
+    velocity, so the cycle loops in place.
+  `render-cpu/bvh.ts` reads any BVH hierarchy and channel order.
+  `retargetFrame` splits each mapped joint's rotation into the rig
+  joint's flexion, abduction and twist axes (`anglesAbout`, exact on
+  either axis handedness) and measures what a hinge drops.
+  `render-cpu/gait.ts` has `groundRoot`, `plantRoot`, `footSlip`, the
+  muscles' ends (their H5 attachment groups on two segments, farthest
+  apart) and lengths, and `stretchColor`. The Body dock gains Motion
+  (none, walk, run), Play, a Cycle % slider and a Stretch switch (blue as
+  a muscle shortens, yellow as it lengthens, fully at 15%). Playback shows
+  the frame real time has reached, so the cycle keeps its speed however
+  slowly frames draw. The data sets are cited under the canvas whenever a
+  motion is on.
+  Measured:
+  - Foot slip on the H5 body, the largest move across the ground of a
+    sole point while its foot is in contact and the point lies within
+    10 mm of the ground: walking **3.9 and 3.7 mm** a cycle, running
+    **4.3 and 4.6 mm** (bound 20).
+  - Played with the root at the subjects' speed scaled by height, the
+    feet slid 116 and 139–162 mm a cycle. The mean angles on this body's
+    proportions make a shorter stride; hence the planted root. That root
+    moves the body at 1.21 m/s walking (1.27 scaled) and 2.84 m/s running
+    (3.42 scaled).
+  - Muscle lengths over the walking cycle, pinned in the digest test at
+    0/25/50/75% and the same on every run (rest in brackets):
+    - biceps femoris long head: 461.5 / 437.5 / 423.1 / 417.3 mm (430.7),
+      longest at heel strike with the hip flexed and the knee straight;
+    - rectus femoris: 477.2 / 496.5 / 503.2 / 501.9 mm (495.6);
+    - gluteus maximus: 223.2 / 214.5 / 202.0 / 220.9 mm (207.9);
+    - tibialis anterior: 304.3 / 297.0 / 292.5 / 307.2 mm (306.4).
+    Running stretches the hamstring further (−11.5% to +8.5%).
+  - Wire leg 34b: walking is picked (and cited), stepped to 25% by keys,
+    coloured by stretch, then played; real time moves it on (from 25% to
+    13% in one run, past the cycle's end). The full body walking settles
+    in 457 ms.
+  - Wire leg 41d (the skull CT's level of detail) read its readout twice
+    and could catch a later extraction's "extracting…"; it now keeps the
+    text it matched.
 - OPEN — **H7. Whole virus capsids.** mmCIF biological assemblies
   expanded from their symmetry operators, and a coarse-grained level
   (per residue, then per chain) so million-atom capsids render on the

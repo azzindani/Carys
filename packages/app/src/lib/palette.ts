@@ -69,6 +69,12 @@ export const BODY_SYSTEM_COLORS: Readonly<Record<BodySystem, readonly [number, n
 export const BODY_PICK_COLOR: readonly [number, number, number] = [45, 212, 191];
 /** The body atlas' clear: the bone atlas' near-black. */
 export const BODY_BG: [number, number, number] = [16, 16, 17];
+/** A muscle coloured by its stretch in a gait (H6): toward blue as it
+ *  shortens, yellow as it lengthens, fully at BODY_STRETCH_SPAN of its rest
+ *  length; the muscle tint at rest. */
+export const BODY_STRETCH_SHORT: readonly [number, number, number] = [70, 110, 230];
+export const BODY_STRETCH_LONG: readonly [number, number, number] = [250, 215, 70];
+export const BODY_STRETCH_SPAN = 0.15;
 
 /** A body system's tint as CSS. */
 export function bodyCss(s: BodySystem): string {
