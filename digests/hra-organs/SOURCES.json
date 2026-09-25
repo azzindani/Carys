@@ -3,6 +3,16 @@
  "format": "carys-sources/1",
  "sources": [
   {
+   "entry_count": 1,
+   "license_spdx": "CC-BY-4.0",
+   "retrieved_date": "2026-09-24",
+   "source_url": "https://cdn.humanatlas.io/digital-objects/ref-organ/epiploic-appendage-of-transverse-colon-male/v1.0/assets/3d-vh-m-epiploic-appendage-of-transverse-colon.glb",
+   "version_pin": "epiploic-appendage-of-transverse-colon-male@v1.0",
+   "role": "added",
+   "citation": "Heidi Schlehlein. 2026. *3D reference organ for epiploic appendage of transverse colon, Male v1.0.* [https://doi.org/10.48539/HBM829.BSRC.927](https://doi.org/10.48539/HBM829.BSRC.927).",
+   "doi": "https://doi.org/10.48539/HBM829.BSRC.927"
+  },
+  {
    "entry_count": 0,
    "license_spdx": "CC-BY-4.0",
    "retrieved_date": "2026-09-24",

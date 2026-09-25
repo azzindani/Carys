@@ -2633,7 +2633,11 @@ try {
     await bodySettles(bodyBefore);
   }
   const bodyFull = await bodyRo();
-  if (!bodyFull.startsWith('1,982,505 tris')) fail(`full body not all shown: ${bodyFull}`);
+  // every triangle both digests ship (their index.json totals: rebuilding
+  // the HRA digest moves this, never the check)
+  const allTris = ['bodyparts3d-body', 'hra-organs']
+    .reduce((n, d) => n + JSON.parse(readFileSync(join('digests', d, 'index.json'), 'utf8')).tris, 0);
+  if (!bodyFull.startsWith(`${allTris.toLocaleString('en-US')} tris`)) fail(`full body not all shown: ${bodyFull} (the digests hold ${allTris})`);
   // H4: skin and muscle see-through (14 steps of 0.05 down to 30%), keys as
   // a user nudges the slider: the femur shows, and a tap on the thigh
   // reaches it through both. The tap's repaint is the settled frame timed.

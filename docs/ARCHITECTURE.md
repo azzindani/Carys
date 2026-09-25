@@ -213,7 +213,12 @@ frame the same physical box.
   parity, three rays voting) and `holeCentre`, the middle of a hole
   through a mesh (a vertebra's canal). `scripts/build-body-hra.mjs`
   uses them to place the HuBMAP reference organs in the BodyParts3D body,
-  the spinal cord then centred in the canal:
+  each anchor's similarity followed by a bend (`organ-warp.ts`: composed
+  steps of non-rigid ICP, each a sum of Wendland's compactly supported
+  functions on nodes over the organ, regularised, its gradient capped so
+  no step folds; `blendField` applies an anchor's bend after its
+  similarity, and a bend is zero past its radius), the spinal cord then
+  centred in the canal:
   `digests/hra-organs/` holds them as `carys-body/1` files on the H1 body's
   grid, with `fit.json` (every anchor's fit, alone, shared and from the
   others) and a citation per organ in `SOURCES.json`. `lib/bodyAtlas.ts`
