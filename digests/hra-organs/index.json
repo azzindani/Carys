@@ -1,6 +1,6 @@
 {
  "format": "carys-body-index/1",
- "pin": "HRA-ref-organ-VHM-2026-06",
+ "pin": "HRA-ref-organ-VHM-2026-06-bent",
  "attribution": "Human Reference Atlas 3D reference organs (Visible Human male), HuBMAP, humanatlas.io, licensed under CC Attribution 4.0 International",
  "min": [
   -339.1189880371094,
@@ -12,37 +12,46 @@
   50.24760055541992,
   1656.6300048828125
  ],
- "elements": 70,
+ "elements": 71,
  "systems": {
   "nervous": {
    "file": "nervous.cbdy",
    "parts": 30,
-   "tris": 2183,
+   "tris": 2258,
    "sourceTris": 16358,
-   "bytes": 29848,
-   "worstErrorMm": 0.447
+   "bytes": 30584,
+   "worstErrorMm": 0.394
   },
   "lymphatic": {
    "file": "lymphatic.cbdy",
    "parts": 20,
-   "tris": 29203,
+   "tris": 27663,
    "sourceTris": 398992,
-   "bytes": 262476,
-   "worstErrorMm": 0.454
+   "bytes": 248604,
+   "worstErrorMm": 0.433
   },
   "respiratory": {
    "file": "respiratory.cbdy",
    "parts": 20,
-   "tris": 7203,
+   "tris": 7413,
    "sourceTris": 13879,
-   "bytes": 73536,
-   "worstErrorMm": 0.456
+   "bytes": 75436,
+   "worstErrorMm": 0.451
+  },
+  "digestive": {
+   "file": "digestive.cbdy",
+   "parts": 1,
+   "tris": 3048,
+   "sourceTris": 24234,
+   "bytes": 27920,
+   "worstErrorMm": 0.282
   }
  },
- "tris": 38589,
- "bytes": 365860,
- "worstErrorMm": 0.456,
+ "tris": 40382,
+ "bytes": 382544,
+ "worstErrorMm": 0.451,
  "parts": [
+  ["epiploic-appendage-of-transverse-colon-male/VH_M_epiploic_appendage_of_transverse_colon","HRA:epiploic_appendage_of_transverse_colon","epiploic appendage of transverse colon","digestive"],
   ["lung-male/VH_M_left_anterior_basal_bronchopulmonary_segment","FMA7378","left anterior basal bronchopulmonary segment","respiratory"],
   ["lung-male/VH_M_left_anterior_bronchopulmonary_segment","FMA7373","left anterior bronchopulmonary segment","respiratory"],
   ["lung-male/VH_M_left_apical_bronchopulmonary_segment","FMA7385","left apical bronchopulmonary segment","respiratory"],

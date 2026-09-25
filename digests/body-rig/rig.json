@@ -4,7 +4,7 @@
  "frame": "BodyParts3D (mm; x to the body's left, y to its back, z up), as digests/bodyparts3d-body",
  "digests": {
   "bodyparts3d-body": "BP3D-4.0-isa-obj99",
-  "hra-organs": "HRA-ref-organ-VHM-2026-06"
+  "hra-organs": "HRA-ref-organ-VHM-2026-06-bent"
  },
  "segments": [
   "pelvis",
@@ -1174,7 +1174,7 @@
  "weights": {
   "method": "each vertex follows its three nearest segments by 1/d⁴, d its distance (mm) to their bones' surfaces sampled 1 mm apart (segments beyond 3× the nearest not counted); a segment counts only if the straight line to its nearest bone point crosses no triangle of the skin's outer sheet (past 1.5 mm from the vertex); a vertex that sees none takes the weights of its part's nearest vertex that does (all segments counted when none in its part does); the skin's weights are then averaged with its neighbours' 8 times; a muscle vertex within 1 mm of a bone follows that bone alone",
   "attachments": 268932,
-  "vertices": 1641572,
+  "vertices": 1642483,
   "acrossSkin": 6780,
   "seeingNoneCopied": 4430,
   "seeingNone": 0,
@@ -1280,24 +1280,32 @@
     "system": "nervous",
     "file": "hra-organs.nervous.cbrw",
     "parts": 30,
-    "vertices": 1586,
-    "bytes": 9902
+    "vertices": 1636,
+    "bytes": 10152
    },
    {
     "digest": "hra-organs",
     "system": "lymphatic",
     "file": "hra-organs.lymphatic.cbrw",
     "parts": 20,
-    "vertices": 13790,
-    "bytes": 70050
+    "vertices": 13018,
+    "bytes": 66190
    },
    {
     "digest": "hra-organs",
     "system": "respiratory",
     "file": "hra-organs.respiratory.cbrw",
     "parts": 20,
-    "vertices": 4217,
-    "bytes": 22445
+    "vertices": 4324,
+    "bytes": 22980
+   },
+   {
+    "digest": "hra-organs",
+    "system": "digestive",
+    "file": "hra-organs.digestive.cbrw",
+    "parts": 1,
+    "vertices": 1526,
+    "bytes": 7782
    }
   ]
  }

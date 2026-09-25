@@ -11,11 +11,11 @@
    "role": "fitted from digests/bodyparts3d-body (the committed digest, itself cited in its SOURCES.json)"
   },
   {
-   "entry_count": 70,
+   "entry_count": 71,
    "license_spdx": "CC-BY-4.0",
    "retrieved_date": "2026-09-24",
    "source_url": "https://humanatlas.io/3d-reference-library",
-   "version_pin": "HRA-ref-organ-VHM-2026-06",
+   "version_pin": "HRA-ref-organ-VHM-2026-06-bent",
    "role": "fitted from digests/hra-organs (the committed digest, itself cited in its SOURCES.json)"
   }
  ]

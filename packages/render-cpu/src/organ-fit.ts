@@ -271,9 +271,17 @@ export function icpSimilarity(anchors: readonly AnchorPair[], start: Similarity,
   return fit;
 }
 
+/** A bend after a similarity (organ-warp.ts' Warp): moves a placed point
+ *  in place. */
+export interface Bend {
+  map(p: V3): V3;
+}
+
 /** An anchor's own fit and where its surface is, for the blend. */
 export interface FieldAnchor {
   fit: Similarity;
+  /** its non-rigid rest, applied after the similarity */
+  bend?: Bend;
   /** samples on the anchor as it comes (before any fit) */
   near: PointTree;
 }
@@ -282,10 +290,10 @@ export interface FieldAnchor {
 export const FIELD_SOFT_MM = 5;
 
 /**
- * Move points (in the source body's frame) by the anchors' fits blended by
- * nearness, weights 1/(d² + SOFT²)²: a point on or in an anchor moves
- * (almost) as that anchor does, one between anchors mostly as the nearest
- * do. Squared, so a far anchor with an odd fit (a gland ICP shrank by 40%)
+ * Move points (in the source body's frame) by the anchors' fits (each
+ * similarity, then its bend if it has one) blended by nearness, weights
+ * 1/(d² + SOFT²)²: a point on or in an anchor moves (almost) as that
+ * anchor does, one between anchors mostly as the nearest do. Squared, so a far anchor with an odd fit (a gland ICP shrank by 40%)
  * does not drag a spinal cord 3 cm away. Smooth: the weights are.
  */
 export function blendField(anchors: readonly FieldAnchor[], points: ArrayLike<number>): Float64Array {
@@ -297,10 +305,10 @@ export function blendField(anchors: readonly FieldAnchor[], points: ArrayLike<nu
     let sw = 0, ax = 0, ay = 0, az = 0;
     for (const a of anchors) {
       const q = a.near.nearest(x, y, z).d2 + soft, w = 1 / (q * q), m = a.fit.m, t = a.fit.t;
+      const p: V3 = [m[0]! * x + m[1]! * y + m[2]! * z + t[0], m[3]! * x + m[4]! * y + m[5]! * z + t[1], m[6]! * x + m[7]! * y + m[8]! * z + t[2]];
+      if (a.bend) a.bend.map(p);
       sw += w;
-      ax += w * (m[0]! * x + m[1]! * y + m[2]! * z + t[0]);
-      ay += w * (m[3]! * x + m[4]! * y + m[5]! * z + t[1]);
-      az += w * (m[6]! * x + m[7]! * y + m[8]! * z + t[2]);
+      ax += w * p[0]; ay += w * p[1]; az += w * p[2];
     }
     out[i] = ax / sw; out[i + 1] = ay / sw; out[i + 2] = az / sw;
   }

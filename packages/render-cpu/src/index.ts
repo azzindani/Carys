@@ -37,3 +37,4 @@ export * from './gait.js';
 export * from './glb.js';
 export * from './organ-fit.js';
 export * from './spheres.js';
+export * from './organ-warp.js';

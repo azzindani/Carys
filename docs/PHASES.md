@@ -1454,7 +1454,7 @@ merged into main 2026-09-24; work is on main only since).
     206 ms; 4 mm cells 155 ms (1.07 M triangles); 8 mm 80 ms; 16 mm 78 ms.
     Past 8 mm, fill, not triangles, is the cost.
   - axe finds nothing in Body mode, desktop or mobile.
-- OPEN — **H3. Lymphatic layer from the HuBMAP reference organs.** Lymph
+- DONE — **H3. Lymphatic layer from the HuBMAP reference organs.** Lymph
   nodes, spleen, thymus and the organs BodyParts3D lacks, from the HRA 3D
   reference objects (GLB, CC BY 4.0), placed in the BodyParts3D frame by
   a fit on the organs both have. Accept: after the fit, the shared organs'
@@ -1474,52 +1474,82 @@ merged into main 2026-09-24; work is on main only since).
   commit). There are 40 anchors: 19 organs
   and bones both bodies have, plus 21 intervertebral disks. Each is fitted
   by its own ICP, started from one similarity on all of them (scale
-  0.9453). Spleen and thymus are anchors, since BodyParts3D has them. Added:
+  0.9453), then bent the rest of the way (`render-cpu/organ-warp.ts`,
+  below). Spleen and thymus are anchors, since BodyParts3D has them. Added:
   three lymph-node models, both palatine tonsils, the lung's 20
-  bronchopulmonary segments and the spinal cord's 30 segments. That is
-  **70 parts, 38,589 triangles, 0.37 MB**, worst 0.456 mm from the placed
+  bronchopulmonary segments, the spinal cord's 30 segments and the
+  transverse colon's epiploic appendages. That is
+  **71 parts, 40,382 triangles, 0.38 MB**, worst 0.451 mm from the placed
   source, on the H1 body's grid. The disks set the cord's heights. Placed
   by the field alone, 20% of the cord's vertices lay inside bone, all from
   C1 to T2 (the spines curve differently). Each of BodyParts3D's 24 vertebrae gives its canal
   centre (clearance 7.5–13.0 mm), and the cord moves across onto that
-  line, by up to 18.6 mm. `lib/bodyAtlas.ts` merges both digests (2,304
+  line, by up to 16.0 mm. `lib/bodyAtlas.ts` merges both digests (2,305
   structures). A tapped HRA structure's card cites its organ (authors,
   version, DOI, CC BY 4.0) and how it was placed, and the footers
   attribute both sources. Find reaches the new rows ("lung", "lymph
   node", "palatine tonsil").
+  The bend (unblocking this item, 2026-09-25): a similarity cannot take
+  one body's bowel loops, its bronchi's branching angle or its knees'
+  flexion onto another's, so each anchor's similarity is followed by a
+  smooth, one-to-one bend. It is a composition of 16 small steps, one per
+  round of non-rigid ICP (pairs both ways, the worst 10% dropped): each a
+  sum of Wendland's compactly supported C² functions on nodes spread over
+  the organ (radii 96 then 48 mm, nodes a third of that apart), weights
+  by least squares with the kernel norm as smoothness (λ = 1, the motion
+  coherence of coherent point drift), solved by conjugate gradients. A
+  step's gradient is capped (Frobenius 0.5 at every sample), so no step,
+  and no bend, folds; a bend is exactly zero past its radius, so it moves
+  nothing far from its organ. Added organs follow the anchors' bends
+  through the same blend. One setting for all 40 anchors: the coarsest
+  that meets the bound. Finer (a 24 mm level) or looser (λ 0.05) bends
+  fit the bowel to 2 mm, but only by squeezing its surface flat.
   Measured:
-  - Each anchor's own fit (mean surface distance, both ways; one way
-    for the liver and knees, whose HRA models cover part of their match):
-    35 of 40 within 5 mm. The disks are at 0.81–4.64 mm; kidneys 2.02 and
-    2.03, spleen 4.00, liver 3.65, pancreas 3.95, bladder 2.17, thymus
-    3.22, pelvis 3.67, heart 3.40, trachea 1.80, larynx 1.07,
-    submandibular glands 1.46 and 1.48, duodenum 2.72.
+  - Each anchor's own fit (mean surface distance, both ways; one way for
+    the liver and knees, whose HRA models cover part of their match), by
+    its similarity then bent: **all 40 within 5 mm, worst 4.07 mm** (the
+    third cervical disk). The five that failed before: main bronchi
+    7.15 → 2.58, jejunum and ileum 10.64 → 3.68, colon 11.22 → 3.28, left
+    knee 5.83 → 2.06, right knee 5.76 → 2.16 mm. The rest: kidneys 0.79
+    and 0.91, spleen 1.38, liver 1.64, pancreas 1.69, bladder 0.72,
+    thymus 1.58, pelvis 1.74, heart 1.90, trachea 1.28, larynx 0.79,
+    submandibular glands 1.27 and 1.22, duodenum 1.32; disks 0.57–4.07.
+  - One-to-one: the Jacobian's determinant is positive at every tenth
+    measure sample of every anchor. Outside the bowel it stays at 0.28 or
+    more (the heart's least), the disks at 0.69 or more. The bowel's
+    reaches 0.03 (jejunum and ileum) and 0.08 (colon), 0.10 and 0.16 at
+    the 5th percentile: the two bodies' loops do not correspond, so the
+    bend packs HRA's tangle into BodyParts3D's. Its 3.7 mm says the two
+    fill the same space, not that loop meets loop. The largest move is
+    40.6 mm (the colon).
   - Leave one out (an anchor placed from the others, as an added organ
-    is): median 6.1 mm, from 1.23 mm (a thoracic disk) to 65 mm (the
-    knees, far from every other anchor).
-  - The digest tests check the placement: no cord vertex lies inside a
-    vertebra, and no added organ's vertex lies outside BodyParts3D's skin
-    (its reach per 5 mm of height and 5° sector).
-  - Left out: the omentum and the transverse colon's epiploic appendages.
-    They hang on the bowel, whose anchors fit to 10–11 mm, and 8.1% of the
-    placed omentum lay outside the skin, by up to 21.8 mm.
-  - Build: 12 min, the same bytes every run (83 min before the tree's
-    boxes, samples by area rather than per triangle, and capped sample
-    counts).
+    is): median 6.36 mm with the similarities, 6.17 mm with the bends,
+    from 1.41 mm (a thoracic disk) to 65 mm (the knees, far from every
+    other anchor). The bends fit each shared organ; they do not predict
+    an organ from its neighbours much better (duodenum 10.68 → 7.17, colon
+    19.74 → 18.96 mm).
+  - The digest tests check the placement: every anchor bent within 5 mm
+    and positive Jacobians, no cord vertex inside a vertebra, and no added
+    organ's vertex outside BodyParts3D's skin (its reach per 5 mm of
+    height and 5° sector).
+  - The epiploic appendages (left out before, as the colon fit to 11 mm)
+    now follow the colon's bend and lie inside the skin. The omentum stays
+    out. It is an apron in front of the bowel with no anchor under it:
+    6.9% of it lay outside the skin placed by the similarities (up to
+    22 mm), and 1.7% (up to 15 mm) with the bends.
+  - The H5 rig was refitted to the new digest pin
+    (`HRA-ref-organ-VHM-2026-06-bent`): only the HRA weight files and the
+    counts changed (1,642,483 soft vertices). The BodyParts3D weights and
+    every joint are byte-identical, and H6's slips and muscle lengths hold.
+  - Build: 26 min, the same bytes every run.
   - Wire leg 34b: a tap on the right chest names the right anterior
-    bronchopulmonary segment and cites the HRA lung. A "lymph node" find
-    isolates 12 structures, and a tap names the capsule of a lymph node
-    (lymph-node-male v1.4, cited). With the lungs off, the heart and liver
-    taps land as in H2. The opening view (1,042,138 triangles) settles in
-    418 ms. The full body (1,982,505) settles in 711 ms, and moving frames
-    take 154 ms on 736,419 triangles (load average 9 on the 4 cores).
-  Blocked: 5 of the 40 anchors fit worse than 5 mm even on their own:
-  main bronchi 7.15, jejunum and ileum 10.64, colon 11.22, left knee 5.83,
-  right knee 5.76 mm. A similarity (a rotation, one scale and a shift)
-  cannot bend one body's bowel loops or knee flexion onto another's, and
-  the two bodies' bronchi branch at different angles. Unblock: a non-rigid
-  fit per organ (a thin-plate spline or coherent point drift on the ICP
-  matches), with leave-one-out kept as the measure.
+    bronchopulmonary segment and cites the HRA lung; a "lymph node" find
+    isolates 12 structures and a tap names the capsule of a lymph node
+    (cited); with the lungs off the heart and liver taps land as in H2.
+    The opening view (1,043,931 triangles) settles in 392–446 ms, the full
+    body (1,984,298, now checked against both digests' own totals) in
+    657–661 ms, and moving frames take 94–95 ms on 736,475 triangles.
+    geometry.mjs passes.
 - DONE — **H4. See-through layers.** Order-independent transparency in
   the rasterizer (weighted blended) with an opacity per system, so nerves
   and vessels show inside muscle and skin. Accept: an inner sphere seen

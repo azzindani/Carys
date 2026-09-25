@@ -1,7 +1,22 @@
 {
  "format": "carys-body-fit/1",
  "frame": "HRA (x, y, z) m → BodyParts3D (1000 x, −1000 z, 1000 y) mm, then the fit",
- "method": "per-anchor similarity by ICP (both ways where both surfaces are whole), started from one similarity on all anchors; added organs move by the anchors' fits blended by 1/(d² + 5²)², d the distance (mm) to each anchor",
+ "method": "per-anchor similarity by ICP (both ways where both surfaces are whole), started from one similarity on all anchors, then a bend by non-rigid ICP (render-cpu organ-warp); added organs move by the anchors' fits and bends blended by 1/(d² + 5²)², d the distance (mm) to each anchor",
+ "bend": {
+  "method": "composed steps, one per ICP round, each a sum of Wendland ψ₃,₁ functions on nodes spread over the organ (spacing 0.333 of the radius), weights by least squares + λ·wᵀGw, the step's gradient capped at 0.5 (Frobenius) at every sample so it cannot fold",
+  "radiiMm": [
+   96,
+   48
+  ],
+  "stepsPerRadius": 8,
+  "keep": 0.9,
+  "lambda": 1,
+  "samples": {
+   "src": 6000,
+   "dst": 10000
+  },
+  "jacobianEvery": 10
+ },
  "measure": "mean distance between surfaces sampled 1 mm apart (at most 60000 samples a side, evenly strided)",
  "global": {
   "scale": 0.9453,
@@ -36,7 +51,16 @@
    "scale": 0.8091,
    "globalMm": 8.2,
    "ownMm": 2.02,
-   "leaveOneOutMm": 5.84
+   "bentMm": 0.79,
+   "jacobian": {
+    "min": 0.75,
+    "p1": 0.77,
+    "p5": 0.81,
+    "p99": 1.48
+   },
+   "bendMaxMm": 9.07,
+   "leaveOneOutRigidMm": 5.84,
+   "leaveOneOutMm": 6.17
   },
   {
    "id": "right kidney",
@@ -51,7 +75,16 @@
    "scale": 0.8538,
    "globalMm": 7.85,
    "ownMm": 2.03,
-   "leaveOneOutMm": 9.71
+   "bentMm": 0.91,
+   "jacobian": {
+    "min": 0.88,
+    "p1": 0.89,
+    "p5": 0.9,
+    "p99": 1.21
+   },
+   "bendMaxMm": 7.38,
+   "leaveOneOutRigidMm": 9.71,
+   "leaveOneOutMm": 9.15
   },
   {
    "id": "spleen",
@@ -70,7 +103,16 @@
    "scale": 0.7785,
    "globalMm": 17.32,
    "ownMm": 4,
-   "leaveOneOutMm": 9.7
+   "bentMm": 1.38,
+   "jacobian": {
+    "min": 0.32,
+    "p1": 0.36,
+    "p5": 0.48,
+    "p99": 1.55
+   },
+   "bendMaxMm": 12.38,
+   "leaveOneOutRigidMm": 9.7,
+   "leaveOneOutMm": 10.51
   },
   {
    "id": "liver",
@@ -93,7 +135,16 @@
    "scale": 0.8333,
    "globalMm": 10.62,
    "ownMm": 3.65,
-   "leaveOneOutMm": 11.02
+   "bentMm": 1.64,
+   "jacobian": {
+    "min": 0.57,
+    "p1": 0.62,
+    "p5": 0.7,
+    "p99": 1.78
+   },
+   "bendMaxMm": 16.81,
+   "leaveOneOutRigidMm": 11.02,
+   "leaveOneOutMm": 10.9
   },
   {
    "id": "pancreas",
@@ -112,7 +163,16 @@
    "scale": 0.8451,
    "globalMm": 20.92,
    "ownMm": 3.95,
-   "leaveOneOutMm": 6.9
+   "bentMm": 1.69,
+   "jacobian": {
+    "min": 0.45,
+    "p1": 0.47,
+    "p5": 0.53,
+    "p99": 2.04
+   },
+   "bendMaxMm": 11.03,
+   "leaveOneOutRigidMm": 6.9,
+   "leaveOneOutMm": 6.36
   },
   {
    "id": "urinary bladder",
@@ -130,7 +190,16 @@
    "scale": 1.0281,
    "globalMm": 17.47,
    "ownMm": 2.17,
-   "leaveOneOutMm": 7.69
+   "bentMm": 0.72,
+   "jacobian": {
+    "min": 0.78,
+    "p1": 0.79,
+    "p5": 0.81,
+    "p99": 1.16
+   },
+   "bendMaxMm": 7.35,
+   "leaveOneOutRigidMm": 7.69,
+   "leaveOneOutMm": 7.8
   },
   {
    "id": "thymus",
@@ -147,7 +216,16 @@
    "scale": 1.0228,
    "globalMm": 9.01,
    "ownMm": 3.22,
-   "leaveOneOutMm": 3.93
+   "bentMm": 1.58,
+   "jacobian": {
+    "min": 0.82,
+    "p1": 0.84,
+    "p5": 0.87,
+    "p99": 1.48
+   },
+   "bendMaxMm": 9.7,
+   "leaveOneOutRigidMm": 3.93,
+   "leaveOneOutMm": 4.08
   },
   {
    "id": "pelvis",
@@ -170,7 +248,16 @@
    "scale": 0.9349,
    "globalMm": 8.2,
    "ownMm": 3.67,
-   "leaveOneOutMm": 10.72
+   "bentMm": 1.74,
+   "jacobian": {
+    "min": 0.47,
+    "p1": 0.58,
+    "p5": 0.65,
+    "p99": 1.36
+   },
+   "bendMaxMm": 13.99,
+   "leaveOneOutRigidMm": 10.72,
+   "leaveOneOutMm": 10.75
   },
   {
    "id": "heart",
@@ -190,7 +277,16 @@
    "scale": 1.0191,
    "globalMm": 6.74,
    "ownMm": 3.4,
-   "leaveOneOutMm": 6.57
+   "bentMm": 1.9,
+   "jacobian": {
+    "min": 0.28,
+    "p1": 0.33,
+    "p5": 0.49,
+    "p99": 2.02
+   },
+   "bendMaxMm": 13.79,
+   "leaveOneOutRigidMm": 6.57,
+   "leaveOneOutMm": 6.14
   },
   {
    "id": "trachea",
@@ -205,7 +301,16 @@
    "scale": 0.923,
    "globalMm": 14.12,
    "ownMm": 1.8,
-   "leaveOneOutMm": 6.36
+   "bentMm": 1.28,
+   "jacobian": {
+    "min": 0.81,
+    "p1": 0.83,
+    "p5": 0.87,
+    "p99": 1.28
+   },
+   "bendMaxMm": 4.73,
+   "leaveOneOutRigidMm": 6.36,
+   "leaveOneOutMm": 6.86
   },
   {
    "id": "main bronchi",
@@ -222,7 +327,16 @@
    "scale": 1.8017,
    "globalMm": 15.13,
    "ownMm": 7.15,
-   "leaveOneOutMm": 10.56
+   "bentMm": 2.58,
+   "jacobian": {
+    "min": 0.34,
+    "p1": 0.35,
+    "p5": 0.38,
+    "p99": 1.2
+   },
+   "bendMaxMm": 18.72,
+   "leaveOneOutRigidMm": 10.56,
+   "leaveOneOutMm": 10.2
   },
   {
    "id": "larynx",
@@ -239,7 +353,16 @@
    "scale": 0.6795,
    "globalMm": 23.45,
    "ownMm": 1.07,
-   "leaveOneOutMm": 6.92
+   "bentMm": 0.79,
+   "jacobian": {
+    "min": 0.96,
+    "p1": 0.97,
+    "p5": 0.99,
+    "p99": 1.18
+   },
+   "bendMaxMm": 2.4,
+   "leaveOneOutRigidMm": 6.92,
+   "leaveOneOutMm": 6.9
   },
   {
    "id": "left submandibular gland",
@@ -254,6 +377,15 @@
    "scale": 0.5883,
    "globalMm": 21.45,
    "ownMm": 1.46,
+   "bentMm": 1.27,
+   "jacobian": {
+    "min": 0.99,
+    "p1": 0.99,
+    "p5": 1,
+    "p99": 1.08
+   },
+   "bendMaxMm": 1.31,
+   "leaveOneOutRigidMm": 26.24,
    "leaveOneOutMm": 26.24
   },
   {
@@ -269,7 +401,16 @@
    "scale": 0.5812,
    "globalMm": 22.18,
    "ownMm": 1.48,
-   "leaveOneOutMm": 24.4
+   "bentMm": 1.22,
+   "jacobian": {
+    "min": 0.96,
+    "p1": 0.96,
+    "p5": 0.97,
+    "p99": 1.05
+   },
+   "bendMaxMm": 1.33,
+   "leaveOneOutRigidMm": 24.4,
+   "leaveOneOutMm": 24.42
   },
   {
    "id": "duodenum",
@@ -287,7 +428,16 @@
    "scale": 1.0436,
    "globalMm": 16.92,
    "ownMm": 2.72,
-   "leaveOneOutMm": 10.68
+   "bentMm": 1.32,
+   "jacobian": {
+    "min": 0.71,
+    "p1": 0.73,
+    "p5": 0.79,
+    "p99": 1.53
+   },
+   "bendMaxMm": 9.22,
+   "leaveOneOutRigidMm": 10.68,
+   "leaveOneOutMm": 7.17
   },
   {
    "id": "jejunum and ileum",
@@ -309,7 +459,16 @@
    "scale": 1.0055,
    "globalMm": 14.61,
    "ownMm": 10.64,
-   "leaveOneOutMm": 12.75
+   "bentMm": 3.68,
+   "jacobian": {
+    "min": 0.03,
+    "p1": 0.05,
+    "p5": 0.1,
+    "p99": 2.54
+   },
+   "bendMaxMm": 38.82,
+   "leaveOneOutRigidMm": 12.75,
+   "leaveOneOutMm": 11.68
   },
   {
    "id": "colon",
@@ -330,7 +489,16 @@
    "scale": 0.8795,
    "globalMm": 23.55,
    "ownMm": 11.22,
-   "leaveOneOutMm": 19.74
+   "bentMm": 3.28,
+   "jacobian": {
+    "min": 0.08,
+    "p1": 0.11,
+    "p5": 0.16,
+    "p99": 2.44
+   },
+   "bendMaxMm": 40.58,
+   "leaveOneOutRigidMm": 19.74,
+   "leaveOneOutMm": 18.96
   },
   {
    "id": "left knee",
@@ -351,7 +519,16 @@
    "scale": 0.9228,
    "globalMm": 39.66,
    "ownMm": 5.83,
-   "leaveOneOutMm": 65.4
+   "bentMm": 2.06,
+   "jacobian": {
+    "min": 0.4,
+    "p1": 0.49,
+    "p5": 0.58,
+    "p99": 1.33
+   },
+   "bendMaxMm": 18.2,
+   "leaveOneOutRigidMm": 65.4,
+   "leaveOneOutMm": 65.27
   },
   {
    "id": "right knee",
@@ -372,7 +549,16 @@
    "scale": 0.9295,
    "globalMm": 44.39,
    "ownMm": 5.76,
-   "leaveOneOutMm": 64.25
+   "bentMm": 2.16,
+   "jacobian": {
+    "min": 0.38,
+    "p1": 0.47,
+    "p5": 0.59,
+    "p99": 1.38
+   },
+   "bendMaxMm": 16.63,
+   "leaveOneOutRigidMm": 64.25,
+   "leaveOneOutMm": 64.14
   },
   {
    "id": "intervertebral disk of axis",
@@ -387,7 +573,16 @@
    "scale": 0.2869,
    "globalMm": 13.23,
    "ownMm": 4.64,
-   "leaveOneOutMm": 14.27
+   "bentMm": 3.72,
+   "jacobian": {
+    "min": 1.26,
+    "p1": 1.27,
+    "p5": 1.29,
+    "p99": 1.39
+   },
+   "bendMaxMm": 3.55,
+   "leaveOneOutRigidMm": 14.27,
+   "leaveOneOutMm": 13.5
   },
   {
    "id": "intervertebral disk of third cervical vertebra",
@@ -402,7 +597,16 @@
    "scale": 0.158,
    "globalMm": 11.2,
    "ownMm": 4.47,
-   "leaveOneOutMm": 4.72
+   "bentMm": 4.07,
+   "jacobian": {
+    "min": 1.05,
+    "p1": 1.05,
+    "p5": 1.05,
+    "p99": 1.08
+   },
+   "bendMaxMm": 1.69,
+   "leaveOneOutRigidMm": 4.72,
+   "leaveOneOutMm": 3.87
   },
   {
    "id": "intervertebral disk of fourth cervical vertebra",
@@ -417,7 +621,16 @@
    "scale": 0.3951,
    "globalMm": 8.86,
    "ownMm": 3.64,
-   "leaveOneOutMm": 4.05
+   "bentMm": 3.16,
+   "jacobian": {
+    "min": 1.05,
+    "p1": 1.06,
+    "p5": 1.06,
+    "p99": 1.16
+   },
+   "bendMaxMm": 2.19,
+   "leaveOneOutRigidMm": 4.05,
+   "leaveOneOutMm": 3.88
   },
   {
    "id": "intervertebral disk of fifth cervical vertebra",
@@ -432,7 +645,16 @@
    "scale": 0.4001,
    "globalMm": 8.24,
    "ownMm": 3.71,
-   "leaveOneOutMm": 2.47
+   "bentMm": 3.19,
+   "jacobian": {
+    "min": 1.08,
+    "p1": 1.08,
+    "p5": 1.09,
+    "p99": 1.21
+   },
+   "bendMaxMm": 2.25,
+   "leaveOneOutRigidMm": 2.47,
+   "leaveOneOutMm": 2.42
   },
   {
    "id": "intervertebral disk of sixth cervical vertebra",
@@ -447,7 +669,16 @@
    "scale": 0.7078,
    "globalMm": 8.02,
    "ownMm": 1.78,
-   "leaveOneOutMm": 3.17
+   "bentMm": 1.44,
+   "jacobian": {
+    "min": 1.07,
+    "p1": 1.07,
+    "p5": 1.09,
+    "p99": 1.16
+   },
+   "bendMaxMm": 1.23,
+   "leaveOneOutRigidMm": 3.17,
+   "leaveOneOutMm": 3.08
   },
   {
    "id": "intervertebral disk of seventh cervical vertebra",
@@ -462,7 +693,16 @@
    "scale": 0.9776,
    "globalMm": 8.63,
    "ownMm": 0.81,
-   "leaveOneOutMm": 2.33
+   "bentMm": 0.71,
+   "jacobian": {
+    "min": 1,
+    "p1": 1,
+    "p5": 1,
+    "p99": 1.05
+   },
+   "bendMaxMm": 0.64,
+   "leaveOneOutRigidMm": 2.33,
+   "leaveOneOutMm": 2.27
   },
   {
    "id": "intervertebral disk of eleventh thoracic vertebra",
@@ -477,7 +717,16 @@
    "scale": 0.8555,
    "globalMm": 13.93,
    "ownMm": 1.3,
-   "leaveOneOutMm": 5.74
+   "bentMm": 0.91,
+   "jacobian": {
+    "min": 0.98,
+    "p1": 0.99,
+    "p5": 1.02,
+    "p99": 1.19
+   },
+   "bendMaxMm": 2.98,
+   "leaveOneOutRigidMm": 5.74,
+   "leaveOneOutMm": 6.01
   },
   {
    "id": "intervertebral disk of tenth thoracic vertebra",
@@ -492,7 +741,16 @@
    "scale": 0.9122,
    "globalMm": 12.25,
    "ownMm": 0.89,
-   "leaveOneOutMm": 3.7
+   "bentMm": 0.68,
+   "jacobian": {
+    "min": 1.01,
+    "p1": 1.01,
+    "p5": 1.02,
+    "p99": 1.14
+   },
+   "bendMaxMm": 1.94,
+   "leaveOneOutRigidMm": 3.7,
+   "leaveOneOutMm": 4.15
   },
   {
    "id": "intervertebral disk of ninth thoracic vertebra",
@@ -507,7 +765,16 @@
    "scale": 1.0033,
    "globalMm": 8.24,
    "ownMm": 0.86,
-   "leaveOneOutMm": 3.68
+   "bentMm": 0.65,
+   "jacobian": {
+    "min": 1.04,
+    "p1": 1.04,
+    "p5": 1.05,
+    "p99": 1.21
+   },
+   "bendMaxMm": 2.04,
+   "leaveOneOutRigidMm": 3.68,
+   "leaveOneOutMm": 3.82
   },
   {
    "id": "intervertebral disk of eighth thoracic vertebra",
@@ -522,7 +789,16 @@
    "scale": 1.0589,
    "globalMm": 6.06,
    "ownMm": 0.94,
-   "leaveOneOutMm": 1.86
+   "bentMm": 0.7,
+   "jacobian": {
+    "min": 1.01,
+    "p1": 1.01,
+    "p5": 1.01,
+    "p99": 1.4
+   },
+   "bendMaxMm": 2.83,
+   "leaveOneOutRigidMm": 1.86,
+   "leaveOneOutMm": 1.89
   },
   {
    "id": "intervertebral disk of seventh thoracic vertebra",
@@ -537,7 +813,16 @@
    "scale": 1.1696,
    "globalMm": 4.35,
    "ownMm": 0.89,
-   "leaveOneOutMm": 1.23
+   "bentMm": 0.77,
+   "jacobian": {
+    "min": 1,
+    "p1": 1,
+    "p5": 1.01,
+    "p99": 1.15
+   },
+   "bendMaxMm": 0.93,
+   "leaveOneOutRigidMm": 1.23,
+   "leaveOneOutMm": 1.41
   },
   {
    "id": "intervertebral disk of sixth thoracic vertebra",
@@ -552,7 +837,16 @@
    "scale": 1.1912,
    "globalMm": 5,
    "ownMm": 1.09,
-   "leaveOneOutMm": 2.57
+   "bentMm": 0.84,
+   "jacobian": {
+    "min": 1.06,
+    "p1": 1.07,
+    "p5": 1.07,
+    "p99": 1.32
+   },
+   "bendMaxMm": 1.3,
+   "leaveOneOutRigidMm": 2.57,
+   "leaveOneOutMm": 2.58
   },
   {
    "id": "intervertebral disk of fifth thoracic vertebra",
@@ -567,7 +861,16 @@
    "scale": 0.8491,
    "globalMm": 7.09,
    "ownMm": 1.93,
-   "leaveOneOutMm": 2.31
+   "bentMm": 1.61,
+   "jacobian": {
+    "min": 1,
+    "p1": 1.01,
+    "p5": 1.03,
+    "p99": 1.16
+   },
+   "bendMaxMm": 2.05,
+   "leaveOneOutRigidMm": 2.31,
+   "leaveOneOutMm": 2.37
   },
   {
    "id": "intervertebral disk of fourth thoracic vertebra",
@@ -582,7 +885,16 @@
    "scale": 0.9018,
    "globalMm": 8.9,
    "ownMm": 1.59,
-   "leaveOneOutMm": 3.39
+   "bentMm": 1.37,
+   "jacobian": {
+    "min": 1.02,
+    "p1": 1.02,
+    "p5": 1.04,
+    "p99": 1.14
+   },
+   "bendMaxMm": 1.74,
+   "leaveOneOutRigidMm": 3.39,
+   "leaveOneOutMm": 3.29
   },
   {
    "id": "intervertebral disk of third thoracic vertebra",
@@ -597,7 +909,16 @@
    "scale": 0.9543,
    "globalMm": 10.35,
    "ownMm": 1.19,
-   "leaveOneOutMm": 2.86
+   "bentMm": 0.89,
+   "jacobian": {
+    "min": 1.07,
+    "p1": 1.08,
+    "p5": 1.11,
+    "p99": 1.27
+   },
+   "bendMaxMm": 2.29,
+   "leaveOneOutRigidMm": 2.86,
+   "leaveOneOutMm": 2.8
   },
   {
    "id": "intervertebral disk of second thoracic vertebra",
@@ -612,7 +933,16 @@
    "scale": 1.0348,
    "globalMm": 11.34,
    "ownMm": 0.81,
-   "leaveOneOutMm": 1.89
+   "bentMm": 0.6,
+   "jacobian": {
+    "min": 1.07,
+    "p1": 1.08,
+    "p5": 1.08,
+    "p99": 1.17
+   },
+   "bendMaxMm": 1.31,
+   "leaveOneOutRigidMm": 1.89,
+   "leaveOneOutMm": 1.68
   },
   {
    "id": "intervertebral disk of first thoracic vertebra",
@@ -627,7 +957,16 @@
    "scale": 0.9273,
    "globalMm": 10.84,
    "ownMm": 1.06,
-   "leaveOneOutMm": 1.86
+   "bentMm": 0.92,
+   "jacobian": {
+    "min": 1.02,
+    "p1": 1.02,
+    "p5": 1.03,
+    "p99": 1.11
+   },
+   "bendMaxMm": 1,
+   "leaveOneOutRigidMm": 1.86,
+   "leaveOneOutMm": 1.8
   },
   {
    "id": "intervertebral disk of fourth lumbar vertebra",
@@ -642,7 +981,16 @@
    "scale": 0.9484,
    "globalMm": 6.42,
    "ownMm": 0.93,
-   "leaveOneOutMm": 7.57
+   "bentMm": 0.69,
+   "jacobian": {
+    "min": 0.94,
+    "p1": 0.95,
+    "p5": 0.96,
+    "p99": 1.19
+   },
+   "bendMaxMm": 2.25,
+   "leaveOneOutRigidMm": 7.57,
+   "leaveOneOutMm": 7.28
   },
   {
    "id": "intervertebral disk of third lumbar vertebra",
@@ -657,7 +1005,16 @@
    "scale": 0.7764,
    "globalMm": 5.2,
    "ownMm": 2.13,
-   "leaveOneOutMm": 5.74
+   "bentMm": 0.79,
+   "jacobian": {
+    "min": 0.69,
+    "p1": 0.71,
+    "p5": 0.74,
+    "p99": 1.02
+   },
+   "bendMaxMm": 4.34,
+   "leaveOneOutRigidMm": 5.74,
+   "leaveOneOutMm": 5.5
   },
   {
    "id": "intervertebral disk of second lumbar vertebra",
@@ -672,7 +1029,16 @@
    "scale": 0.9749,
    "globalMm": 9.06,
    "ownMm": 1,
-   "leaveOneOutMm": 5.34
+   "bentMm": 0.65,
+   "jacobian": {
+    "min": 0.95,
+    "p1": 0.96,
+    "p5": 0.97,
+    "p99": 1.32
+   },
+   "bendMaxMm": 1.71,
+   "leaveOneOutRigidMm": 5.34,
+   "leaveOneOutMm": 5.6
   },
   {
    "id": "intervertebral disk of first lumbar vertebra",
@@ -687,7 +1053,16 @@
    "scale": 0.8857,
    "globalMm": 12.01,
    "ownMm": 0.93,
-   "leaveOneOutMm": 7.03
+   "bentMm": 0.57,
+   "jacobian": {
+    "min": 0.91,
+    "p1": 0.92,
+    "p5": 0.93,
+    "p99": 1.25
+   },
+   "bendMaxMm": 2.91,
+   "leaveOneOutRigidMm": 7.03,
+   "leaveOneOutMm": 6.88
   }
  ],
  "canal": {
@@ -910,6 +1285,6 @@
     "clearanceMm": 9.75
    }
   ],
-  "cordShiftMaxMm": 18.56
+  "cordShiftMaxMm": 15.98
  }
 }

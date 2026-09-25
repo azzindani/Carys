@@ -15,7 +15,11 @@ const index = validateBodyIndex(read('index.json'));
 const body = validateBodyIndex(JSON.parse(readFileSync(join(process.cwd(), 'digests', 'bodyparts3d-body', 'index.json'), 'utf8')));
 interface Source { version_pin: string; license_spdx: string; role?: string; citation?: string; doi?: string; entry_count: number }
 const sources = (read('SOURCES.json') as { sources: Source[] }).sources;
-interface Anchor { id: string; hra: string; both: boolean; ownMm: number; globalMm: number; leaveOneOutMm: number; scale: number }
+interface Anchor {
+  id: string; hra: string; both: boolean; ownMm: number; globalMm: number; scale: number;
+  bentMm: number; jacobian: { min: number; p1: number; p5: number; p99: number }; bendMaxMm: number;
+  leaveOneOutRigidMm: number; leaveOneOutMm: number;
+}
 interface Canal { vertebrae: { name: string; at: number[]; clearanceMm: number }[]; cordShiftMaxMm: number }
 const fit = read('fit.json') as { format: string; global: { scale: number }; anchors: Anchor[]; canal: Canal };
 
@@ -61,9 +65,19 @@ describe('the HRA organs digest (H3)', () => {
   it('records the fit: each anchor on its own, from the rest, and all at once', () => {
     assert.equal(fit.format, 'carys-body-fit/1');
     for (const a of fit.anchors) {
-      assert.ok([a.ownMm, a.globalMm, a.leaveOneOutMm, a.scale].every(Number.isFinite), a.id);
+      assert.ok([a.ownMm, a.globalMm, a.bentMm, a.leaveOneOutRigidMm, a.leaveOneOutMm, a.scale, a.bendMaxMm].every(Number.isFinite), a.id);
       // its own fit is never worse than the one shared by all
       assert.ok(a.ownMm <= a.globalMm + 0.05, `${a.id}: own ${a.ownMm}, all ${a.globalMm}`);
+    }
+  });
+
+  it('brings every shared organ within 5 mm once bent, folding none (the H3 bound)', () => {
+    assert.equal(fit.anchors.length, 40);
+    for (const a of fit.anchors) {
+      assert.ok(a.bentMm < 5, `${a.id}: ${a.bentMm} mm bent (${a.ownMm} by its similarity)`);
+      assert.ok(a.bentMm <= a.ownMm + 0.05, `${a.id}: the bend made it worse, ${a.ownMm} → ${a.bentMm}`);
+      // one-to-one: the Jacobian stays positive wherever it was checked
+      assert.ok(a.jacobian.min > 0 && a.jacobian.min <= a.jacobian.p1 && a.jacobian.p1 <= a.jacobian.p5 && a.jacobian.p5 <= a.jacobian.p99, a.id);
     }
   });
 

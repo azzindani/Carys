@@ -12,9 +12,12 @@
 // The two bodies are different people: their organs' spacing differs by up
 // to 40%, so one transform cannot place an organ. Organs both have are
 // anchors; each gets its own similarity by ICP (render-cpu organ-fit),
-// started from one fitted on all of them, and an added organ moves by the
-// anchors' fits blended by nearness. Every anchor is also placed from the
-// others alone (leave one out): that is how far an added organ can be off.
+// started from one fitted on all of them, then a smooth bend the rest of
+// the way (render-cpu organ-warp: bowel loops, bronchi branching at other
+// angles and knees flexed otherwise are more than a similarity can take).
+// An added organ moves by the anchors' fits and bends blended by nearness.
+// Every anchor is also placed from the others alone (leave one out): that
+// is how far an added organ can be off.
 // The spinal cord is then centred in BodyParts3D's spinal canal (VERTEBRAE).
 // Added meshes are welded, decimated to 0.5 mm of their placed source both
 // ways (as H1) and packed on the H1 body's grid. Deterministic.
@@ -23,8 +26,8 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  applyFit, BODY_SYSTEMS, blendField, decimate, fitScale, holeCentre, icpSimilarity, packBody, parseGlb, PointTree,
-  surfaceDistance, surfaceSamples, unpackBody, vertexNormals, windOutward,
+  applyFit, BODY_SYSTEMS, blendField, decimate, fitScale, GRAD_MAX, holeCentre, icpSimilarity, icpWarp, packBody, parseGlb,
+  PointTree, surfaceDistance, surfaceSamples, unpackBody, vertexNormals, WARP_DEFAULTS, windOutward,
 } from '../packages/render-cpu/dist/index.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -34,7 +37,8 @@ const BODY = join(ROOT, 'digests', 'bodyparts3d-body');
 const REF = 'https://cdn.humanatlas.io/digital-objects/ref-organ';
 const CROSSWALK_SHA = 'b036a91aaf7234f462b1249d4a5f4fb0e982f412';
 const CROSSWALK = `https://raw.githubusercontent.com/hubmapconsortium/ccf-releases/${CROSSWALK_SHA}/v2.0/models/asct-b-3d-models-crosswalk.csv`;
-const PIN = 'HRA-ref-organ-VHM-2026-06';
+/** The digest's pin: the source versions (June 2026), placed with bends. */
+const PIN = 'HRA-ref-organ-VHM-2026-06-bent';
 const BOUND_MM = 0.5;
 const TRIES = [0.95, 0.75, 0.55, 0.4, 0.3, 0.15, 0.075];
 /** Sample spacing (mm): ICP source and target, and the distances reported. */
@@ -44,6 +48,9 @@ const ICP_SRC = 2, ICP_DST = 1.5, MEASURE = 1;
 const ICP_MAX_SRC = 20000, ICP_MAX_DST = 40000;
 /** Most samples a reported distance averages, per side (every k-th). */
 const MEASURE_MAX = 60000;
+/** Most samples an anchor's bend is fitted to, per side, and every how
+ *  many measure samples its Jacobian is checked. */
+const WARP_MAX_SRC = 6000, WARP_MAX_DST = 10000, DET_STRIDE = 10;
 
 // ---- what is used -----------------------------------------------------------
 const is = (...names) => (n) => names.includes(n);
@@ -100,10 +107,12 @@ const ADDED = [
   { organ: 'lung-male', version: 'v1.4', system: 'respiratory', nodes: (n) => n.includes('bronchopulmonary_segment') },
   // the disks carry it down the spine, then it is centred in BodyParts3D's canal (see VERTEBRAE)
   { organ: 'spinal-cord-male', version: 'v1.1', system: 'nervous', nodes: () => true, canal: true },
-  // Left out: the omentum and the transverse colon's fat tags (omentum-male,
-  // epiploic-appendage-of-transverse-colon-male). They hang on the bowel,
-  // whose anchors fit to 10–11 mm only, and 8% of the placed omentum lay
-  // outside BodyParts3D's skin, up to 22 mm.
+  // the transverse colon's fat tags, which follow the colon's bend
+  { organ: 'epiploic-appendage-of-transverse-colon-male', version: 'v1.0', system: 'digestive', nodes: () => true },
+  // Left out: the omentum (omentum-male), an apron in front of the bowel.
+  // Placed with the bowel's similarities, 6.9% of it lay outside
+  // BodyParts3D's skin (up to 22 mm); with their bends still 1.7% (up to
+  // 15 mm): the two bodies' belly walls differ, and no anchor holds it.
 ];
 /** BodyParts3D's vertebrae, top down. The disks place the cord at the right
  *  heights, but the two spines curve differently: placed, 20% of the cord's
@@ -263,18 +272,33 @@ const cs = centroid(anchors.map((a) => a.pair.src)), cd = centroid(anchors.map((
 const start = { m: [1, 0, 0, 0, 1, 0, 0, 0, 1], t: [cd[0] - cs[0], cd[1] - cs[1], cd[2] - cs[2]] };
 const global = icpSimilarity(anchors.map((a) => a.pair), start, 40);
 console.log(`global similarity: scale ${fitScale(global).toFixed(4)}`);
+const quantile = (sorted, q) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
 for (const a of anchors) {
   console.log(`  fitting ${a.id}`);
   a.fit = icpSimilarity([a.pair], global, 40);
   a.near = new PointTree(a.pair.src);
   a.globalMm = gap(a, applyFit(global, a.measure.src));
   a.ownMm = gap(a, applyFit(a.fit, a.measure.src));
+  // the bend, fitted where the similarity put it
+  a.bend = icpWarp(thin(applyFit(a.fit, a.pair.src), WARP_MAX_SRC), thin(a.pair.dst, WARP_MAX_DST), a.both);
+  const placed = applyFit(a.fit, a.measure.src), bent = a.bend.apply(placed);
+  a.bentMm = gap(a, bent);
+  const dets = [];
+  a.movedMaxMm = 0;
+  for (let i = 0; i < placed.length; i += 3) {
+    a.movedMaxMm = Math.max(a.movedMaxMm, Math.hypot(bent[i] - placed[i], bent[i + 1] - placed[i + 1], bent[i + 2] - placed[i + 2]));
+    if ((i / 3) % DET_STRIDE === 0) dets.push(a.bend.jacobianDet(placed[i], placed[i + 1], placed[i + 2]));
+  }
+  dets.sort((u, v) => u - v);
+  a.det = { min: dets[0], p1: quantile(dets, 0.01), p5: quantile(dets, 0.05), p99: quantile(dets, 0.99) };
 }
 for (const a of anchors) {
-  a.looMm = gap(a, blendField(anchors.filter((b) => b !== a).map((b) => ({ fit: b.fit, near: b.near })), a.measure.src));
-  console.log(`  ${a.id.padEnd(26)} global ${a.globalMm.toFixed(2).padStart(6)}  own ${a.ownMm.toFixed(2).padStart(5)}  from the others ${a.looMm.toFixed(2).padStart(6)} mm${a.both ? '' : '  (HRA → BodyParts3D)'}`);
+  const others = anchors.filter((b) => b !== a);
+  a.looRigidMm = gap(a, blendField(others.map((b) => ({ fit: b.fit, near: b.near })), a.measure.src));
+  a.looMm = gap(a, blendField(others.map((b) => ({ fit: b.fit, near: b.near, bend: b.bend })), a.measure.src));
+  console.log(`  ${a.id.padEnd(26)} global ${a.globalMm.toFixed(2).padStart(6)}  own ${a.ownMm.toFixed(2).padStart(5)}  bent ${a.bentMm.toFixed(2).padStart(5)} (det ≥ ${a.det.min.toFixed(2)}, p5 ${a.det.p5.toFixed(2)})  from the others ${a.looRigidMm.toFixed(2).padStart(6)} → ${a.looMm.toFixed(2).padStart(6)} mm${a.both ? '' : '  (HRA → BodyParts3D)'}`);
 }
-const field = anchors.map((a) => ({ fit: a.fit, near: a.near }));
+const field = anchors.map((a) => ({ fit: a.fit, near: a.near, bend: a.bend }));
 
 // ---- the spinal canal -------------------------------------------------------
 const boxOf = (P) => {
@@ -381,12 +405,19 @@ const r2 = (v) => Math.round(v * 100) / 100;
 writeFileSync(join(OUT, 'fit.json'), JSON.stringify({
   format: 'carys-body-fit/1',
   frame: 'HRA (x, y, z) m → BodyParts3D (1000 x, −1000 z, 1000 y) mm, then the fit',
-  method: 'per-anchor similarity by ICP (both ways where both surfaces are whole), started from one similarity on all anchors; added organs move by the anchors\' fits blended by 1/(d² + 5²)², d the distance (mm) to each anchor',
+  method: 'per-anchor similarity by ICP (both ways where both surfaces are whole), started from one similarity on all anchors, then a bend by non-rigid ICP (render-cpu organ-warp); added organs move by the anchors\' fits and bends blended by 1/(d² + 5²)², d the distance (mm) to each anchor',
+  bend: {
+    method: `composed steps, one per ICP round, each a sum of Wendland ψ₃,₁ functions on nodes spread over the organ (spacing ${+WARP_DEFAULTS.spacing.toFixed(3)} of the radius), weights by least squares + λ·wᵀGw, the step's gradient capped at ${GRAD_MAX} (Frobenius) at every sample so it cannot fold`,
+    radiiMm: WARP_DEFAULTS.radii, stepsPerRadius: WARP_DEFAULTS.iterations, keep: WARP_DEFAULTS.keep, lambda: WARP_DEFAULTS.lambda,
+    samples: { src: WARP_MAX_SRC, dst: WARP_MAX_DST }, jacobianEvery: DET_STRIDE,
+  },
   measure: `mean distance between surfaces sampled ${MEASURE} mm apart (at most ${MEASURE_MAX} samples a side, evenly strided)`,
   global: { scale: +fitScale(global).toFixed(4), m: global.m.map((v) => +v.toFixed(6)), t: global.t.map((v) => +v.toFixed(3)) },
   anchors: anchors.map((a) => ({
     id: a.id, hra: `${a.organ}@${a.version}`, nodes: a.hraNodes, bodyparts3d: a.bpNames, both: a.both,
-    scale: +fitScale(a.fit).toFixed(4), globalMm: r2(a.globalMm), ownMm: r2(a.ownMm), leaveOneOutMm: r2(a.looMm),
+    scale: +fitScale(a.fit).toFixed(4), globalMm: r2(a.globalMm), ownMm: r2(a.ownMm), bentMm: r2(a.bentMm),
+    jacobian: { min: r2(a.det.min), p1: r2(a.det.p1), p5: r2(a.det.p5), p99: r2(a.det.p99) }, bendMaxMm: r2(a.movedMaxMm),
+    leaveOneOutRigidMm: r2(a.looRigidMm), leaveOneOutMm: r2(a.looMm),
   })),
   canal: {
     method: `the spinal cord moved across (heights kept) onto the line through each BodyParts3D vertebra's canal centre: the point on its midline, front to back every ${CANAL_STEP} mm at heights ${CANAL_HEIGHT_STEP} mm apart through its middle half, outside the bone with bone ahead and behind, farthest from it`,
