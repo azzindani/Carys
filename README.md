@@ -104,6 +104,10 @@ surface, with no patient data. Then:
   a skip is reported as a skip, never as a pass.
 - **`npm run test:geometry`** — the geometry guarantees above, on the real
   samples (part of `test:e2e`).
+- **`npm run test:synthetic`** — the e2e legs that need only what
+  `gen:samples` writes (boot, keyboard, DICOM→3D with the CT presets, the
+  worklist's availability). CI runs it on every push after generating the
+  set; it passes the same on the real one.
 - **`npm run verify`** — sets `CARYS_REQUIRE_SAMPLES=1`, which turns a missing
   fixture into a **failure**. Use it before a release, with samples mounted; a
   half-populated `samples/` fails loudly instead of quietly thinning coverage.
