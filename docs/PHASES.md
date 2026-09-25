@@ -1747,8 +1747,40 @@ merged into main 2026-09-24; work is on main only since).
     atoms in 271 ms), a tap names the copy ("chain D-34 · … · GLU 72 ·
     operator 34 of 60"), turning by keys draws residue beads (123,420 in
     49 ms), then chain beads and 1STM, and the Model mode comes back.
-- OPEN — **H8. A microbiology library.** Cards for virus families and
+- DONE — **H8. A microbiology library.** Cards for virus families and
   bacteria (structure, genome, morphology, Gram stain, examples), written
   here or from CC BY/CC0 sources, each linked to its PDB structures and
   to Learn. Accept: every card names its source and licence; e2e opens a
   card and its structure.
+  - 11 cards in `volume-core/microbes.ts`: five virus families
+    (Picornaviridae, Caliciviridae, Polyomaviridae, Coronaviridae,
+    Hepadnaviridae) and six bacteria (*E. coli*, *S. aureus*,
+    *V. cholerae*, *C. botulinum*, *B. anthracis*, *M. tuberculosis*),
+    each with structure, genome, morphology, Gram stain (acid-fast for
+    *M. tuberculosis*; "not applicable" for a virus) and examples.
+  - Sources and licences, named on every card: four family cards are
+    adapted from their ICTV Virus Taxonomy Profiles (J Gen Virol, CC BY
+    4.0, read in full from Europe PMC); the other seven are written here
+    (MIT). Two candidate sources were checked and refused by the licence
+    rule: the Hepadnaviridae profile (CC BY-NC 4.0 at Crossref) and
+    OpenStax Microbiology (CC BY-NC-SA 4.0 at OpenStax).
+  - `scripts/build-microbes.mjs` checks all 17 references on every
+    build: the four DOIs' CC BY 4.0 licence and first author at
+    Crossref, the 13 PDB entries' first authors at RCSB, and that each
+    bacterial entry's source organism is its card's species. It vendors
+    the six bacterial entries as RCSB serves them (1.3 MB:
+    2OMF OmpF porin, 7AHL α-hemolysin pore, 1XTC cholera toxin,
+    3BTA botulinum neurotoxin A, 1ACC anthrax protective antigen,
+    1ENY InhA, the isoniazid target) into `digests/microbe-library/`,
+    and `library.json` records the checks.
+  - Links: 14 structure links (five H7 capsids open in the Protein
+    route's Capsid mode; three M1 pathogen entries and the six bacterial
+    entries in its Model mode) and four Learn bundles. The
+    study test holds every link to an existing structure, cited on its
+    card, and every bundle to `bundles.ts`.
+  - Wire leg 30e: the Picornaviridae card names its CC BY source and DOI
+    and opens 2PLV in the Capsid mode (429,720 atoms, settled in 385 ms
+    at load 6); the *V. cholerae* card (Gram-negative, written here, MIT,
+    PDB 1XTC CC0) opens cholera toxin in the Model mode (5,997 atoms);
+    the Coronaviridae card's bundle link selects ace2-entry. The bundles'
+    own Open structure still lands 1QGT (leg 21).

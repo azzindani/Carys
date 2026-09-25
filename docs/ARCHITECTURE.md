@@ -191,6 +191,18 @@ frame the same physical box.
   (`capsids.json`). The Protein route's Capsid mode
   (`views/CapsidView.tsx`, `lib/capsids.ts`) draws residue beads while
   the shell turns (Auto) and atoms once it settles; a tap names the copy.
+- Microbiology library (H8): `volume-core/microbes.ts` holds the cards
+  (virus families and bacteria: structure, genome, morphology, Gram
+  stain, examples), each with where its text comes from and its licence,
+  its references, the Learn bundles it links to and its structures as a
+  `StructureLink` (an M1 pathogen entry or a microbe-library entry for the
+  Model mode, an H7 capsid for the Capsid mode). `scripts/build-microbes.mjs`
+  checks every DOI's CC BY 4.0 licence at Crossref, every PDB reference's
+  first author at RCSB and each bacterial entry's organism, and vendors
+  those entries into `digests/microbe-library/` (`library.json` records
+  the checks). Learn shows the library (`views/MicrobeLibrary.tsx`) and
+  hands a structure link to the Protein route, which opens it in the
+  mode it needs (`lib/microbes.ts` fetches a bacterial entry).
 - Placing another body's organs (H3): `glb.ts` reads glTF binary meshes
   (node transforms applied; Draco, sparse accessors and non-triangle
   primitives refused). `organ-fit.ts` fits organs both bodies have

@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { JSX, ReactNode } from 'react';
 import { isCifLike, parseCif, parsePdb, selectResidueAtoms, type ProteinModel } from '@carys/io';
 import {
-  PATHOGEN_DIGEST_ID, PATHOGEN_DIGEST_PIN,
-  PATHOGEN_STRUCTURES, pathogenById,
+  MICROBE_DIGEST_ID, PATHOGEN_DIGEST_ID, PATHOGEN_DIGEST_PIN,
+  PATHOGEN_STRUCTURES, pathogenById, type StructureLink,
 } from '@carys/volume-core';
 import { EDUCATION_BADGE } from '@carys/study';
 import {
@@ -11,6 +11,7 @@ import {
   rotateAtoms, runMolQuery, type Atom, type MapFitReport, type Pocket, type ResidueBundle, type StructureModel,
 } from '@carys/volume-core';
 import { loadNiiBuffer } from '../lib/loaders';
+import { loadMicrobeStructure } from '../lib/microbes';
 import { session } from '../lib/session';
 import { subscribeResidueLink, takeResidueLink } from '../lib/linkBus';
 import { setAmbientStatus, setStatus } from '../lib/status';
@@ -49,9 +50,9 @@ const W = 640, H = 560;
 type ProteinMode = 'model' | 'capsid';
 
 /** The Protein route: one structure, or a whole virus capsid (H7), one
- *  switch. */
-export function ProteinView({ initialPathogen }: { initialPathogen?: string }): JSX.Element {
-  const [mode, setMode] = useState<ProteinMode>('model');
+ *  switch. A structure Learn asked for opens in the mode it needs. */
+export function ProteinView({ initial }: { initial?: StructureLink | null }): JSX.Element {
+  const [mode, setMode] = useState<ProteinMode>(initial?.kind === 'capsid' ? 'capsid' : 'model');
   const modeSwitch = (
     <div className="grp">
       <Seg<ProteinMode> id="protein-mode" dataKey="protein-mode" ariaLabel="Protein mode" value={mode} onChange={setMode}
@@ -62,11 +63,11 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
     </div>
   );
   return mode === 'capsid'
-    ? <CapsidView modeSwitch={modeSwitch} />
-    : <ModelView modeSwitch={modeSwitch} initialPathogen={initialPathogen} />;
+    ? <CapsidView modeSwitch={modeSwitch} initialKey={initial?.kind === 'capsid' ? initial.key : undefined} />
+    : <ModelView modeSwitch={modeSwitch} initial={initial?.kind === 'capsid' ? null : initial ?? null} />;
 }
 
-function ModelView({ initialPathogen, modeSwitch }: { initialPathogen?: string; modeSwitch: ReactNode }): JSX.Element {
+function ModelView({ initial, modeSwitch }: { initial: StructureLink | null; modeSwitch: ReactNode }): JSX.Element {
   const [model, setModel] = useState<ProteinModel | null>(null);
   const [name, setName] = useState('');
   const [orbit, setOrbit] = useState(0.7);
@@ -81,7 +82,7 @@ function ModelView({ initialPathogen, modeSwitch }: { initialPathogen?: string; 
   // no map open; the report says translation-only docking, never a 6D fit.
   const [mapName, setMapName] = useState('');
   const [pathogenId, setPathogenId] = useState('');
-  const initialRef = useRef(initialPathogen ?? '');
+  const initialRef = useRef(initial);
   const [pathogenNote, setPathogenNote] = useState('');
   const [fit, setFit] = useState<MapFitReport | null>(null);
   const [fitThr, setFitThr] = useState(0);
@@ -158,13 +159,14 @@ function ModelView({ initialPathogen, modeSwitch }: { initialPathogen?: string; 
   useEffect(() => { paint(); });
   useEffect(() => {
     undoBus.current = doUndoSel;
-    // Learn's "Open structure" arrives as initialPathogen: open that entry
+    // Learn's "Open structure" arrives as the initial link: open that entry
     // instead of the demo. It used to go through a ref nothing had filled
     // yet (a no-op, so the link landed on crambin), and the demo fetch
     // raced the entry's anyway — whichever parsed last was shown.
-    const initial = initialRef.current;
-    initialRef.current = '';
-    if (initial) openPathogen(initial);
+    const first = initialRef.current;
+    initialRef.current = null;
+    if (first?.kind === 'pathogen') openPathogen(first.id);
+    else if (first?.kind === 'microbe') openMicrobe(first.pdbId);
     else {
       void fetch('/samples/1crn.pdb').then(async (r) => {
         if (!r.ok) return;
@@ -229,6 +231,17 @@ function ModelView({ initialPathogen, modeSwitch }: { initialPathogen?: string; 
       }
       openModel(await r.text(), `${entry.pdbId} (${entry.entry.term})`);
     }).catch((e) => setStatus(`pathogen load failed: ${(e as Error).message}`, 'error'));
+  };
+
+  /** H8 library: a bacterial entry of the microbe-library digest, as RCSB
+   *  serves it, captioned with its title and organism. */
+  const openMicrobe = (pdbId: string): void => {
+    setPathogenId('');
+    void loadMicrobeStructure(pdbId).then(({ lib, s, text }) => {
+      setPathogenNote(`${s.pdbId} · ${s.title.toLowerCase()} · ${s.organism} · PDB (CC0)`);
+      session.digestPins = { [MICROBE_DIGEST_ID]: lib.pin };
+      openModel(text, `${s.pdbId} (${s.organism})`);
+    }).catch((e) => setStatus(`microbe structure failed: ${(e as Error).message}`, 'error'));
   };
 
   /** M1 interface contacts: select the precomputed contact residues on the
