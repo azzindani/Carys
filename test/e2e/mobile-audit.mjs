@@ -50,15 +50,22 @@ const auditRoute = async (browser, hash, shot) => {
     // a real touchscreen tap must stamp voxels, not hit chrome. Mobile IA:
     // switch to the axial viewport, open the Tools panel, then tap.
     try {
-      const vox = () => page.evaluate(() => {
-        const dd = [...document.querySelectorAll('#maskinfo dd')];
-        const v = dd.find((d) => /^\d[\d,]*$/.test(d.textContent.trim()));
-        if (v) return v.textContent.trim();
-        const m = document.getElementById('m-vox')?.textContent?.match(/([\d,]+) vox/);
-        return m ? m[1] : '(none)';
-      });
+      // The mask count lives in the Files panel on a phone (the details
+      // drawer is desktop-only and starts closed), and deck tabs toggle, so
+      // open a panel only when it is not already the open one.
+      const panel = async (name) => {
+        if (await page.locator(`#mpanel-${name.toLowerCase()}`).count() === 0) {
+          await page.click(`#mobilebar button:has-text("${name}")`);
+        }
+        await page.waitForSelector(`#mpanel-${name.toLowerCase()}`, { timeout: 10000 });
+      };
+      const vox = async () => {
+        await panel('Files');
+        return page.evaluate(() => document.getElementById('m-vox')?.textContent?.match(/([\d,]+) vox/)?.[1] ?? '(none)');
+      };
       await page.click('#mviewseg button[data-mview="axial"]');
-      await page.click('#mobilebar button:has-text("Tools")');
+      const before = await vox();
+      await panel('Tools');
       await page.click('#mpanel-tools #modeseg button[data-mode="paint"]');
       await page.locator('#c-axial').scrollIntoViewIfNeeded();
       await page.waitForTimeout(400);
@@ -68,7 +75,6 @@ const auditRoute = async (browser, hash, shot) => {
         const el = document.elementFromPoint(x, y);
         return el ? `${el.tagName}#${el.id}` : 'NONE';
       }, [tx, ty]);
-      const before = await vox();
       await page.touchscreen.tap(tx, ty);
       await page.waitForTimeout(1500);
       const after = await vox();

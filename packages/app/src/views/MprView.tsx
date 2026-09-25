@@ -78,190 +78,224 @@ export function MprToolDock({ column = false }: { column?: boolean } = {}): JSX.
   );
 }
 
-/** Display tune controls: preset, layout emphasis, sync, hanging, slab
- *  projection, obliquity, time, exports. Own pill on desktop (`#dock-tune`),
- *  Display-panel section on mobile. */
-export function MprTuneDock({ axialCanvasRef }: {
+/* The display controls, one dock per job. On desktop each is a pop-out in
+   the viewer's bar (ViewerView); on mobile the Display panel stacks them.
+   They were one strip, `#dock-tune`, that took a row of the viewport. */
+
+/** Window, colormap and arrangement: preset, LUT, layout emphasis, sync,
+ *  invert, hanging protocol. */
+export function DisplayDock(): JSX.Element {
+  const ui = useUi();
+  // the W/L readout follows the session, not only the UI prefs
+  useVersion();
+  return (
+    <div className="dock" id="dock-display">
+      <div className="grp">
+        <span className="lbl">Preset</span>
+        <DarkSelect
+          value={ui.preset} title="Preset"
+          onChange={(v) => {
+            setUi({ preset: v });
+            session.wl = v === 'auto' ? session.autoWl
+              : v === 'custom' ? (session.wl ?? session.autoWl) : PRESETS[v];
+            paintBus.mpr();
+          }}
+        >
+          <option value="auto">auto (p2–p98)</option>
+          {Object.keys(PRESETS).map((k) => <option key={k} value={k}>{k}</option>)}
+          <option value="custom">custom (drag: Shift)</option>
+        </DarkSelect>
+      </div>
+      <div className="grp">
+        <Chip><span id="ro-wl">W {Math.round(session.wl?.width ?? 0)} · C {Math.round(session.wl?.center ?? 0)}</span></Chip>
+      </div>
+      <div className="grp">
+        <span className="lbl">LUT</span>
+        <DarkSelect
+          value={ui.lut} title="Colormap"
+          onChange={(v) => { setUi({ lut: v }); paintBus.mpr(); }}
+        >
+          {['Grayscale', 'Fire', 'Spectrum', 'Hot-and-Cold', 'Gold'].map((k) => <option key={k} value={k}>{k}</option>)}
+        </DarkSelect>
+      </div>
+      <div className="sep" />
+      <div className="grp">
+        <span className="lbl">Layout</span>
+        <Seg<MprLayout>
+          id="layoutseg" dataKey="layout" ariaLabel="2D stack emphasis"
+          value={ui.layout} onChange={(v) => { setUi({ layout: v }); paintBus.mpr(); }}
+          options={[
+            { value: 'tri', label: '3-up' }, { value: 'axial', label: 'Ax' },
+            { value: 'coronal', label: 'Cor' }, { value: 'sagittal', label: 'Sag' },
+          ]}
+        />
+      </div>
+      <Switch checked={ui.sync} label="Sync" onChange={(v) => setUi({ sync: v })} />
+      <Switch checked={ui.invert} label="Invert" onChange={(v) => { setUi({ invert: v }); paintBus.mpr(); }} />
+      <div className="sep" />
+      <div className="grp">
+        <span className="lbl">Hang</span>
+        <DarkSelect
+          value={ui.hang} title="Hanging protocol"
+          onChange={(v) => applyHanging(v)}
+        >
+          {hangingOptions().map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+        </DarkSelect>
+      </div>
+    </div>
+  );
+}
+
+/** Slab projection, obliquity and the plane teaching card. */
+export function ReformatDock(): JSX.Element {
+  const ui = useUi();
+  return (
+    <div className="dock" id="dock-reformat">
+      <div className="grp">
+        <span className="lbl">Slab</span>
+        <Seg<ProjMode>
+          id="projseg" dataKey="proj" ariaLabel="Projection"
+          value={ui.proj} onChange={(v) => {
+            // Leaving a rotating projection also straightens the view:
+            // obl angles without a projection mode paint the oblique
+            // slice, and the leg-9 reset proved slice-first alone leaves
+            // the obl tag stuck (angles ride separately from proj).
+            // bump() second: MprPanes subscribes layout/fullVp/proj/obl
+            // but not `series`, so a bare setUi may not re-render it —
+            // the repaint closure then stays stale and the tag freezes
+            // after a cells round-trip (same root cause as the no-op
+            // cleanup it replaced).
+            if (v === 'slice') setUi({ proj: v, oblA: 0, oblB: 0 });
+            else setUi({ proj: v });
+            bump();
+            paintBus.mpr();
+          }}
+          options={[
+            { value: 'slice', label: 'Slice' }, { value: 'mip', label: 'MIP' },
+            { value: 'minip', label: 'Min' }, { value: 'mean', label: 'Mean' },
+          ]}
+        />
+      </div>
+      {ui.proj !== 'slice' && (
+        <SliderRow label="Thick" min={2} max={64} step={1} value={ui.slab} width={72}
+          onInput={(v) => setUi({ slab: v })} onCommit={() => paintBus.mpr()} />
+      )}
+      <div className="sep" />
+      <div className="grp">
+        <span className="lbl">Tilt</span>
+        <Seg<Plane>
+          id="oblplaneseg" dataKey="oblplane" ariaLabel="Tilt plane"
+          value={ui.oblPlane}
+          onChange={(v) => { setUi({ oblPlane: v, oblA: 0, oblB: 0 }); paintBus.mpr(); }}
+          options={[
+            { value: 'axial', label: 'Ax' }, { value: 'coronal', label: 'Cor' },
+            { value: 'sagittal', label: 'Sag' },
+          ]}
+        />
+      </div>
+      <SliderRow label="Obl A" min={-0.5} max={0.5} step={0.01} value={ui.oblA} width={64}
+        onInput={(v) => setUi({ oblA: v })} onCommit={() => paintBus.mprPlane(ui.oblPlane)} />
+      <SliderRow label="Obl B" min={-0.5} max={0.5} step={0.01} value={ui.oblB} width={64}
+        onInput={(v) => setUi({ oblB: v })} onCommit={() => paintBus.mprPlane(ui.oblPlane)} />
+      {(ui.oblA !== 0 || ui.oblB !== 0) && (
+        <div className="grp">
+          <IconBtn title="Reset obliquity" onClick={() => { setUi({ oblA: 0, oblB: 0 }); paintBus.mprPlane(ui.oblPlane); }}>Ortho</IconBtn>
+        </div>
+      )}
+      <div className="sep" />
+      <PlaneAtlasCard />
+    </div>
+  );
+}
+
+/** Second-series overlay: series, mode, blend. */
+export function CompareDock(): JSX.Element {
+  const ui = useUi();
+  return (
+    <div className="dock" id="dock-compare">
+      <div className="grp">
+        <span className="lbl">Compare</span>
+        <DarkSelect
+          value={ui.compareMode === 'off' ? '' : ui.compareSeries} title="Compare overlay series"
+          ariaLabel="Compare overlay series"
+          onChange={(v) => setCompare(v, v ? (ui.compareMode === 'off' ? 'checker' : ui.compareMode) : 'off')}
+        >
+          <option value="">off</option>
+          {Object.keys(SERIES).filter((k) => k !== ui.series).map((k) => <option key={k} value={k}>{k}</option>)}
+        </DarkSelect>
+        {ui.compareMode !== 'off' && (
+          <Seg<CompareMode>
+            id="cmpseg" dataKey="cmp" ariaLabel="Compare mode"
+            value={ui.compareMode}
+            onChange={(v) => setCompare(ui.compareSeries, v)}
+            options={[
+              { value: 'checker', label: 'Check' }, { value: 'alpha', label: 'Blend' },
+              { value: 'subtract', label: 'Δ' },
+            ]}
+          />
+        )}
+      </div>
+      {ui.compareMode === 'alpha' && (
+        <SliderRow label="Blend" min={0} max={1} step={0.05} value={ui.compareAlpha} width={64}
+          onInput={(v) => setUi({ compareAlpha: v })} onCommit={() => paintBus.mpr()} />
+      )}
+    </div>
+  );
+}
+
+/** Cine transport, only for a series with frames (a 4D NIfTI, a US cine).
+ *  The session decides that, so this re-renders on its version. */
+export function TimeDock(): JSX.Element | null {
+  const ui = useUi();
+  useVersion();
+  if (session.timeNt <= 1) return null;
+  return (
+    <div className="dock" id="dock-time">
+      <div className="grp">
+        <span className="lbl">Time</span>
+        <IconBtn id="cine-play" title={isCinePlaying() ? 'Pause cine' : 'Play cine'}
+          onClick={() => toggleCine()}>{isCinePlaying() ? '⏸' : '▶'}</IconBtn>
+        <SliderRow id="cine-fps" label="FPS" min={1} max={CINE_MAX_FPS} step={1} value={ui.cineFps} width={56}
+          onInput={(v) => { setUi({ cineFps: v }); retimeCine(); }} />
+        <SliderRow label="Frame" min={0} max={session.timeNt - 1} step={1} value={session.timeT} width={64}
+          onInput={(v) => setTimeFrame(v)} />
+        <Chip><span id="ro-time">t={session.timeT}/{session.timeNt - 1}{session.timeDiff ? ` · Δ${session.timeDiff.meanAbs.toFixed(1)}` : ''}</span></Chip>
+      </div>
+    </div>
+  );
+}
+
+/** True once the open series has frames: the viewer shows its Time button. */
+export function useHasFrames(): boolean {
+  useVersion();
+  return session.timeNt > 1;
+}
+
+/** Exports and presentation state. */
+export function ExportDock({ axialCanvasRef }: {
   axialCanvasRef: React.RefObject<HTMLCanvasElement | null>;
 }): JSX.Element {
-  const ui = useUi();
-  // Session state drives parts of this dock (the cine group appears when a
-  // series has frames): re-render on the session version, not only on UI
-  // prefs, or a US cine upload never shows its transport.
-  useVersion();
-
   return (
-    <>
-      <div className="dock" id="dock-tune">
-        <div className="grp">
-          <span className="lbl">Preset</span>
-          <DarkSelect
-            value={ui.preset} title="Preset"
-            onChange={(v) => {
-              setUi({ preset: v });
-              session.wl = v === 'auto' ? session.autoWl
-                : v === 'custom' ? (session.wl ?? session.autoWl) : PRESETS[v];
-              paintBus.mpr();
-            }}
-          >
-            <option value="auto">auto (p2–p98)</option>
-            {Object.keys(PRESETS).map((k) => <option key={k} value={k}>{k}</option>)}
-            <option value="custom">custom (drag: Shift)</option>
-          </DarkSelect>
-        </div>
-        <div className="grp">
-          <Chip><span id="ro-wl">W {Math.round(session.wl?.width ?? 0)} · C {Math.round(session.wl?.center ?? 0)}</span></Chip>
-        </div>
-        <div className="grp">
-          <span className="lbl">LUT</span>
-          <DarkSelect
-            value={ui.lut} title="Colormap"
-            onChange={(v) => { setUi({ lut: v }); paintBus.mpr(); }}
-          >
-            {['Grayscale', 'Fire', 'Spectrum', 'Hot-and-Cold', 'Gold'].map((k) => <option key={k} value={k}>{k}</option>)}
-          </DarkSelect>
-        </div>
-        <div className="sep" />
-        <div className="grp">
-          <span className="lbl">Layout</span>
-          <Seg<MprLayout>
-            id="layoutseg" dataKey="layout" ariaLabel="2D stack emphasis"
-            value={ui.layout} onChange={(v) => { setUi({ layout: v }); paintBus.mpr(); }}
-            options={[
-              { value: 'tri', label: '3-up' }, { value: 'axial', label: 'Ax' },
-              { value: 'coronal', label: 'Cor' }, { value: 'sagittal', label: 'Sag' },
-            ]}
-          />
-        </div>
-        <Switch checked={ui.sync} label="Sync" onChange={(v) => setUi({ sync: v })} />
-        <Switch checked={ui.invert} label="Invert" onChange={(v) => { setUi({ invert: v }); paintBus.mpr(); }} />
-        <div className="sep" />
-        <div className="grp">
-          <span className="lbl">Hang</span>
-          <DarkSelect
-            value={ui.hang} title="Hanging protocol"
-            onChange={(v) => applyHanging(v)}
-          >
-            {hangingOptions().map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </DarkSelect>
-        </div>
-        <div className="sep" />
-        <div className="grp">
-          <span className="lbl">Slab</span>
-          <Seg<ProjMode>
-            id="projseg" dataKey="proj" ariaLabel="Projection"
-            value={ui.proj} onChange={(v) => {
-              // Leaving a rotating projection also straightens the view:
-              // obl angles without a projection mode paint the oblique
-              // slice, and the leg-9 reset proved slice-first alone leaves
-              // the obl tag stuck (angles ride separately from proj).
-              // bump() second: MprPanes subscribes layout/fullVp/proj/obl
-              // but not `series`, so a bare setUi may not re-render it —
-              // the repaint closure then stays stale and the tag freezes
-              // after a cells round-trip (same root cause as the no-op
-              // cleanup it replaced).
-              if (v === 'slice') setUi({ proj: v, oblA: 0, oblB: 0 });
-              else setUi({ proj: v });
-              bump();
-              paintBus.mpr();
-            }}
-            options={[
-              { value: 'slice', label: 'Slice' }, { value: 'mip', label: 'MIP' },
-              { value: 'minip', label: 'Min' }, { value: 'mean', label: 'Mean' },
-            ]}
-          />
-        </div>
-        {ui.proj !== 'slice' && (
-          <SliderRow label="Thick" min={2} max={64} step={1} value={ui.slab} width={72}
-            onInput={(v) => setUi({ slab: v })} onCommit={() => paintBus.mpr()} />
-        )}
-        <div className="sep" />
-        <div className="grp">
-          <span className="lbl">Tilt</span>
-          <Seg<Plane>
-            id="oblplaneseg" dataKey="oblplane" ariaLabel="Tilt plane"
-            value={ui.oblPlane}
-            onChange={(v) => { setUi({ oblPlane: v, oblA: 0, oblB: 0 }); paintBus.mpr(); }}
-            options={[
-              { value: 'axial', label: 'Ax' }, { value: 'coronal', label: 'Cor' },
-              { value: 'sagittal', label: 'Sag' },
-            ]}
-          />
-        </div>
-        <SliderRow label="Obl A" min={-0.5} max={0.5} step={0.01} value={ui.oblA} width={64}
-          onInput={(v) => setUi({ oblA: v })} onCommit={() => paintBus.mprPlane(ui.oblPlane)} />
-        <SliderRow label="Obl B" min={-0.5} max={0.5} step={0.01} value={ui.oblB} width={64}
-          onInput={(v) => setUi({ oblB: v })} onCommit={() => paintBus.mprPlane(ui.oblPlane)} />
-        {(ui.oblA !== 0 || ui.oblB !== 0) && (
-          <div className="grp">
-            <IconBtn title="Reset obliquity" onClick={() => { setUi({ oblA: 0, oblB: 0 }); paintBus.mprPlane(ui.oblPlane); }}>Ortho</IconBtn>
-          </div>
-        )}
-        <div className="sep" />
-        <div className="grp">
-          <span className="lbl">Compare</span>
-          <DarkSelect
-            value={ui.compareMode === 'off' ? '' : ui.compareSeries} title="Compare overlay series"
-            ariaLabel="Compare overlay series"
-            onChange={(v) => setCompare(v, v ? (ui.compareMode === 'off' ? 'checker' : ui.compareMode) : 'off')}
-          >
-            <option value="">off</option>
-            {Object.keys(SERIES).filter((k) => k !== ui.series).map((k) => <option key={k} value={k}>{k}</option>)}
-          </DarkSelect>
-          {ui.compareMode !== 'off' && (
-            <Seg<CompareMode>
-              id="cmpseg" dataKey="cmp" ariaLabel="Compare mode"
-              value={ui.compareMode}
-              onChange={(v) => setCompare(ui.compareSeries, v)}
-              options={[
-                { value: 'checker', label: 'Check' }, { value: 'alpha', label: 'Blend' },
-                { value: 'subtract', label: 'Δ' },
-              ]}
-            />
-          )}
-        </div>
-        {ui.compareMode === 'alpha' && (
-          <SliderRow label="Blend" min={0} max={1} step={0.05} value={ui.compareAlpha} width={64}
-            onInput={(v) => setUi({ compareAlpha: v })} onCommit={() => paintBus.mpr()} />
-        )}
-        {session.timeNt > 1 && (
-          <>
-            <div className="sep" />
-            <div className="grp">
-              <span className="lbl">Time</span>
-              <IconBtn id="cine-play" title={isCinePlaying() ? 'Pause cine' : 'Play cine'}
-                onClick={() => toggleCine()}>{isCinePlaying() ? '⏸' : '▶'}</IconBtn>
-              <SliderRow id="cine-fps" label="FPS" min={1} max={CINE_MAX_FPS} step={1} value={ui.cineFps} width={56}
-                onInput={(v) => { setUi({ cineFps: v }); retimeCine(); }} />
-              <SliderRow label="Frame" min={0} max={session.timeNt - 1} step={1} value={session.timeT} width={64}
-                onInput={(v) => setTimeFrame(v)} />
-              <Chip><span id="ro-time">t={session.timeT}/{session.timeNt - 1}{session.timeDiff ? ` · Δ${session.timeDiff.meanAbs.toFixed(1)}` : ''}</span></Chip>
-            </div>
-          </>
-        )}
-        <div className="sep" />
-        <div className="grp">
-          <IconBtn accent title="Export axial PNG" onClick={() => { if (axialCanvasRef.current) saveAxialPng(axialCanvasRef.current); }}>PNG</IconBtn>
-          <IconBtn accent title="Export mask as .nii" onClick={saveMaskNii}>.NII</IconBtn>
-          <IconBtn accent title="Export mask as DICOM-SEG" onClick={() => { void import('../lib/segImport').then((m) => m.saveSegDcm()); }}>SEG</IconBtn>
-        </div>
-        <div className="sep" />
-        <PlaneAtlasCard />
-        <div className="sep" />
-        <div className="grp" id="dock-present">
-          <IconBtn title="Save presentation state JSON (WL + slices + zoom/pan + annotations)" onClick={savePresentState}>Present</IconBtn>
-          <label className="iconbtn" htmlFor="present-upload" title="Load a presentation state JSON">Open</label>
-          <input
-            type="file" id="present-upload" accept=".json,application/json" hidden
-            onChange={(e) => {
-              const f = (e.target as HTMLInputElement).files?.[0];
-              if (f) void loadPresentStateFile(f);
-              (e.target as HTMLInputElement).value = '';
-            }}
-          />
-        </div>
+    <div className="dock" id="dock-export">
+      <div className="grp">
+        <IconBtn accent title="Export axial PNG" onClick={() => { if (axialCanvasRef.current) saveAxialPng(axialCanvasRef.current); }}>PNG</IconBtn>
+        <IconBtn accent title="Export mask as .nii" onClick={saveMaskNii}>.NII</IconBtn>
+        <IconBtn accent title="Export mask as DICOM-SEG" onClick={() => { void import('../lib/segImport').then((m) => m.saveSegDcm()); }}>SEG</IconBtn>
       </div>
-    </>
+      <div className="sep" />
+      <div className="grp" id="dock-present">
+        <IconBtn title="Save presentation state JSON (WL + slices + zoom/pan + annotations)" onClick={savePresentState}>Present</IconBtn>
+        <label className="iconbtn" htmlFor="present-upload" title="Load a presentation state JSON">Open</label>
+        <input
+          type="file" id="present-upload" accept=".json,application/json" hidden
+          onChange={(e) => {
+            const f = (e.target as HTMLInputElement).files?.[0];
+            if (f) void loadPresentStateFile(f);
+            (e.target as HTMLInputElement).value = '';
+          }}
+        />
+      </div>
+    </div>
   );
 }
 

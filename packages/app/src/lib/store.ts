@@ -43,7 +43,7 @@ const initial: UiState = {
   // Chrome starts out of the way: the details drawer closed, the mobile
   // control deck collapsed to its switcher strip. Tools reveal on demand,
   // the way a site's nav does — the image is the product.
-  tabs: [], fullVp: null, mView: 'v3d', mSheet: null, docksOpen: true, insOpen: false, cineFps: 4, invert: false, lut: 'Grayscale',
+  tabs: [], fullVp: null, mView: 'v3d', mSheet: null, insOpen: false, cineFps: 4, invert: false, lut: 'Grayscale',
   ...loadAppearance(),
 };
 

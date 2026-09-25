@@ -2,6 +2,7 @@
 // (wire.mjs proves reach; this proves completion). Fails loud, prints PASS.
 // Run: npm run test:journeys (chained into test:e2e)
 import { spawn } from 'node:child_process';
+import { openPop } from './popout.mjs';
 
 const PORT = Number(process.env.E2E_PORT || 8132);
 const BASE = `http://localhost:${PORT}/packages/app/dist/index.html`;
@@ -63,9 +64,10 @@ try {
     }, before, { timeout: 30000 },
   );
   console.log(`journey paint stamps voxels (${before} -> ${await vox()})`);
+  await openPop(page, 'export');
   const [dl] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
-    page.click('#dock-tune button[title="Export axial PNG"]'),
+    page.click('#dock-export button[title="Export axial PNG"]'),
   ]);
   const name = dl.suggestedFilename();
   if (!name.endsWith('.png')) fail(`export filename not a png: ${name}`);
@@ -115,6 +117,7 @@ try {
   const painted = await vox();
   await toSlice(63);
   const between0 = await redPx();
+  await openPop(page, 'segment');
   await page.click('#dock-seg button[title="Fill between painted slices (any plane, each label)"]');
   await page.waitForFunction(() => /^interp: .* axial slices · label 1/.test(document.getElementById('status-text')?.textContent ?? ''), null, { timeout: 60000 });
   const said = await page.locator('#status-text').textContent();

@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { decodeNiftiBuffer, readHeader, readImage } from '../../packages/io/dist/index.js';
 import { launchChromium } from './browser.mjs';
+import { openPop } from './popout.mjs';
 
 const PORT = Number(process.env.E2E_PORT || 8134);
 const BASE = `http://localhost:${PORT}/packages/app/dist/index.html`;
@@ -107,6 +108,7 @@ try {
   // ---- F. the same CT volume-rendered from the side (orbit 90°: head–foot
   // runs across the screen). The frame fits the 480 mm width, so the 58 × 5
   // mm scan must span ~290 mm of it; marched in voxels it spanned 58.
+  await openPop(page, '3d');
   await page.click('#renderseg button[data-r="volume"]');
   await page.click('#srcseg button[data-s="image"]');
   await page.locator('input[aria-label="Orbit"]').fill('1.57');
@@ -132,6 +134,7 @@ try {
   });
   if (!(Math.abs(vrMm - 290) / 290 < 0.06)) fail(`volume render spans ${vrMm.toFixed(0)} mm head–foot, want ≈290`);
   else console.log(`3D: volume render spans ${vrMm.toFixed(0)} mm head–foot ≈ 58 × 5 mm`);
+  await openPop(page, '3d');
   await page.click('#renderseg button[data-r="surface"]');
 
   // ---- C. five lung_ct files are five exams; four cardiac files are one
@@ -159,9 +162,10 @@ try {
   // its editing copy; since F14 a label map keeps its labels: liver 1,
   // tumour 2).
   await openSeries(page, 'liver-ct-seg');
+  await openPop(page, 'export');
   const [dl] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
-    page.click('#dock-tune button[title="Export mask as .nii"]'),
+    page.click('#dock-export button[title="Export mask as .nii"]'),
   ]);
   const out = readNifti(readFileSync(await dl.path()));
   const img = readNifti(readFileSync(join(SAMPLES, 'liver_33_seg.nii'))); // the CT (names swapped upstream)

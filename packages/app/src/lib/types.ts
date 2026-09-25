@@ -159,8 +159,6 @@ export interface UiState {
   /** mobile single viewport + open toggle panel (desktop ignores both) */
   mView: MView;
   mSheet: MSheet;
-  /** desktop toolbar row visible (mobile uses toggle panels instead) */
-  docksOpen: boolean;
   /** desktop details panel visible; collapsing gives its column to the image */
   insOpen: boolean;
   /** cine playback rate (fps); playing flag itself is ephemeral module state */

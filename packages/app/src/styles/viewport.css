@@ -14,18 +14,18 @@
 /* The tool palette floats against the left edge of the image rather than
    holding a column of its own. */
 .toolstrip {
-  /* below the floating toolbar AND below the pane header, so it covers
-     neither — chrome may float over the image, never over other chrome. */
+  /* below the pane header, so it never covers it — chrome may float over
+     the image, never over other chrome. */
   position: absolute; left: var(--sp-3);
-  top: calc(var(--dockbar-h) + var(--ctl-h) + var(--sp-5));
+  top: calc(var(--ctl-h) + var(--sp-5));
   z-index: 12; width: var(--toolstrip-w);
-  max-height: calc(100% - var(--dockbar-h) - var(--ctl-h) - var(--sp-8));
+  max-height: calc(100% - var(--ctl-h) - var(--sp-8));
   display: flex; flex-direction: column;
   background: color-mix(in srgb, var(--color-surface-1) 88%, transparent);
   border: 1px solid var(--color-line); border-radius: var(--radius-lg);
   backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-2);
-  /* same reason as .dockrow: 0.72 put the tool captions at 2.33:1 */
+  /* 0.72 put the tool captions at 2.33:1 against the image */
   opacity: 0.85; transition: opacity var(--dur) var(--ease);
 }
 .toolstrip:hover, .toolstrip:focus-within { opacity: 1; }
@@ -65,67 +65,49 @@
   display: grid; gap: var(--sp-2); align-items: stretch;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
 }
-/* The toolbar floats over the image, the way a site's nav floats over the
-   hero — it does not push the content down. The viewport keeps the whole
-   work area and the bar rides on top, fading back until you reach for it.
-   The grid insets its *content* by the bar's height so the bar never covers
-   a pane header; the grid's own box is unchanged, so toggling the toolbar
-   still costs the image no height. */
-/* The bar's height is derived, not guessed: a magic 42px clipped a 69px
-   dock on desktop and was ~20px short of a single row on touch, where
-   --ctl-h is 44px. One row of controls plus the bar's own padding. */
+/* Tools that act on the image float over it; see .popout below. */
 .workarea {
   position: relative;
-  --dockbar-h: calc(var(--ctl-h) + var(--sp-3) * 2 + 2px);
   --toolstrip-w: 54px;
   --cpr-h: 190px;
 }
-.workarea:has(.dockrow) .viewgrid { padding-top: var(--dockbar-h); }
-.dockrow {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 12;
-  height: var(--dockbar-h);
-  display: flex; gap: var(--sp-2);
-  flex-wrap: nowrap; align-items: center;
-  overflow-x: auto; overflow-y: hidden;
-  padding: var(--sp-2) var(--sp-3);
-  background: color-mix(in srgb, var(--color-surface-1) 88%, transparent);
-  border-bottom: 1px solid var(--color-line);
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
-  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
-  scrollbar-width: thin;
-  /* The bar recedes until you reach for it, but 0.55 took its labels to
-     1.83:1 against the image — the chrome disappeared and so did the words on
-     it. 0.85 still reads as "resting" and keeps every label above AA. */
-  opacity: 0.85;
-  transition: opacity var(--dur) var(--ease);
-}
-.dockrow:hover, .dockrow:focus-within { opacity: 1; }
-/* `max-width: 100%` from the floating-dock recipe capped each dock's *box* at
-   the bar's width while its controls kept their intrinsic size, so the
-   controls spilled out of a box that stopped short and landed on top of the
-   next dock. In the bar a dock is measured by what it holds; the bar scrolls. */
-.dockrow .dock {
-  flex: none; flex-wrap: nowrap; align-items: center;
-  width: max-content; max-width: none;
-  background: transparent; border: 0; box-shadow: none;
-  backdrop-filter: none; -webkit-backdrop-filter: none;
-  padding: 0; border-radius: 0;
-}
-/* a hairline between groups instead of three floating boxes */
-.dockrow .dock + .dock { border-left: 1px solid var(--color-line); padding-left: var(--sp-2); }
-.dockrow .dock .grp { flex: none; }
-/* Nothing in the bar wraps internally — a caption that breaks onto a second
-   line makes the dock taller than the bar, and the overflow gets clipped
-   mid-glyph. The row scrolls sideways instead. */
-.dockrow .dock, .dockrow .dock * { white-space: nowrap; }
-.dockrow .dock .chip, .dockrow .dock .lbl { flex: none; }
-.dockrow::-webkit-scrollbar { height: 6px; }
-/* The bar scrolls sideways when the controls outrun the width; without an
-   edge fade there is nothing to say so, and controls just look cut off. */
-.dockrow { mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent 100%);
-  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent 100%); }
 /* portal target for the 3D dock: contributes no box of its own */
 .dockslot { display: contents; }
+
+/* ---- pop-outs (ui/PopOut.tsx) -------------------------------------------
+   The display tools sit behind buttons in the viewer's bar and open as a
+   panel over the image. They replaced a strip across the top of the
+   viewport that pushed the panes down by a row. A panel is a column of the
+   dock's groups, scrolling if it outgrows the screen. */
+.popbar { display: flex; align-items: center; gap: var(--sp-1); flex: none; }
+.popwrap { position: relative; }
+.popout {
+  position: absolute; top: calc(100% + var(--sp-2)); left: 0; z-index: 30;
+  width: max-content; min-width: 220px;
+  max-width: min(420px, calc(100vw - var(--sp-8)));
+  max-height: calc(100dvh - 150px); overflow-y: auto;
+  padding: var(--sp-3);
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-line-strong); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+}
+.popout[hidden] { display: none; }
+.popout[data-align="end"] { left: auto; right: 0; }
+.popout .dock {
+  flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+  gap: var(--sp-2); width: auto; max-width: none; padding: 0;
+  background: transparent; border: 0; box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.popout .dock .grp { justify-content: space-between; flex-wrap: wrap; padding: 0; }
+.popout .dock .sep { width: auto; height: 1px; align-self: stretch; margin: var(--sp-1) 0; }
+.popout .dock .field { width: 100%; }
+/* a switch reads with its label beside it, not across the panel */
+.popout .dock .grp:has(> .switch) { justify-content: flex-start; }
+/* readout chips keep their own width in the column, and a long one (the
+   plane card) wraps inside the panel instead of running out of it */
+.popout .dock > .chip { align-self: flex-start; }
+.popout .chip { white-space: normal; max-width: 100%; }
 
 .vp { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 /* SurfaceView wraps its pane in a `.panes` row, whose page-flow defaults

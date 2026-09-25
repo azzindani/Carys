@@ -86,7 +86,7 @@
 
   .top { padding: var(--sp-2) var(--sp-3); gap: var(--sp-2); }
   .top .iconbtn.burger { display: inline-flex; }
-  .top .navlink, .top .kbd-btn, .top select.dark, .iconbtn.docktoggle { display: none; }
+  .top .navlink, .top .kbd-btn, .top select.dark, .popbar { display: none; }
   .logo .word, .logo .tag { display: none; }
   .logo .mark { display: flex; }
 
@@ -109,7 +109,6 @@
     grid-template-rows: auto minmax(0, 1fr) auto;
   }
   .main:has(.viewgrid) .inspector { display: none; }
-  .dockrow { display: none; }
   /* the tool column is a desktop affordance; mobile tools live in the deck */
   .workarea { display: contents; }
   .toolstrip { display: none; }
