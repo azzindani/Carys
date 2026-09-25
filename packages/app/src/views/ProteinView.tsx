@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 import { isCifLike, parseCif, parsePdb, selectResidueAtoms, type ProteinModel } from '@carys/io';
 import {
   PATHOGEN_DIGEST_ID, PATHOGEN_DIGEST_PIN,
@@ -17,7 +17,8 @@ import { setAmbientStatus, setStatus } from '../lib/status';
 import { ACCENT, PROTEIN_BG } from '../lib/palette';
 import { toast } from '../lib/toasts';
 import { undoBus } from '../lib/undoBus';
-import { Chip, DarkSelect, IconBtn, SliderRow, UndoGroup } from '../ui/primitives';
+import { Chip, DarkSelect, IconBtn, Seg, SliderRow, UndoGroup } from '../ui/primitives';
+import { CapsidView } from './CapsidView';
 
 type ColorBy = 'element' | 'chain' | 'plddt';
 
@@ -45,7 +46,27 @@ function css([r, g, b]: [number, number, number]): string {
 
 const W = 640, H = 560;
 
+type ProteinMode = 'model' | 'capsid';
+
+/** The Protein route: one structure, or a whole virus capsid (H7), one
+ *  switch. */
 export function ProteinView({ initialPathogen }: { initialPathogen?: string }): JSX.Element {
+  const [mode, setMode] = useState<ProteinMode>('model');
+  const modeSwitch = (
+    <div className="grp">
+      <Seg<ProteinMode> id="protein-mode" dataKey="protein-mode" ariaLabel="Protein mode" value={mode} onChange={setMode}
+        options={[
+          { value: 'model', label: 'Model', title: 'One structure: residues, contacts, pockets, density maps' },
+          { value: 'capsid', label: 'Capsid', title: 'A whole virus shell, expanded from its asymmetric unit' },
+        ]} />
+    </div>
+  );
+  return mode === 'capsid'
+    ? <CapsidView modeSwitch={modeSwitch} />
+    : <ModelView modeSwitch={modeSwitch} initialPathogen={initialPathogen} />;
+}
+
+function ModelView({ initialPathogen, modeSwitch }: { initialPathogen?: string; modeSwitch: ReactNode }): JSX.Element {
   const [model, setModel] = useState<ProteinModel | null>(null);
   const [name, setName] = useState('');
   const [orbit, setOrbit] = useState(0.7);
@@ -412,6 +433,8 @@ export function ProteinView({ initialPathogen }: { initialPathogen?: string }): 
         <p>{name || 'load a .pdb/.cif — spacefill CPU projection, sequence ↔ 3D highlight'}</p>
       </div>
       <div className="dock" id="dock-protein">
+        {modeSwitch}
+        <div className="sep" />
         <div className="grp">
           <IconBtn accent title="Load the built-in 1CRN crambin demo"
             onClick={() => { void fetch('/samples/1crn.pdb').then(async (r) => openModel(await r.text(), '1crn.pdb')); }}>Demo 1CRN</IconBtn>

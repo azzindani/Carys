@@ -53,3 +53,6 @@ export * from './brain-regions.js';
 export * from './plane-atlas.js';
 export * from './plane-trainer.js';
 export * from './geometry.js';
+export * from './cif-tokens.js';
+export * from './assembly.js';
+export * from './assembly-cif.js';

@@ -1,0 +1,62 @@
+{
+ "digest": "rcsb-capsids",
+ "format": "carys-sources/1",
+ "sources": [
+  {
+   "entry_count": 1,
+   "license_spdx": "CC0-1.0",
+   "retrieved_date": "2026-09-25",
+   "source_url": "https://www.rcsb.org/structure/1SVA",
+   "version_pin": "PDB-1SVA rev 1.3",
+   "citation": "Stehle, T. et al. (1996) The structure of simian virus 40 refined at 3.1 A resolution. Structure 4, 165. doi:10.1016/S0969-2126(96)00020-2"
+  },
+  {
+   "entry_count": 1,
+   "license_spdx": "CC0-1.0",
+   "retrieved_date": "2026-09-25",
+   "source_url": "https://www.rcsb.org/structure/1IHM",
+   "version_pin": "PDB-1IHM rev 2.1",
+   "citation": "Prasad, B.V. et al. (1999) X-ray crystallographic structure of the Norwalk virus capsid. Science 286, 287. doi:10.1126/science.286.5438.287"
+  },
+  {
+   "entry_count": 1,
+   "license_spdx": "CC0-1.0",
+   "retrieved_date": "2026-09-25",
+   "source_url": "https://www.rcsb.org/structure/2PLV",
+   "version_pin": "PDB-2PLV rev 2.1",
+   "citation": "Filman, D.J. et al. (1989) Structural factors that control conformational transitions and serotype specificity in type 3 poliovirus. EMBO J. 8, 1567."
+  },
+  {
+   "entry_count": 1,
+   "license_spdx": "CC0-1.0",
+   "retrieved_date": "2026-09-25",
+   "source_url": "https://www.rcsb.org/structure/4RHV",
+   "version_pin": "PDB-4RHV rev 2.1",
+   "citation": "Arnold, E. et al. (1988) The use of molecular-replacement phases for the refinement of the human rhinovirus 14 structure. Acta Crystallogr.,Sect.A 44, 270. doi:10.1107/S0108767387011875"
+  },
+  {
+   "entry_count": 1,
+   "license_spdx": "CC0-1.0",
+   "retrieved_date": "2026-09-25",
+   "source_url": "https://www.rcsb.org/structure/1QGT",
+   "version_pin": "PDB-1QGT rev 1.4",
+   "citation": "Wynne, S.A. et al. (1999) The crystal structure of the human hepatitis B virus capsid. Mol.Cell 3, 771. doi:10.1016/S1097-2765(01)80009-5"
+  },
+  {
+   "entry_count": 1,
+   "license_spdx": "CC0-1.0",
+   "retrieved_date": "2026-09-25",
+   "source_url": "https://www.rcsb.org/structure/2MS2",
+   "version_pin": "PDB-2MS2 rev 2.1",
+   "citation": "Golmohammadi, R. et al. (1993) The refined structure of bacteriophage MS2 at 2.8 A resolution. J.Mol.Biol. 234, 620. doi:10.1006/jmbi.1993.1616"
+  },
+  {
+   "entry_count": 1,
+   "license_spdx": "CC0-1.0",
+   "retrieved_date": "2026-09-25",
+   "source_url": "https://www.rcsb.org/structure/1STM",
+   "version_pin": "PDB-1STM rev 1.3",
+   "citation": "Ban, N. et al. (1995) The structure of satellite panicum mosaic virus at 1.9 A resolution. Nat.Struct.Biol. 2, 882. doi:10.1038/nsb1095-882"
+  }
+ ]
+}

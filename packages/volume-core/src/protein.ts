@@ -75,6 +75,11 @@ const VDW_RADII: Record<string, number> = {
   H: 1.2, C: 1.7, N: 1.55, O: 1.52, S: 1.8, P: 1.8, FE: 1.56,
 };
 
+/** Van der Waals radius of an element, Å (1.7 for one the table lacks). */
+export function vdwRadius(element: string): number {
+  return VDW_RADII[element.toUpperCase()] ?? 1.7;
+}
+
 export function atomRadius(
   atom: Atom,
   radiusType: RepParams['radiusType'] = 'vdw',
@@ -95,7 +100,7 @@ export function atomRadius(
       r = 0.15;
       break;
     default:
-      r = VDW_RADII[atom.element.toUpperCase()] ?? 1.7;
+      r = vdwRadius(atom.element);
   }
   return Math.min(10, r * scale);
 }
