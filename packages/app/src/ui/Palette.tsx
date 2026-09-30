@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { SERIES } from '../lib/catalog';
+import type { Route } from '../lib/router';
 import type { MeasureKind, View } from '../lib/types';
+import { ROUTES } from './Rail';
 
 export interface PaletteCommand {
   label: string;
@@ -13,13 +15,17 @@ export function buildCommands(api: {
   openSeries: (s: string) => void;
   setView: (v: View) => void;
   toggleFull3d: () => void;
-  setTool: (t: 'view' | 'paint' | 'erase' | 'grow' | 'measure') => void;
+  setTool: (t: 'view' | 'paint' | 'erase' | 'grow' | 'measure' | 'curve') => void;
+  go: (r: Route) => void;
   setMeasureKind: (k: MeasureKind) => void;
   toggleOverlay: () => void;
   undo: () => void;
   exportNii: () => void;
 }): PaletteCommand[] {
   return [
+    // every route, so the palette is a way to get around, not only a
+    // command line for the viewer (the phone's menu opens it as "Search")
+    ...ROUTES.map((r) => ({ label: `Go to ${r.label}`, hint: 'route', run: () => api.go(r.id) })),
     ...Object.keys(SERIES).map((s) => ({ label: `Open ${s}`, hint: 'series', run: () => api.openSeries(s) })),
     { label: 'Refresh viewports', hint: 'mpr', run: () => api.setView('mpr') },
     { label: 'Viewport: fullscreen 3D', hint: '2', run: api.toggleFull3d },
@@ -29,6 +35,7 @@ export function buildCommands(api: {
     { label: 'Tool: erase', hint: 'mpr', run: () => api.setTool('erase') },
     { label: 'Tool: grow', hint: 'mpr', run: () => api.setTool('grow') },
     { label: 'Tool: measure', hint: 'mpr', run: () => api.setTool('measure') },
+    { label: 'Tool: curve', hint: 'mpr', run: () => api.setTool('curve') },
     { label: 'Measure: length', hint: 'mpr', run: () => { api.setTool('measure'); api.setMeasureKind('length'); } },
     { label: 'Measure: angle', hint: 'mpr', run: () => { api.setTool('measure'); api.setMeasureKind('angle'); } },
     { label: 'Measure: probe', hint: 'mpr', run: () => { api.setTool('measure'); api.setMeasureKind('probe'); } },
@@ -76,6 +83,10 @@ export function Palette({ open, onClose, commands }: {
             if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(items.length - 1, s + 1)); }
             else if (e.key === 'ArrowUp') { e.preventDefault(); setSel((s) => Math.max(0, s - 1)); }
             else if (e.key === 'Enter') run(sel);
+            // The app's own Escape handler ignores keys typed into inputs,
+            // and focus lives in this one, so the "esc close" promised in
+            // the footer never happened.
+            else if (e.key === 'Escape') { e.preventDefault(); onClose(); }
           }}
         />
         <ul id="pallist" role="listbox">

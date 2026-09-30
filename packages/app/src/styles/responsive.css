@@ -2,8 +2,9 @@
    Responsive layers.
 
    Three real modes, not one desktop layout squeezed twice:
-     desktop  >1280   icon rail + viewport grid + inspector column
-     tablet   981–1280 icon rail + viewport grid, inspector folds under
+     desktop  >1100   icon rail + viewport grid; the details drawer
+                      takes its width from the viewport
+     tablet   981–1100 icon rail + viewport grid; the drawer lies over it
      mobile   ≤980    no rail; imaging owns the top, controls own the bottom
 
    980px is the mobile edge and is the twin of lib/isMobile.ts (§21 — one
@@ -14,27 +15,20 @@
    Lower-bounded at 981px: these are tablet rules, and without the bound they
    also matched phones — where `.viewgrid { min-height: 58vh }` pinned the
    imaging row open and pushed the control deck off the bottom of the screen. */
+/* The inspector is a drawer now (shell.css), not a grid column. This block
+   used to reserve a 264px column for it, which every route at 1101–1280 —
+   a 1280×800 laptop among them — showed as a dead strip down the right. And
+   the rail already carries the brand mark, so the topbar keeps its wordmark
+   instead of showing the same mark twice. */
 @media (min-width: 981px) and (max-width: 1280px) {
-  .main { grid-template-columns: minmax(0, 1fr) 264px; gap: var(--sp-3); padding-inline: var(--sp-4); }
+  .main { gap: var(--sp-3); padding-inline: var(--sp-4); }
   .rail { width: 54px; }
   .rail-btn .rl { display: none; }
   .rail-btn { min-height: 42px; }
-  .logo .word, .logo .tag { display: none; }
-  .logo .mark { display: flex; }
 }
 
 /* ---------------------------------------------------- tablet: 981–1100 */
 @media (min-width: 981px) and (max-width: 1100px) {
-  /* the inspector stops paying for its column — it folds under the stage */
-  .main { grid-template-columns: minmax(0, 1fr); }
-  .inspector {
-    max-height: none; align-self: stretch; margin-top: var(--sp-4);
-    /* two columns of readouts instead of one tall strip */
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-    gap: 0 var(--sp-6); padding-bottom: var(--sp-4);
-  }
-  .inspector section { border-bottom: none; border-top: 1px solid var(--color-line); }
-  .viewgrid { min-height: 58vh; }
   .kbd-btn kbd { display: none; }
 }
 
@@ -75,14 +69,14 @@
    Imaging on top, controls on the bottom half — the deck is a permanent
    surface, not an overlay, so the image is never covered by its own tools. */
 @media (max-width: 980px) {
-  :root { --deck-h: 46dvh; }
+  :root { --deck-h: calc(var(--screen-h) * 0.46); }
 
   .rail { display: none; }
   .shell { display: block; }
 
-  html:has(.viewgrid), body:has(.viewgrid) { height: 100dvh; }
-  #root:has(.viewgrid) { height: 100dvh; overflow: hidden; }
-  .frame:has(.viewgrid) { height: 100dvh; }
+  html:has(.viewgrid), body:has(.viewgrid) { height: var(--screen-h); }
+  #root:has(.viewgrid) { height: var(--screen-h); overflow: hidden; }
+  .frame:has(.viewgrid) { height: var(--screen-h); }
 
   .top { padding: var(--sp-2) var(--sp-3); gap: var(--sp-2); }
   .top .iconbtn.burger { display: inline-flex; }
@@ -205,6 +199,8 @@
   .deck-body select.dark { max-width: 100%; min-width: 0; flex: 1 1 140px; }
   .deck-body input[type="range"].styled { width: auto; flex: 1 1 110px; min-width: 80px; }
   .deck-body .urlinput, .deck-body .textinput { width: 100%; min-width: 0; }
+  /* a long readout (the plane card) wraps instead of running off the deck */
+  .deck-body .chip { white-space: normal; max-width: 100%; }
 
   .minfo { display: flex; flex-direction: column; gap: var(--sp-1); }
   .minfo div { display: flex; justify-content: space-between; gap: var(--sp-4); font-size: var(--fs-xs); }
@@ -230,20 +226,24 @@
   .view-title h1 { font-size: var(--fs-lg); }
   .view-title p { display: none; }
 
-  /* Page-flow docks scroll sideways instead of wrapping into a wall: the
-     worklist filters, cohort and QC panels pushed the study list below the
-     fold, so the list — the point of the screen — was never visible.
-     A dock holding a definition list is a panel, not a strip, so it is
-     excluded: forcing `nowrap` on the cohort panel collapsed its single-column
-     table to zero width and spilled the rows past the right edge of the
-     screen, one glyph per line, on top of the panel's own caption. */
-  .main:not(:has(.viewgrid)) .dock:not(:has(dl)) {
-    width: 100%; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
-    scrollbar-width: thin;
-  }
-  .main:not(:has(.viewgrid)) .dock:not(:has(dl)) .grp { flex: none; }
+  /* Page-flow docks wrap. They used to scroll sideways as one strip, which
+     put most of each route's controls off screen with nothing to say they
+     were there: Protein's bar ran to 2,100px on a 390px phone, and the
+     worklist's search field and Cells' store URL were cut in half at the
+     edge. A few rows of controls cost less than controls nobody finds.
+     Dividers dangle at the end of a wrapped row, so they go; the row gap
+     separates the groups instead. */
+  .main:not(:has(.viewgrid)) .dock { width: 100%; row-gap: var(--sp-2); }
+  .main:not(:has(.viewgrid)) .dock .sep { display: none; }
+  .main:not(:has(.viewgrid)) .dock .grp { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+  .main:not(:has(.viewgrid)) .dock .grp > * { min-width: 0; }
+  /* text fields take the row they are on */
+  .main:not(:has(.viewgrid)) .dock .grp:has(> :is(.urlinput, .wl-search, .textinput)) { flex: 1 1 100%; }
+  .main:not(:has(.viewgrid)) .dock :is(.urlinput, .wl-search, .textinput) { flex: 1 1 160px; width: auto; }
+  .main:not(:has(.viewgrid)) .dock select.dark { max-width: 100%; min-width: 0; }
+  /* a long readout wraps inside the screen instead of running off it */
+  .main:not(:has(.viewgrid)) .dock .chip { white-space: normal; max-width: 100%; }
   /* the panel form: one column, full width, nothing sideways */
-  .main:not(:has(.viewgrid)) .dock:has(dl) { width: 100%; }
   .main:not(:has(.viewgrid)) .dock:has(dl) > * { flex: 1 1 100%; min-width: 0; }
 
   /* Viewport header: the name and the live readout, nothing else. The tris
@@ -269,7 +269,7 @@
 
 /* ----------------------------------------------------- phone: 560 down */
 @media (max-width: 560px) {
-  :root { --deck-h: 48dvh; }
+  :root { --deck-h: calc(var(--screen-h) * 0.48); }
   .view-title h1 { font-size: var(--fs-lg); }
   .wl-row { flex-wrap: wrap; }
   .wl-main { flex: 1 1 60%; }
@@ -281,15 +281,34 @@
 }
 
 /* ------------------------------------------------ landscape phone rescue
-   A 50/50 split is unusable at 380px tall — give the image the room and let
-   the deck scroll. */
-@media (max-width: 980px) and (max-height: 520px) {
-  :root { --deck-h: 62dvh; }
-  .deck { border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+   Stacking image over deck cannot work at 390px tall: the deck took 62% of
+   the height and the 3D pane was left ~100px to draw in, on a screen with
+   800px of width going spare. Side by side instead — the image keeps the
+   full height, the deck takes a column on the right and scrolls. */
+@media (max-width: 980px) and (max-height: 520px) and (orientation: landscape) {
+  .main:has(.viewgrid) .viewport,
+  .main:has(.viewgrid) .viewport:has(.deck[data-open="false"]) {
+    grid-template-columns: minmax(0, 1fr) min(42vw, 360px);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: var(--sp-2);
+    padding-bottom: var(--sp-2);
+  }
+  .main:has(.viewgrid) .viewport > .ftop { grid-column: 1; grid-row: 1; }
+  .main:has(.viewgrid) .viewport > .viewgrid { grid-column: 1; grid-row: 2; }
+  .main:has(.viewgrid) .viewport > .deck,
+  .main:has(.viewgrid) .viewport > .deck[data-open="false"] {
+    grid-column: 2; grid-row: 1 / -1; height: 100%;
+    border-bottom: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-xl);
+    padding-bottom: var(--sp-3);
+  }
 }
 
 /* ------------------------------------------------------- coarse pointers */
 @media (pointer: coarse) {
+  input:not([type="range"]):not([type="checkbox"]):not([type="color"]), select, select.dark, textarea {
+    font-size: max(var(--fs-field-touch), 1em);
+  }
   #view-mpr canvas, #view3d { touch-action: none; }
   .chip.zoom { padding: var(--sp-2) var(--sp-4); }
   /* 18px reads fine under a mouse; a finger needs the full floor (§22) */

@@ -13,6 +13,12 @@ body {
   font-size: var(--fs-md);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  /* iOS enlarges text it guesses is too small when a phone turns sideways,
+     which re-flows every dock; the appearance prefs own text size here. */
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+  /* the grey flash WebKit paints over a tapped control, on top of the
+     control's own pressed state */
+  -webkit-tap-highlight-color: transparent;
   text-rendering: optimizeLegibility;
   background: var(--color-bg);
   /* One soft horizon wash instead of three stacked radials. Reads as depth,

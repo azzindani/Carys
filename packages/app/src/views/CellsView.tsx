@@ -576,13 +576,18 @@ export function CellsView(): JSX.Element {
               }} />
           </div>
         )}
-        {Array.from({ length: nC }, (_, c) => (
-          <div className="grp" key={c}>
-            <label className="chk" title={`Channel ${c}`}>
-              <input type="checkbox" data-ch={c} checked={vis[c] ?? false} onChange={() => toggle(c)} /> C{c}
-            </label>
+        {/* One group, so the channel switches wrap together instead of C0
+            ending one row and C1 starting the next. */}
+        {nC > 0 && (
+          <div className="grp" role="group" aria-label="Channels shown">
+            <span className="lbl">Channels</span>
+            {Array.from({ length: nC }, (_, c) => (
+              <label className="chk" key={c} title={`Channel ${c}`}>
+                <input type="checkbox" data-ch={c} checked={vis[c] ?? false} onChange={() => toggle(c)} /> C{c}
+              </label>
+            ))}
           </div>
-        ))}
+        )}
         <div className="sep" />
         <UndoGroup onUndo={doUndoCells} onClear={clearChannels} undoTitle="Undo view change" clearTitle="Hide all channels" />
         <div className="sep" />

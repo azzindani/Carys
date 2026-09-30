@@ -49,7 +49,7 @@ export function MicrobeLibrary({ onOpenStructure, onOpenBundle }: {
         <div id="view-microbes" className="panes" data-testid="microbes">
           <div className="pane" id="pane-microbe-card">
             <div className="pane-head"><span className="name"><i>{c.name}</i></span></div>
-            <dl className="kv" id="microbe-kv">
+            <dl className="kv prose" id="microbe-kv">
               <div className="mrow"><dt>structure</dt><dd>{c.structure}</dd></div>
               <div className="mrow"><dt>genome</dt><dd>{c.genome}</dd></div>
               <div className="mrow"><dt>morphology</dt><dd>{c.morphology}</dd></div>

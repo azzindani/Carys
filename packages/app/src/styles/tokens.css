@@ -158,6 +158,22 @@ html[data-density="m"]  { --sp: 1; }
 html[data-density="l"]  { --sp: 1.2; }
 html[data-density="xl"] { --sp: 1.4; }
 
+/* The screen's height. Mobile browsers with a collapsing URL bar report
+   `vh` as the tallest the screen can get, so a 100vh layout hides its
+   bottom row under the bar; `dvh` is the height actually visible. Engines
+   without `dvh` (Safari before 15.4, Firefox before 101) get `vh` instead
+   of dropping the declaration — a bare `100dvh` there was simply invalid,
+   and the mobile viewer lost its height and its deck with it. */
+:root { --screen-h: 100vh; }
+@supports (height: 1dvh) {
+  :root { --screen-h: 100dvh; }
+}
+
+/* iOS Safari zooms the page into any text field set smaller than 16px when
+   it takes focus, and leaves it zoomed. Touch-only, so the mouse layout
+   keeps its dense type. */
+:root { --fs-field-touch: 16px; }
+
 /* Coarse pointers get bigger targets everywhere at once (§22). */
 @media (pointer: coarse) {
   :root { --ctl-h: 44px; --tap: 44px; --field-h: 40px; }

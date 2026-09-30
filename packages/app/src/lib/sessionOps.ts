@@ -16,7 +16,7 @@ import { heldStack, isDicomPart10 } from './heldStacks';
 import { loadVolumeUrl, parseUpload } from './parseClient';
 import { readFrame } from '@carys/io';
 import { paintBus } from './paintBus';
-import { setEngine, setStatus } from './status';
+import { setAmbientStatus, setEngine, setStatus } from './status';
 import { getUi, setUi } from './store';
 import { toast } from './toasts';
 import { bump } from './version';
@@ -231,6 +231,7 @@ export async function loadSeries(name: string, uploadedVol?: Volume): Promise<Sl
       })();
     });
 
+    setAmbientStatus(`${name} · ${nx}×${ny}×${nz} · ${note}`); // ends "fetching…" where nothing paints
     bump();
     return init;
   } catch (e) {
