@@ -18,6 +18,13 @@ import { toast } from '../lib/toasts';
 import { Chip, DarkSelect, IconBtn } from '../ui/primitives';
 import { MicrobeLibrary } from './MicrobeLibrary';
 
+/** An answer button's class: the picked option shows whether it was right,
+ *  the others stay neutral, so a wrong pick can be retried. */
+function optClass(picked: number | undefined, i: number, answer: number): string {
+  if (picked !== i) return 'opt';
+  return i === answer ? 'opt right' : 'opt wrong';
+}
+
 /** E2 mechanism-of-disease bundles: story + pathway + quiz per bundle,
  *  provenance card per piece. Education pixels only (badged) — the 3D
  *  structures open in the protein view via the bundle's pathogen picker.
@@ -140,7 +147,7 @@ export function LearnView({ onOpenStructure }: { onOpenStructure: (link: Structu
           <div className="pane" id="pane-learn-story">
             <div className="pane-head"><span className="name">Story</span></div>
             <p className="hint">{b.story}</p>
-            <dl className="kv" id="learn-pathway">
+            <dl className="kv steps prose" id="learn-pathway">
               {b.pathway.map((step, i) => (
                 <div className="mrow" key={i}>
                   <dt>{i + 1}</dt><dd>{step}</dd>
@@ -152,7 +159,7 @@ export function LearnView({ onOpenStructure }: { onOpenStructure: (link: Structu
           </div>
           <div className="pane" id="pane-learn-quiz">
             <div className="pane-head"><span className="name">Quiz</span></div>
-            <dl className="kv" id="learn-quiz">
+            <dl className="kv stack prose" id="learn-quiz">
               {b.quiz.map((q) => {
                 const picked = picks[q.id];
                 return (
@@ -162,7 +169,7 @@ export function LearnView({ onOpenStructure }: { onOpenStructure: (link: Structu
                       {q.options.map((opt, i) => (
                         <button
                           key={i} data-quiz={q.id} data-opt={i}
-                          className={`cellrow${picked === i && i === q.answer ? ' on' : ''}`}
+                          className={optClass(picked, i, q.answer)}
                           title={shown[q.id] ? q.rationale : `Answer: ${opt}`}
                           aria-pressed={picked === i}
                           onClick={() => answer(q.id, i)}>
@@ -202,14 +209,14 @@ export function LearnView({ onOpenStructure }: { onOpenStructure: (link: Structu
         <div id="view-selftest" className="panes" data-testid="selftest">
           <div className="pane" id="pane-selftest">
             <div className="pane-head"><span className="name">Self-test · {q.kind}</span></div>
-            <dl className="kv" id="selftest-quiz">
+            <dl className="kv stack prose" id="selftest-quiz">
               <div className="mrow">
                 <dt>{q.prompt}</dt>
                 <dd>
                   {q.options.map((opt, i) => (
                     <button
                       key={i} data-selftest={q.id} data-opt={i}
-                      className={`cellrow${selfPicks[q.id] === i && i === q.answer ? ' on' : ''}`}
+                      className={optClass(selfPicks[q.id], i, q.answer)}
                       title={selfPicks[q.id] !== undefined ? q.rationale : `Answer: ${opt}`}
                       aria-pressed={selfPicks[q.id] === i}
                       onClick={() => answerSelf(q, i)}>
@@ -270,14 +277,14 @@ function PlaneTrainerCard(): JSX.Element {
       <div id="view-planetrainer" className="panes" data-testid="planetrainer">
         <div className="pane" id="pane-planetrainer">
           <div className="pane-head"><span className="name">Plane trainer · {d.plane}</span></div>
-          <dl className="kv" id="planetrainer-quiz">
+          <dl className="kv stack prose" id="planetrainer-quiz">
             <div className="mrow">
               <dt>{d.prompt}</dt>
               <dd>
                 {d.options.map((opt, i) => (
                   <button
                     key={i} data-pdrill={d.id} data-opt={i}
-                    className={`cellrow${picks[d.id] === i && i === d.answer ? ' on' : ''}`}
+                    className={optClass(picks[d.id], i, d.answer)}
                     title={picks[d.id] !== undefined ? d.rationale : `Answer: ${opt}`}
                     aria-pressed={picks[d.id] === i}
                     onClick={() => answer(i)}>

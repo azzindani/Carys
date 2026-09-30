@@ -537,7 +537,7 @@ function WorklistRow({ record: r, available, onOpen, onStats }: {
 
   return (
     <article className="wl-row" ref={rowRef}>
-      <canvas ref={canvasRef} className="wl-thumb" width={112} height={112} role="img" aria-label={`${r.key} thumbnail`} />
+      <canvas ref={canvasRef} className="wl-thumb" data-state={thumbState} width={112} height={112} role="img" aria-label={thumbState === 'error' ? `${r.key}: no preview` : `${r.key} thumbnail`} />
       <div className="wl-main">
         <div className="wl-title">
           <span className="wl-key">{r.key}</span>

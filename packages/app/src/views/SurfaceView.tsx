@@ -250,7 +250,9 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       const n = session.fibers?.count ?? 0;
       const fib = n > 0 ? `${n.toLocaleString()} tract${n === 1 ? '' : 's'} · ` : '';
       const scal = session.fibers?.scalarName ? `scal ${session.fibers.scalarName} · ` : '';
-      ro.textContent = `${tris}${fib}${scal}${Math.round(session.zoom3d * 100)}%`;
+      // the zoom has its own chip beside the +/- pair; saying it here too
+      // put "468%" twice in one header
+      ro.textContent = `${tris}${fib}${scal}`.replace(/ · $/, '') || '—';
     }
   };
 
@@ -418,7 +420,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       };
       paintOrbit();
       const ro = document.getElementById('ro-3d');
-      if (ro) ro.textContent = `${keep.length.toLocaleString()} tract${keep.length === 1 ? '' : 's'} · preset ${preset.id} · ${Math.round(session.zoom3d * 100)}%`;
+      if (ro) ro.textContent = `${keep.length.toLocaleString()} tract${keep.length === 1 ? '' : 's'} · preset ${preset.id}`;
       setStatus(`${preset.title}: ${keep.length}/${pinned.count} pass · ${preset.lesson} · teaching waypoints, not patient anatomy · ${EDUCATION_BADGE}`);
     } catch (e) {
       setStatus(`preset filter failed: ${(e as Error).message}`, 'error');

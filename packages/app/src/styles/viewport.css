@@ -45,19 +45,24 @@
 }
 .dock.column .seg button svg { width: 17px; height: 17px; flex: none; }
 .dock.column .seg button .tl { font-size: var(--fs-3xs); font-weight: 600; letter-spacing: 0.02em; }
-/* value-only field: no room for a label in a 56px palette */
-.dock.column .field { padding: 0 var(--sp-2); }
-.dock.column .field-lbl { display: none; }
+/* The palette is 54px wide, so a field stacks its label over its value
+   instead of beside it. Hiding the label left a bare "3" under the tools
+   with nothing to say it was the brush size. */
+.dock.column .field {
+  flex-direction: column; justify-content: center; gap: 0;
+  height: auto; min-height: var(--field-h); padding: 2px 0;
+}
+.dock.column .field-lbl { flex: none; max-width: 100%; letter-spacing: 0; text-align: center; text-overflow: clip; }
 .dock.column .field-val { padding-left: 0; margin: 0 auto; }
 .dock.column #undogrp { flex-direction: column; gap: 1px; }
 .dock.column #undogrp .iconbtn { padding: 0; font-size: var(--fs-3xs); width: 100%; }
 .dock.column #undogrp .iconbtn svg { width: 13px; height: 13px; }
 .dock.column .switch { margin: 0 auto; }
-.dock.column .grp:has(.switch) .lbl { display: none; }
 .dock.column .sep { width: auto; height: 1px; align-self: stretch; margin: var(--sp-1) 0; }
 .dock.column .field { width: 100%; min-width: 0; }
-/* A switch and its label belong on one line; only stacked groups go column. */
-.dock.column .grp:has(.switch) { flex-direction: row; align-items: center; gap: var(--sp-2); }
+/* a switch keeps its name: the label sits under it, as the tools' do */
+.dock.column .grp:has(.switch) { align-items: center; gap: 2px; }
+.dock.column .grp:has(.switch) .lbl { letter-spacing: 0.02em; }
 
 
 .viewgrid {
@@ -85,7 +90,7 @@
   position: absolute; top: calc(100% + var(--sp-2)); left: 0; z-index: 30;
   width: max-content; min-width: 220px;
   max-width: min(420px, calc(100vw - var(--sp-8)));
-  max-height: calc(100dvh - 150px); overflow-y: auto;
+  max-height: calc(var(--screen-h) - 150px); overflow-y: auto;
   padding: var(--sp-3);
   background: var(--color-surface-1);
   border: 1px solid var(--color-line-strong); border-radius: var(--radius-lg);

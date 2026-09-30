@@ -265,16 +265,25 @@ styles/base.css        reset, document chrome, focus, scrollbars
 styles/components.css  shared classes every view uses
 styles/shell.css       rail, top bar, main grid, inspector, status
 styles/viewport.css    viewport grid and the 3D-tool treatment
-styles/responsive.css  desktop >1280 / tablet 981–1280 / mobile ≤980
+styles/responsive.css  desktop >1100 / tablet 981–1100 / mobile ≤980
 ```
 
 The layout has three real modes:
 
-- **Desktop** pairs an icon rail with the viewport grid and the inspector
-  column.
-- **Tablet** moves the inspector under the stage.
+- **Desktop** pairs an icon rail with the viewport grid. The details
+  drawer (the inspector) takes its width from the viewport when open, so
+  it never covers the image.
+- **Tablet** keeps the rail; the drawer lies over the viewport there,
+  which is too narrow to give up its width.
 - **Mobile** gives the top half to imaging and the bottom half to a
-  permanent control deck, so tools never cover the image they act on.
+  permanent control deck, so tools never cover the image they act on. A
+  phone on its side (≤520px tall) puts the deck in a column beside the
+  image instead. Every other route's toolbar wraps into rows rather than
+  scrolling sideways, so no control sits off screen.
+
+Screen height goes through `--screen-h` (`dvh`, falling back to `vh` on
+engines without it). Under a touch pointer, text fields are at least 16px,
+which stops iOS Safari zooming the page on focus.
 
 980px is the mobile edge, shared with `lib/isMobile.ts`. Control height is
 26px under a mouse and 44px under a finger, set by one variable, so the

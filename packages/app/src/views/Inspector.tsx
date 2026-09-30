@@ -16,6 +16,7 @@ import { useUi } from '../lib/store';
 import { bump, useVersion } from '../lib/version';
 import { doClear, doUndo, setSpacing } from '../lib/sessionOps';
 import { labelCss } from '../lib/palette';
+import { PAL_KEY } from '../ui/TopBar';
 
 function download(name: string, text: string, type: string): void {
   const a = document.createElement('a');
@@ -428,7 +429,7 @@ export function Inspector(): JSX.Element {  const ui = useUi();
       <section>
         <h2>Shortcuts</h2>
         <div className="hint">
-          <kbd>2</kbd> 3D full · <kbd>↑</kbd><kbd>↓</kbd> slice · <kbd>[</kbd><kbd>]</kbd> brush · <kbd>⌘K</kbd> palette · wheel zoom · dbl-click resets
+          <kbd>2</kbd> 3D full · <kbd>↑</kbd><kbd>↓</kbd> slice · <kbd>[</kbd><kbd>]</kbd> brush · <kbd>{PAL_KEY}</kbd> palette · wheel zoom · dbl-click resets
         </div>
       </section>
     </aside>

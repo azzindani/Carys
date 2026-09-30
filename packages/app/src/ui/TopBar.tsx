@@ -27,6 +27,10 @@ export function Logo(): JSX.Element {
   );
 }
 
+/** The palette shortcut as this keyboard spells it: ⌘K on Apple, Ctrl K
+ *  everywhere else (the handler accepts either). */
+export const PAL_KEY = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
+
 /** Appearance popover: UI text size + layout density (chrome prefs). */
 export function AppearancePanel(): JSX.Element {
   const textSize = useUiPick('textSize');
@@ -100,7 +104,7 @@ export function TopBar({ route, go, onOpenPalette, onSelectSeries }: {
             </button>
           ))}
           <button role="menuitem" onClick={() => { setUi({ mSheet: null }); onOpenPalette(); }}>
-            <IconSearch />Search ⌘K
+            <IconSearch />Search
           </button>
         </div>
       </Popover>
@@ -115,8 +119,8 @@ export function TopBar({ route, go, onOpenPalette, onSelectSeries }: {
         {Object.keys(SERIES).map((k) => <option key={k} value={k}>{k}</option>)}
       </DarkSelect>
 
-      <button className="kbd-btn" id="openpal" title="Command palette" onClick={onOpenPalette}>
-        <IconSearch />Search <kbd>⌘K</kbd>
+      <button className="kbd-btn" id="openpal" title={`Command palette (${PAL_KEY})`} onClick={onOpenPalette}>
+        <IconSearch />Search <kbd>{PAL_KEY}</kbd>
       </button>
 
       {isMobile && <StatusBar inline />}

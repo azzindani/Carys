@@ -103,6 +103,7 @@ export function App(): JSX.Element {
     toggleOverlay: () => { setUi({ overlay: !getUi().overlay }); paintBus.mpr(); },
     undo: () => undoBus.current(),
     exportNii: saveMaskNii,
+    go,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
 

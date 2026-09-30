@@ -69,6 +69,9 @@
   color: var(--color-accent); background: var(--color-accent-dim);
   border: 1px solid var(--color-line-accent); border-radius: var(--radius-pill);
 }
+/* The views menu is the phone's navigation. Wherever the rail is on screen
+   it was a second copy of it, one button to the left of the brand. */
+.top .iconbtn.burger { display: none; }
 .logo-btn { display: flex; align-items: center; background: none; border: none; padding: 0; font: inherit; color: inherit; }
 .top-spacer { flex: 1; min-width: var(--sp-2); }
 
@@ -196,7 +199,16 @@
   font-size: var(--fs-3xs); font-weight: 700; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--color-faint);
 }
-.inspector h2 .act { margin-left: auto; display: flex; gap: var(--sp-1); }
+/* A section's actions wrap under its title when they outgrow the drawer:
+   Measure's seven ran 150px past the drawer's right edge, off screen. */
+.inspector h2 { flex-wrap: wrap; row-gap: var(--sp-1); }
+.inspector h2 .act { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sp-1); }
+.inspector h2 .act .iconbtn {
+  min-height: 26px; padding: 2px var(--sp-3);
+  background: transparent; border-color: transparent; border-radius: var(--radius-xs);
+  color: var(--color-faint); font-size: var(--fs-2xs); letter-spacing: 0; text-transform: none;
+}
+.inspector h2 .act .iconbtn:hover { color: var(--color-text); background: var(--color-surface-3); }
 .inspector h2 .act button {
   min-height: 26px; padding: 2px var(--sp-3);
   background: transparent; border: 1px solid transparent; border-radius: var(--radius-xs);
@@ -209,9 +221,10 @@
    instead of lying over it. Lying over it hid the right half of the axial
    pane behind readouts — a tap meant for the image hit the drawer, so a
    measurement or a paint stroke there was impossible while Details was
-   open. The panes shrink instead (they recompose on resize). Tablet folds
-   the drawer under the stage and mobile hides it, so they keep their rules. */
-@media (min-width: 1281px) {
+   open. The panes shrink instead (they recompose on resize). Below 1101px
+   the viewport is too narrow to give up 300px, so the drawer lies over it
+   there; mobile hides it. */
+@media (min-width: 1101px) {
   .main:has(> .inspector) > .viewport { margin-right: var(--inspector-w); }
 }
 
@@ -265,6 +278,12 @@
   background: var(--color-stage); border-radius: calc(var(--radius-lg) - var(--sp-3));
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05);
 }
+/* no data to preview: a hatched well, not a black square that reads as an
+   image still loading (or a scan of nothing) */
+.wl-thumb[data-state="error"] {
+  background: repeating-linear-gradient(135deg, var(--color-surface-2) 0 var(--sp-2), var(--color-sunken) var(--sp-2) calc(var(--sp-2) * 2));
+}
+.wl-thumb[data-state="loading"] { background: var(--color-surface-2); }
 .wl-main { min-width: 0; flex: 1; }
 .wl-title { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
 .wl-key { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 600; }
@@ -272,7 +291,22 @@
   display: flex; gap: var(--sp-6); flex-wrap: wrap; margin-top: var(--sp-2);
   color: var(--color-faint); font-family: var(--font-mono); font-size: var(--fs-2xs);
 }
-.wl-actions { display: flex; gap: var(--sp-2); flex: none; }
+.wl-actions { display: flex; align-items: center; gap: var(--sp-2); flex: none; }
+/* The read flow: its status chip and the one action it allows next. These
+   buttons had no rule at all, so they drew as the browser's own grey
+   buttons on the dark row — a different control in every engine. */
+.wl-read { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.wl-read-btn, .wl-sign, .wl-unlock {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: var(--tap); padding: var(--sp-1) var(--sp-4);
+  background: var(--color-surface-2); border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm); color: var(--color-text);
+  font-size: var(--fs-sm); font-weight: 600;
+  transition: all var(--dur-fast) var(--ease);
+}
+.wl-read-btn:hover, .wl-sign:hover { color: var(--color-accent); border-color: var(--color-accent); }
+.wl-sign { color: var(--color-accent); border-color: var(--color-line-accent); background: var(--color-accent-dim); }
+.wl-unlock:hover { color: var(--color-warn); border-color: var(--color-warn); }
 .wl-open {
   display: inline-flex; align-items: center; justify-content: center;
   min-height: var(--tap); padding: var(--sp-2) var(--sp-7);

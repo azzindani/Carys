@@ -141,6 +141,13 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
 }
 .dock .grp { display: flex; align-items: center; gap: var(--sp-2); padding: 0 var(--sp-1); }
 .dock .sep { width: 1px; align-self: stretch; background: var(--color-line); margin: var(--sp-1) var(--sp-1); }
+/* A dock that carries a caption or a list is a panel: each of those takes a
+   row of its own. As plain flex items they sat beside whatever came before —
+   the cohort's source line floated between two case rows, mid-panel. */
+.dock > .hint, .dock > dl { flex: 1 1 100%; min-width: 0; padding: 0 var(--sp-1); }
+.dock > dl.kv { margin-top: 0; }
+/* a divider with nothing after it divides nothing */
+.dock > .sep:last-child { display: none; }
 
 /* ----------------------------------------------------------------- panes */
 .pane {
@@ -170,6 +177,17 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
 .pane-head .sub { color: var(--color-faint); font-family: var(--font-mono); font-size: var(--fs-2xs); }
 .pane-head .vptools { margin-left: auto; display: flex; align-items: center; gap: 2px; }
 .pane-head .vptools .chip.zoom { margin-left: 0; }
+
+/* Text, lists and button rows placed straight into a pane sit on the pane's
+   padding line. They had none, so every caption, story and glossary ran
+   into the pane's border, and the rounded corner clipped its first letter. */
+.pane > :is(.hint, .kv, .grp, .pane-body) { margin-inline: var(--sp-4); }
+.pane > :is(.hint, .grp) { margin-top: var(--sp-3); }
+.pane > p.hint { margin-bottom: 0; }
+.pane > :is(.hint, .kv, .grp, .pane-body):last-child { margin-bottom: var(--sp-4); }
+.pane > .grp { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.pane-body { padding-block: var(--sp-3); min-width: 0; }
+.pane-body > .hint:first-child { margin: 0; }
 
 /* the imaging surface itself — see viewport.css for the 3D-tool treatment */
 .stage {
@@ -341,13 +359,57 @@ input[type="range"].styled::-moz-range-thumb {
   margin: 0; text-align: right; color: var(--color-muted);
   font-family: var(--font-mono); font-size: var(--fs-xs); overflow-wrap: anywhere;
 }
+/* Spin buttons ate a third of the field, so "1.000" showed as "1.0(". The
+   arrow keys still step the value. */
+.kv input.cal { appearance: textfield; -moz-appearance: textfield; }
+.kv input.cal::-webkit-inner-spin-button, .kv input.cal::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .kv input.cal {
-  width: 4.5em; padding: 2px var(--sp-2); margin-left: var(--sp-1); min-height: 26px;
+  width: 5em; padding: 2px var(--sp-2); margin-left: var(--sp-1); min-height: 26px;
   background: var(--color-surface-3); border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-2xs); color: var(--color-muted); font: inherit;
 }
 .mrow { display: contents; }
 .mrow dd { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-2); flex-wrap: wrap; }
+/* A label and a value are one line of a table: the label sits on the
+   value's first line, not above it (a row of 24px links stood 5px lower
+   than its label). */
+.kv dt { align-self: baseline; }
+.kv dd { align-self: baseline; }
+
+/* Readouts are right-aligned monospace numbers. Prose is not: a story, a
+   glossary or a quiz set that way read as ragged right-aligned code. */
+.kv.prose dd {
+  text-align: left; justify-content: flex-start;
+  font-family: var(--font-sans); font-size: var(--fs-sm); color: var(--color-text);
+  overflow-wrap: break-word;
+}
+/* numbered steps: a narrow counter column, the step beside it */
+.kv.steps { grid-template-columns: auto minmax(0, 1fr); }
+.kv.steps dt { font-family: var(--font-mono); color: var(--color-accent); }
+/* a question over its answers, full width */
+.kv.stack { grid-template-columns: minmax(0, 1fr); row-gap: var(--sp-2); }
+.kv.stack dt { color: var(--color-text); font-size: var(--fs-sm); font-weight: 500; }
+.kv.stack dt:not(:first-child) { margin-top: var(--sp-4); }
+.kv.stack dd .hint { flex: 1 1 100%; }
+
+/* Quiz answers. They were bare text links, and a wrong pick drew nothing
+   at all: the only way to learn you had answered was the status line. */
+.opt {
+  display: inline-flex; align-items: center; text-align: left;
+  min-height: var(--tap); padding: var(--sp-1) var(--sp-4);
+  background: var(--color-surface-2); border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm); color: var(--color-muted);
+  font: inherit; font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: 500;
+  transition: all var(--dur-fast) var(--ease);
+}
+.opt:hover { color: var(--color-text); border-color: var(--color-line-strong); background: var(--color-surface-3); }
+.opt[aria-pressed="true"] { color: var(--color-text); border-color: var(--color-line-strong); background: var(--color-surface-3); }
+.opt.right { color: var(--color-ok); border-color: var(--color-ok); background: var(--color-accent-dim); }
+.opt.wrong { color: var(--color-danger); border-color: var(--color-danger); background: rgb(240 86 74 / 0.1); }
+/* colour is not the only cue: a mark survives colour blindness and the
+   forced-colors palette swap */
+.opt.right::before { content: "✓"; margin-right: var(--sp-2); }
+.opt.wrong::before { content: "✗"; margin-right: var(--sp-2); }
 .mx {
   background: transparent; border: 1px solid transparent; color: var(--color-faint);
   font-size: var(--fs-3xs); padding: 2px var(--sp-2); border-radius: var(--radius-2xs);
@@ -366,6 +428,7 @@ input[type="range"].styled::-moz-range-thumb {
 
 .hint { color: var(--color-faint); font-size: var(--fs-xs); }
 .hint kbd, .pal-foot kbd, .kbd-btn kbd {
+  white-space: nowrap;
   font-family: var(--font-mono); font-size: var(--fs-3xs); font-weight: 500;
   background: var(--color-surface-3); border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-2xs); padding: 2px var(--sp-2); color: var(--color-muted);
