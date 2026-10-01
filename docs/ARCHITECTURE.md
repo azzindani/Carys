@@ -298,6 +298,15 @@ level. `npm run audit:appearance` presses every level and checks that it
 moves its own setting only, that the smallest and largest of everything fit
 on every route, and that prefs persist and reset.
 
+`npm run audit:ui` (`test/e2e/uiaudit.mjs`, states in `uistates.mjs`) drives
+every route, pop-out, tool, panel and dialog state, at desktop, tablet and
+phone (`UIAUDIT_VP=` takes seven screens), and at both ends of the appearance
+scales. In each state it asserts no sideways scroll, nothing off-screen or
+covered, no clipped text, no target under 24px, controls on a row sharing a
+centre line, every font size on the type ramp, every radius on the radius ramp,
+every colour a palette colour (token values are read back from the page), and
+zero axe violations. A new view or panel adds a state there.
+
 980px is the mobile edge, shared with `lib/isMobile.ts`. Control height is
 26px under a mouse and 44px under a finger, set by one variable, so the
 touch-target floor and desktop density do not fight.
@@ -332,7 +341,7 @@ buttons of the same kind in them are joined into one grouped control.
 Labels are sentence case at 12px, figures are tabular, and mono is kept for
 identifiers (UIDs, URLs, queries) and the image overlays. Toolbars are
 full-width panels whose groups are separated by space, not by dividers that
-would dangle at the end of a wrapped line. The 3D viewport adds a floor grid,
+would dangle at the end of a wrapped line. The 3D viewport adds
 corner readouts and an orientation gizmo. Every pixel of imagery is still
 CPU-rasterised. The gizmo is SVG chrome that reflects the orbit and snaps
 the camera when an axis is clicked. The anatomical edge letters are drawn on

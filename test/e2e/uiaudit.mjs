@@ -19,7 +19,9 @@
 //
 // Runs without samples/ (states that need an image skip, loudly, rather than
 // pass on nothing): fixtures it needs - a protein, a BED track - are written
-// to a temp dir here. UIAUDIT_SHOTS=dir keeps a screenshot of every state.
+// to a temp dir here. UIAUDIT_SHOTS=dir keeps a screenshot of every state;
+// UIAUDIT_VP=desktop,laptop,tablet,tabletP,phone,small,landscape runs all seven
+// screens (the default is the three that differ most), UIAUDIT_ONLY=regex a subset.
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
@@ -34,7 +36,7 @@ const PORT = Number(process.env.E2E_PORT || 8129);
 const BASE = `http://localhost:${PORT}/packages/app/dist/index.html`;
 const SHOTS = process.env.UIAUDIT_SHOTS || '';
 const ONLY = process.env.UIAUDIT_ONLY ? new RegExp(process.env.UIAUDIT_ONLY) : null;
-const VIEWPORTS = (process.env.UIAUDIT_VP || 'desktop,laptop,tablet,tabletP,phone,small,landscape').split(',');
+const VIEWPORTS = (process.env.UIAUDIT_VP || 'desktop,tablet,phone').split(',');
 const ALL_VP = {
   desktop: { width: 1440, height: 900, touch: false },
   laptop: { width: 1280, height: 720, touch: false },
