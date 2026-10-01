@@ -10,7 +10,7 @@ tree. A suite that cannot run reports a **skip**, never a pass
 | Command | When | What it runs |
 |---|---|---|
 | `npx tsc -b` (`npm run build`) | Every change | Compiles every package, tests included |
-| `npm run ci` | Before every commit; CI on every push | `build` → `typecheck:app` → `lint` → `test:unit` → `test:markers` → `build:app` → `check:entry` → `audit:a11y` → `audit:appearance` → `audit:ui` |
+| `npm run ci` | Before every commit; CI on every push | `build` → `typecheck:app` → `lint` → `test:unit` → `test:markers` → `build:app` → `check:entry` → `audit:a11y` → `audit:appearance` |
 | `npm run verify` | Before a release, with a complete sample set | `samples:check` → `build` → every unit suite with `CARYS_REQUIRE_SAMPLES=1` → `test:e2e` |
 | `npm run test:image` | CI on every push; after a deploy | The production image over HTTP and in Chromium ([DEPLOYMENT.md](DEPLOYMENT.md#verify-a-deployment)) |
 
@@ -26,7 +26,8 @@ These steps are part of `ci` as well:
 - **`audit:appearance`** presses all 25 appearance levels (five settings, five
   levels), checks each moves only its own setting, that the smallest and
   largest of everything fit on every route, and that prefs persist and reset.
-- **`audit:ui`** drives about 70 route, pop-out, tool and panel states at
+- **`audit:ui`** is its own CI job (one screen per runner: it is the slowest
+  gate). It drives about 70 route, pop-out, tool and panel states at
   desktop, tablet and phone (`UIAUDIT_VP` takes seven screens, `UIAUDIT_ONLY`
   a state-name regex, `UIAUDIT_SHOTS` a screenshot directory) and asserts
   layout, design-token conformance, row alignment, target size and axe in each.
@@ -37,12 +38,14 @@ one at a time.
 
 ## CI
 
-`.github/workflows/ci.yml` runs three jobs on every push and pull request.
+`.github/workflows/ci.yml` runs four jobs on every push and pull request.
 
 1. **gates** runs `npm run ci` on a runner with no sample set, so the
    suites that need fixtures skip, and it prints the skip count.
-2. **synthetic** runs `npm run gen:samples`, then `test:synthetic`.
-3. **image** builds the Dockerfile, which runs the sample-free gate in its
+2. **ui** runs `audit:ui` as a matrix, one runner each for desktop, tablet
+   and phone ([`audit:ui`](#gates)).
+3. **synthetic** runs `npm run gen:samples`, then `test:synthetic`.
+4. **image** builds the Dockerfile, which runs the sample-free gate in its
    build stage. It then:
    - starts the image locked down (read-only, tmpfs `/tmp`, no
      capabilities) and waits for Docker to report it healthy;

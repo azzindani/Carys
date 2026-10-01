@@ -71,7 +71,9 @@ prefer the one with a test behind it.
     real taps. Synthetic `input`/`change` dispatches miss React handlers;
     fresh pages beat reloads for file inputs.
 19. **New UI lands with a wire leg** — tabs, fullscreen, the pop-outs all
-    shipped with assertions (`test/e2e/wire.mjs`), not screenshots.
+    shipped with assertions (`test/e2e/wire.mjs`), not screenshots. A new
+    view, panel or tool also adds a state to `test/e2e/uistates.mjs`, so the
+    design-system audit (`audit:ui`) reaches it.
 
 ## UI discipline
 
