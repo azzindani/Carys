@@ -74,7 +74,8 @@
 /* Tools that act on the image float over it; see .popout below. */
 .workarea {
   position: relative;
-  --toolstrip-w: 56px;
+  /* its captions are text, so it grows with the text level */
+  --toolstrip-w: calc(56px + (var(--ts) - 1) * 44px);
   --cpr-h: 190px;
 }
 /* portal target for the 3D dock: contributes no box of its own */
@@ -200,7 +201,9 @@
    canvas underneath. */
 .vp-ov {
   position: absolute; inset: 0; pointer-events: none; z-index: 2;
-  font-size: var(--fs-xs); font-weight: 500; line-height: 1.45; font-variant-numeric: tabular-nums;
+  /* the Image text level, not the UI text level: it scales what is drawn
+     over the image, and the canvas text beside it takes the same step */
+  font-size: calc(12px * var(--ovs)); font-weight: 500; line-height: 1.45; font-variant-numeric: tabular-nums;
   color: color-mix(in srgb, var(--color-text) 78%, transparent);
   text-shadow: 0 0 3px var(--color-stage), 0 1px 2px var(--color-stage);
 }
@@ -235,7 +238,7 @@
 .vp-ov-warn {
   flex: 0 1 auto; min-width: 0; max-width: 50%;
   color: var(--color-warn);
-  text-align: center; white-space: normal; font-size: var(--fs-2xs);
+  text-align: center; white-space: normal; font-size: calc(11.5px * var(--ovs));
 }
 /* Geometry cautions: amber like the notice — they change how the image may
    be read. Long ones truncate; the title keeps the text. */
@@ -269,7 +272,7 @@
 /* ---- side rail: per-viewport sliders, uniform in every pane ------------ */
 .vrail {
   /* a slim track against the pane's edge, framed by one hairline */
-  flex: none; width: 48px;
+  flex: none; width: calc(48px + (var(--ts) - 1) * 30px);
   display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-3);
   padding: var(--sp-3) 0;
   border-left: 1px solid var(--color-line);

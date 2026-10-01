@@ -40,8 +40,9 @@
     "parity": "python3 test/e2e/foundry.py parity",
     "test:dimse": "python3 test/e2e/dimse-echo.py",
     "lint": "eslint packages --max-warnings 0",
-    "ci": "npm run build && npm run typecheck:app && npm run lint && npm run test:unit && npm run test:markers && npm run build:app && npm run check:entry && npm run audit:a11y",
+    "ci": "npm run build && npm run typecheck:app && npm run lint && npm run test:unit && npm run test:markers && npm run build:app && npm run check:entry && npm run audit:a11y && npm run audit:appearance",
     "audit:a11y": "node test/e2e/a11y.mjs",
+    "audit:appearance": "node test/e2e/appearance.mjs",
     "check:entry": "node scripts/check-entry.mjs",
     "test:synthetic": "node test/e2e/synthetic.mjs",
     "test:image": "node test/e2e/image.mjs"

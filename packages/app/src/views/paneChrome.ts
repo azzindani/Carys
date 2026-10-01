@@ -2,7 +2,7 @@
 // anatomical edge letters, the scale bar and the measurements. Split out of
 // MprPanes (rule 1: one module, one job) — it reads the session and the pane
 // mapping, never the component's refs, so it needs only the canvas it draws on.
-import { ACCENT, ACCENT_DIM, ACCENT_DIM_FILL, ACCENT_HI, CHROME_FONT_PX, CHROME_HALO, CHROME_TEXT, MONO_STACK, ON_ACCENT } from '../lib/palette';
+import { ACCENT, ACCENT_DIM, ACCENT_DIM_FILL, ACCENT_HI, CHROME_HALO, CHROME_TEXT, UI_STACK, ON_ACCENT, chromeFontPx } from '../lib/palette';
 import { edgeLabels } from '../lib/orient';
 import { session } from '../lib/session';
 import { getUi } from '../lib/store';
@@ -32,8 +32,8 @@ export function drawChrome(
 ): void {
   const img = session.img;
   if (!img) return;
-  const fs = CHROME_FONT_PX;
-  ctx.font = `${fs}px ${MONO_STACK}`;
+  const fs = chromeFontPx();
+  ctx.font = `${fs}px ${UI_STACK}`;
   ctx.fillStyle = CHROME_TEXT;
   // crosshair reference lines (OHIF Reference Lines): the synced voxel
   // drawn on every pane, same axis convention as planePoint.
@@ -102,10 +102,10 @@ export function drawChrome(
 export function drawMeasures(ctx: CanvasRenderingContext2D, plane: Plane, v: PaneView, idx: number): void {
   const rows = session.measurements.filter((m) => m.plane === plane && m.slice === idx);
   const pend = session.pendingPlane === plane ? session.pendingMeasure : [];
-  const fs = CHROME_FONT_PX;
+  const fs = chromeFontPx();
   const at = (p: [number, number]): [number, number] => toScreen(v, p[0] + 0.5, p[1] + 0.5);
   const dot = 3;
-  ctx.font = `${fs}px ${MONO_STACK}`;
+  ctx.font = `${fs}px ${UI_STACK}`;
   ctx.lineWidth = 1.5;
   /** Label box top-left, shifted inside the pane when past an edge. */
   const drawLabel = (x: number, y: number, label: string): void => {

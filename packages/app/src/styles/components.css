@@ -645,11 +645,15 @@ input[type="range"].styled::-moz-range-thumb {
    under the file-tab row (z 20) — the appearance panel's top row of buttons
    was unclickable where the two overlap. */
 .pop-layer { position: relative; z-index: 45; }
-.appear { min-width: 280px; }
+.appear { min-width: min(calc(330px * var(--ts)), calc(100vw - var(--sp-6))); max-width: calc(100vw - var(--sp-6)); }
 .appear .grp { display: flex; align-items: center; gap: var(--sp-3); }
-.appear .lbl { min-width: 48px; }
+.appear .lbl { min-width: var(--form-label-w); }
 .appear .seg { flex: 1; }
 .appear .seg button { flex: 1; justify-content: center; padding-inline: 0; }
+.appear-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding-top: var(--sp-3); border-top: 1px solid var(--color-line);
+}
 .navdrop { gap: 2px; min-width: 216px; padding: var(--sp-2); }
 .navdrop button {
   display: flex; align-items: center; gap: var(--sp-3); width: 100%;

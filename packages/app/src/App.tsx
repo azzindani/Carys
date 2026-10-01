@@ -8,7 +8,8 @@ import { session } from './lib/session';
 import { setStatus } from './lib/status';
 import { useRoute } from './lib/router';
 import { loadSeries, saveMaskNii, setExtractor, type SliceInit } from './lib/sessionOps';
-import { getUi, saveAppearance, setUi, useUiPick } from './lib/store';
+import { applyAppearance, saveAppearance } from './lib/appearance';
+import { getUi, setUi, useUiPick } from './lib/store';
 import { useIsMobile } from './lib/isMobile';
 import { bump } from './lib/version';
 import type { View } from './lib/types';
@@ -157,18 +158,25 @@ export function App(): JSX.Element {
 
   const textSize = useUiPick('textSize');
   const density = useUiPick('density');
+  const controlSize = useUiPick('controlSize');
+  const corners = useUiPick('corners');
+  const imageText = useUiPick('imageText');
   // The details panel is a panel, not furniture: collapsing it hands its
   // column back to the image. Open by default — the wire suite reads the
   // readouts inside it without opening anything first.
   const insOpen = useUiPick('insOpen');
-  // Appearance owns <html>: text scale + density datasets drive the CSS,
-  // and every change persists the chrome pref.
+  // Appearance owns <html>: the five levels become data attributes that
+  // tokens.css turns into scales, and every change persists the prefs. The
+  // text drawn on the canvases cannot read CSS, so they repaint too.
+  const first = useRef(true);
   useEffect(() => {
-    const root = document.documentElement;
-    root.dataset.text = textSize;
-    root.dataset.density = density;
-    saveAppearance(textSize, density);
-  }, [textSize, density]);
+    const a = { textSize, density, controlSize, corners, imageText };
+    applyAppearance(a);
+    saveAppearance(a);
+    if (first.current) { first.current = false; return; }
+    paintBus.mpr();
+    paintBus.surface();
+  }, [textSize, density, controlSize, corners, imageText]);
 
   // One shell, one content switch. The viewer is the only route that pairs
   // with the inspector column; everything else runs full-bleed.
