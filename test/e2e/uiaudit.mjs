@@ -98,12 +98,14 @@ const measure = () => {
   const ovs = parseFloat(root.getPropertyValue('--ovs')) || 1;
   const ramp = new Set();
   for (const k of ['3xs', '2xs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl']) ramp.add(+px(resolve('fontSize', `var(--fs-${k})`)).toFixed(2));
+  // insets are px, or the layout scale's steps (a seg thumb inside its track)
+  const insets = [1, 2, 3, 4, 5, 6, 8, ...[1, 2, 3, 4].map((k) => px(resolve('width', `var(--sp-${k})`)))];
   const rr = new Set([0]);
   for (const k of ['2xs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl']) {
     const v = px(resolve('borderTopLeftRadius', `var(--radius-${k})`));
     rr.add(+v.toFixed(2));
     // a nested surface is the parent's radius less its inset
-    for (const inset of [1, 2, 3, 4, 5, 6, 8]) rr.add(+Math.max(0, v - inset).toFixed(2));
+    for (const inset of insets) rr.add(+Math.max(0, v - inset).toFixed(2));
   }
   const pal = new Set();
   for (const k of ['stage', 'bg', 'chrome', 'sunken', 'surface-1', 'surface-2', 'surface-3', 'surface-4', 'line', 'line-strong', 'line-hover', 'line-accent', 'text', 'muted', 'faint', 'on-accent', 'accent', 'accent-hi', 'accent-lo', 'accent-dim', 'accent-a', 'violet', 'danger', 'danger-dim', 'warn', 'warn-dim', 'ok', 'ok-dim', 'scrim']) {
@@ -128,7 +130,7 @@ const measure = () => {
   const data = (el) => !!el.closest('.lblswatch, .swatch, .sw, .cmap, .legend');
   const note = (bag, key, el, extra = '') => { const a = (bag[key] ||= { n: 0, ex: [] }); a.n++; if (a.ex.length < 2) a.ex.push(name(el) + extra); };
 
-  const FLOATING = '.popout, .appear, .pal-wrap, [role=dialog], [role=listbox], [role=menu], [data-radix-popper-content-wrapper], .toast, .hint-pop, [role=tooltip]';
+  const FLOATING = '.inspector, .popout, .appear, .pal-wrap, [role=dialog], [role=listbox], [role=menu], [data-radix-popper-content-wrapper], .toast, .hint-pop, [role=tooltip]';
   /** a control scrolled out of its own scroller is not under what shows there */
   const clippedByScroller = (el, x, y) => {
     for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
@@ -198,7 +200,7 @@ const measure = () => {
     if (el.matches('[role=button], .x') || el.closest('.seg, .popbar, .sw, .swatch') || el.type === 'range' || el.type === 'checkbox' || el.type === 'radio') continue;
     if (Math.min(r.width, r.height) < 23.5) out.small.push(`${name(el)} ${Math.round(r.width)}x${Math.round(r.height)}`);
     // a control that is none of the system heights
-    if (el.matches('button, select, input:not([type=range])') && !el.closest('.seg, .popbar, .pal, [role=tablist], .kv, .vrail, .toolstrip, .pane-head, .tile, .wl-row, .swatches, .tabs, .rail') && !el.matches('.tab, .lnk, .linkbtn')) {
+    if (el.matches('button, select, input:not([type=range])') && !el.closest('.seg, .popbar, .pal, .seqstrip, [role=tablist], .kv, .vrail, .toolstrip, .pane-head, .tile, .wl-row, .swatches, .tabs, .rail') && !el.matches('.tab, .lnk, .linkbtn')) {
       const known = [ctlH, ctlH - 6, Math.max(24, ctlH), chipH];
       if (!known.some((h) => Math.abs(h - r.height) < 1.01)) out.odd.push(`${name(el)} h=${Math.round(r.height * 10) / 10} (system ${ctlH})`);
     }
