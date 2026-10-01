@@ -78,6 +78,8 @@ export function Palette({ open, onClose, commands }: {
       <div className="pal" role="dialog" aria-label="Command palette">
         <input
           id="palinput" ref={inputRef} placeholder="Type a command or series…" autoComplete="off"
+          role="combobox" aria-label="Command or series" aria-expanded="true" aria-controls="pallist"
+          aria-activedescendant={items[sel] ? `palopt-${sel}` : undefined}
           value={q} onChange={(e) => { setQ((e.target as HTMLInputElement).value); setSel(0); }}
           onKeyDown={(e) => {
             if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(items.length - 1, s + 1)); }
@@ -89,10 +91,10 @@ export function Palette({ open, onClose, commands }: {
             else if (e.key === 'Escape') { e.preventDefault(); onClose(); }
           }}
         />
-        <ul id="pallist" role="listbox">
+        <ul id="pallist" role="listbox" aria-label="Commands and series" tabIndex={-1}>
           {items.map((c, i) => (
             <li
-              key={c.label} role="option" aria-selected={i === sel}
+              key={c.label} id={`palopt-${i}`} role="option" aria-selected={i === sel}
               className={i === sel ? 'sel' : ''} onClick={() => run(i)}
               ref={i === sel ? (li) => li?.scrollIntoView({ block: 'nearest' }) : undefined}
             >

@@ -101,6 +101,7 @@ export function ReportView(): JSX.Element {
         <h1>Report</h1>
         <p>{ui.series || '—'} · {validation.ok ? 'valid' : `${validation.issues.length} issue(s)`} · {session.measurements.length} measurement(s)</p>
         <span className="right">
+          <button className="iconbtn" id="report-refresh" title="Recompute the report from the open series" onClick={() => bump()}>Refresh</button>
           <button className="iconbtn accent" id="report-download" title="Download standalone HTML report"
             onClick={() => downloadFile(`report-${ui.series || 'series'}.html`, html, 'text/html')}>Download HTML</button>
           <button className="iconbtn" id="report-sidecar" title="Download reproducibility JSON sidecar"
@@ -122,33 +123,42 @@ export function ReportView(): JSX.Element {
             }}>Sheet</button>
         </span>
       </div>
-      <section className="report" aria-label="Validation issues">
-        {validation.issues.length === 0 ? (
-          <div className="hint">No validation issues.</div>
-        ) : (
-          <dl className="kv" id="report-issues">
-            {validation.issues.map((iss, i) => (
-              <div className="mrow" key={i}>
-                <dt>{iss.level} · {iss.code}</dt><dd>{iss.message}</dd>
-              </div>
-            ))}
+      <div className="report">
+        <section className="rcard" aria-label="Validation issues">
+          <h2>Validation <span className={`chip ${validation.ok ? 'ok' : 'bad'}`}>{validation.ok ? 'valid' : `${validation.issues.length} issue(s)`}</span></h2>
+          {validation.issues.length === 0 ? (
+            <div className="hint">No validation issues.</div>
+          ) : (
+            <dl className="kv" id="report-issues">
+              {validation.issues.map((iss, i) => (
+                <div className="mrow" key={i}>
+                  <dt>{iss.level} · {iss.code}</dt><dd>{iss.message}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </section>
+        <section className="rcard" aria-label="Mask">
+          <h2>Mask</h2>
+          <dl className="kv">
+            <div className="mrow"><dt>volume</dt><dd>≈ {stats.volumeCm3.toFixed(1)} cm³</dd></div>
+            <div className="mrow"><dt>voxels</dt><dd>{stats.voxels.toLocaleString()}</dd></div>
           </dl>
-        )}
-        <div className="hint">Mask ≈ {stats.volumeCm3.toFixed(1)} cm³ ({stats.voxels.toLocaleString()} voxels).</div>
-        {compression && (
-          <div className="hint" id="report-compression">Compression: {compression}</div>
-        )}
+          {compression && <div className="hint" id="report-compression">Compression: {compression}</div>}
+        </section>
         {Object.keys(session.digestPins).length > 0 && (
-          <dl className="kv" id="report-digests">
-            {Object.entries(session.digestPins).map(([k, v]) => (
-              <div className="mrow" key={k}>
-                <dt>{k}</dt><dd>{v}</dd>
-              </div>
-            ))}
-          </dl>
+          <section className="rcard" aria-label="Pinned data">
+            <h2>Pinned data</h2>
+            <dl className="kv" id="report-digests">
+              {Object.entries(session.digestPins).map(([k, v]) => (
+                <div className="mrow" key={k}>
+                  <dt>{k}</dt><dd>{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
         )}
-        <button className="kbd-btn" onClick={() => bump()}>Refresh</button>
-      </section>
+      </div>
     </>
   );
 }

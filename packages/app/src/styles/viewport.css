@@ -42,6 +42,10 @@
   border-radius: calc(var(--radius-md) - var(--sp-1));
 }
 .dock.column .seg button svg { width: 18px; height: 18px; flex: none; }
+/* a tall strip scrolls, it does not squash: nothing in it gives up its height */
+.dock.column > * { flex-shrink: 0; }
+/* the measure kinds are words, not tools: one control tall each */
+.dock.column #kindseg button { min-height: var(--ctl-h); padding: 0; font-size: var(--fs-2xs); }
 .dock.column .seg button .tl { font-size: var(--fs-3xs); font-weight: 500; line-height: 1; }
 /* The strip is narrow, so a field stacks its label over its value instead of
    beside it. Hiding the label left a bare "3" under the tools with nothing
@@ -149,6 +153,8 @@
 }
 .vp3d .pane { flex: 1; }
 .vp3d .tfpane, .vp3d .clippane { max-width: none; flex: none; }
+/* the tool strip floats over the left edge of the image, so the editors under it start where it ends */
+.vp3d .tfpane, .vp3d .clippane { margin-left: calc(var(--toolstrip-w) + var(--sp-3) * 2); }
 
 /* ---- the stage ----------------------------------------------------------
    True black, edge to edge. Grey levels are read against it, so it carries
@@ -179,18 +185,6 @@
 .viewport-canvas {
   position: relative; flex: 1; min-width: 0; min-height: 0;
   display: flex; align-items: center; justify-content: center;
-}
-/* Floor grid — a ground-plane reference, so it belongs to the 3D viewport
-   only. Behind a reconstructed slice it is not scenery, it is contamination
-   over the thing being read. */
-.vp3d .viewport-canvas::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
-  background-image:
-    linear-gradient(var(--color-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--color-line) 1px, transparent 1px);
-  background-size: 40px 40px; opacity: 0.55;
-  mask-image: linear-gradient(180deg, transparent 12%, black 92%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 12%, black 92%);
 }
 .viewport-canvas > canvas { position: relative; z-index: 1; }
 

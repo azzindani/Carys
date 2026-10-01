@@ -594,14 +594,6 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
         </div>
       </div>
       )}
-      {ui.render3d === 'volume' && (
-        <div className="pane tfpane" id="pane-tf">
-          <div className="pane-head"><span className="name">Transfer function</span><span className="sub">drag stops · double-click adds · right-click removes</span></div>
-          <div className="tfwrap">
-            <TfEditor tf={currentTF()} range={fieldRange()} onCommit={(stops) => { setTf(stops); bump(); }} />
-          </div>
-        </div>
-      )}
       <div id="view-3d" className="panes">
         <div className="pane" id="pane-3d">
           <div className="pane-head">
@@ -653,6 +645,15 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
         </div>
       </div>
       {/* under the image: the tool strip floats over the column's top */}
+      {/* below the 3D pane, so the tool strip over the image never covers its header */}
+      {ui.render3d === 'volume' && (
+        <div className="pane tfpane" id="pane-tf">
+          <div className="pane-head"><span className="name">Transfer function</span><span className="sub">drag stops · double-click adds · right-click removes</span></div>
+          <div className="tfwrap">
+            <TfEditor tf={currentTF()} range={fieldRange()} onCommit={(stops) => { setTf(stops); bump(); }} />
+          </div>
+        </div>
+      )}
       {ui.clip3d.on && <ClipPanel clip={ui.clip3d} onInput={(c) => { setUi({ clip3d: c }); queueOrbit(); }} />}
     </>
   );
