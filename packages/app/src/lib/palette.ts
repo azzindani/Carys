@@ -4,6 +4,8 @@
  *  frame, so this module is the single source on the JS side.
  *  NOTE: wire asserts the fiber-view background (FIBER_BG); change it only
  *  together with `test/e2e/wire.mjs`. */
+import { IMAGE_TEXT_SCALE } from './appearance';
+import { getUi } from './store';
 import type { BodySystem } from '@carys/render-cpu';
 
 export const ACCENT = '#3ba4ff';
@@ -108,12 +110,17 @@ export function bodyCss(s: BodySystem): string {
 export const PROTEIN_BG = '#000000';
 export const FIBER_BG = '#000000';
 export const TF_GRID = 'rgba(255,255,255,0.12)';
-/** Canvas type: mirrors the `--mono` token (contexts can't use CSS vars). */
-export const MONO_STACK = '"IBM Plex Mono", monospace';
+/** Canvas type: mirrors the `--font-sans` token (contexts can't use CSS
+ *  vars). The text on images is the UI face, like the DOM overlay above it. */
+export const UI_STACK = '"Inter", system-ui, -apple-system, "Segoe UI", sans-serif';
 /** Viewport chrome text (anatomy letters, scale bar): near-white, dimmed. */
 export const CHROME_TEXT = 'rgba(238,242,247,0.8)';
 /** Canvas type size in CSS px. Chrome is drawn in screen space now, so one
  *  size reads the same on every pane and every grid size. */
 export const CHROME_FONT_PX = 12;
+/** …at the chosen Image text level (lib/appearance.ts), to the half pixel. */
+export function chromeFontPx(): number {
+  return Math.round(CHROME_FONT_PX * IMAGE_TEXT_SCALE[getUi().imageText] * 2) / 2;
+}
 /** Dark halo behind canvas chrome text (the DOM readouts' text-shadow twin). */
 export const CHROME_HALO = 'rgba(0,0,0,0.9)';

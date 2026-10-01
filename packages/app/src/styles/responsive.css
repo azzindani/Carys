@@ -22,7 +22,7 @@
    instead of showing the same mark twice. */
 @media (min-width: 981px) and (max-width: 1280px) {
   .main { gap: var(--sp-3); padding-inline: var(--sp-4); }
-  .rail { width: 54px; }
+  .rail { width: calc(54px + (var(--ts) - 1) * 24px); }
   .rail-btn .rl { display: none; }
   .rail-btn { min-height: 42px; }
 }
@@ -66,7 +66,7 @@
   .vp > .panes.panes-2d[data-layout="coronal"] #pane-coronal,
   .vp > .panes.panes-2d[data-layout="sagittal"] #pane-sagittal { flex-grow: 1.8; }
   /* slice panes are narrow in a row of three: trim the rail and head */
-  .vp2d .vrail { width: 44px; }
+  .vp2d .vrail { width: calc(44px + (var(--ts) - 1) * 24px); }
   .vp2d .pane-head { padding: 0 var(--sp-2); }
   /* fullscreen still collapses to the single chosen viewport */
   .viewgrid[data-full="v3d"], .viewgrid[data-full="axial"],

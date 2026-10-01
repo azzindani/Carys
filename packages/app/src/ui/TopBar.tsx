@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { Route } from '../lib/router';
 import { setUi, useUi, useUiPick } from '../lib/store';
 import { useIsMobile } from '../lib/isMobile';
-import type { Density, TextSize } from '../lib/types';
+import { APPEARANCE, DEFAULT_APPEARANCE, LEVELS, type Level } from '../lib/appearance';
 import { DarkSelect, Popover, Seg } from './primitives';
 import { IconGear, IconMenu, IconSearch } from './Icons';
 import { ROUTES } from './Rail';
@@ -31,39 +31,28 @@ export function Logo(): JSX.Element {
  *  everywhere else (the handler accepts either). */
 export const PAL_KEY = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
 
-/** Appearance popover: UI text size + layout density (chrome prefs). */
+/** Appearance popover: five settings, five levels each (lib/appearance.ts).
+ *  The rows come from that list, so a new setting is one entry there. */
 export function AppearancePanel(): JSX.Element {
-  const textSize = useUiPick('textSize');
-  const density = useUiPick('density');
+  const ui = useUi();
+  const changed = APPEARANCE.some((a) => ui[a.key] !== DEFAULT_APPEARANCE[a.key]);
   return (
     <div className="appear" role="group" aria-label="Appearance settings">
-      <div className="grp">
-        <span className="lbl">Text</span>
-        <Seg<TextSize>
-          id="appear-text" dataKey="tsize" ariaLabel="Text size"
-          value={textSize} onChange={(v) => setUi({ textSize: v })}
-          options={[
-            { value: 'xs', label: 'XS', title: 'Extra-small text' },
-            { value: 's', label: 'S', title: 'Small text' },
-            { value: 'm', label: 'M', title: 'Medium text' },
-            { value: 'l', label: 'L', title: 'Large text' },
-            { value: 'xl', label: 'XL', title: 'Extra-large text' },
-          ]}
-        />
-      </div>
-      <div className="grp">
-        <span className="lbl">Layout</span>
-        <Seg<Density>
-          id="appear-density" dataKey="density" ariaLabel="Layout density"
-          value={density} onChange={(v) => setUi({ density: v })}
-          options={[
-            { value: 'xs', label: 'XS', title: 'Extra-tight spacing' },
-            { value: 's', label: 'S', title: 'Tight spacing' },
-            { value: 'm', label: 'M', title: 'Balanced spacing' },
-            { value: 'l', label: 'L', title: 'Roomy spacing' },
-            { value: 'xl', label: 'XL', title: 'Extra-roomy spacing' },
-          ]}
-        />
+      {APPEARANCE.map((a) => (
+        <div className="grp" key={a.key} title={a.title}>
+          <span className="lbl">{a.label}</span>
+          <Seg<Level>
+            id={a.id} dataKey={a.dataKey} ariaLabel={a.title}
+            value={ui[a.key]} onChange={(v) => setUi({ [a.key]: v })}
+            options={LEVELS.map((l, n) => ({ value: l, label: l.toUpperCase(), title: a.names[n] }))}
+          />
+        </div>
+      ))}
+      <div className="appear-foot">
+        <span className="hint">Saved on this device</span>
+        <button className="iconbtn" id="appear-reset" disabled={!changed} onClick={() => setUi({ ...DEFAULT_APPEARANCE })}>
+          Reset
+        </button>
       </div>
     </div>
   );

@@ -11,7 +11,8 @@
 .rail {
   flex: none; z-index: 20;
   display: flex; flex-direction: column; align-items: center; gap: var(--sp-1);
-  width: 64px; padding: var(--sp-3) var(--sp-2);
+  /* grows with the text level: its labels are text */
+  width: calc(64px + (var(--ts) - 1) * 48px); padding: var(--sp-3) var(--sp-2);
   background: var(--color-chrome);
   border-right: 1px solid var(--color-line);
 }
@@ -70,7 +71,7 @@
 /* The views menu is the phone's navigation. Wherever the rail is on screen
    it was a second copy of it, one button to the left of the brand. */
 .top .iconbtn.burger { display: none; }
-.logo-btn { display: flex; align-items: center; background: none; border: none; padding: 0; font: inherit; color: inherit; }
+.logo-btn { display: flex; align-items: center; min-height: var(--tap); background: none; border: none; padding: 0; font: inherit; color: inherit; }
 .top-spacer { flex: 1; min-width: var(--sp-2); }
 
 .navlink {
@@ -124,7 +125,7 @@
   color: var(--color-faint); border-radius: var(--radius-xs); font-size: var(--fs-md); line-height: 1;
 }
 .filetabs .tab .x:hover { color: var(--color-danger); background: var(--color-danger-dim); }
-.filetabs .tab.plus { border-style: dashed; color: var(--color-faint); padding-inline: var(--sp-3); }
+.filetabs .tab.plus { border-style: dashed; color: var(--color-faint); padding-inline: var(--sp-3); min-width: var(--tap); justify-content: center; }
 .filetabs .tab.plus:hover { color: var(--color-text); border-style: solid; }
 
 /* ------------------------------------------------------------- main grid */
@@ -174,7 +175,7 @@
    A drawer for the readouts of the open study. The Details toggle slides it
    in; on a wide screen it takes its width from the viewport, so it never
    covers the image. */
-.main { --inspector-w: min(320px, 82vw); }
+.main { --inspector-w: min(calc(320px + (var(--ts) - 1) * 220px), 82vw); }
 .inspector {
   position: absolute; top: calc(var(--ctl-h) + var(--sp-4)); right: 0; bottom: 0; z-index: 14;
   width: var(--inspector-w);

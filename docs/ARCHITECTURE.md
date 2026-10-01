@@ -285,6 +285,19 @@ Screen height goes through `--screen-h` (`dvh`, falling back to `vh` on
 engines without it). Under a touch pointer, text fields are at least 16px,
 which stops iOS Safari zooming the page on focus.
 
+The Appearance panel (gear in the top bar) has five settings of five levels
+each, persisted on the device and described by one list, `lib/appearance.ts`:
+**Text** (every font size, `--ts`), **Layout** (spacing, `--sp`), **Controls**
+(button, dropdown and field height, 24 to 36px, `--ctl-base`), **Corners**
+(the radius ramp from square to very round, `--rs`) and **Image text** (the
+overlay over images and the text drawn on the canvases, `--ovs` and
+`IMAGE_TEXT_SCALE`). They are data attributes on `<html>`; `tokens.css`
+turns them into the scales, and widths that carry text (the rail, tool strip,
+drawer) grow with the text level. Touch keeps its 44px target floor at every
+level. `npm run audit:appearance` presses every level and checks that it
+moves its own setting only, that the smallest and largest of everything fit
+on every route, and that prefs persist and reset.
+
 980px is the mobile edge, shared with `lib/isMobile.ts`. Control height is
 26px under a mouse and 44px under a finger, set by one variable, so the
 touch-target floor and desktop density do not fight.
