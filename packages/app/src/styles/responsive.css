@@ -116,6 +116,7 @@
   /* the tool column is a desktop affordance; mobile tools live in the deck */
   .workarea { display: contents; }
   .toolstrip { display: none; }
+  .vp3d .tfpane, .vp3d .clippane { margin-left: 0; }
 
   /* The tab strip is one chip tall on a phone; it was costing ~6% of the
      screen to show a single filename. */

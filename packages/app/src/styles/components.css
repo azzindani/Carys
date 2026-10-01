@@ -138,6 +138,8 @@
 .chip.zoom:hover { background: var(--color-surface-3); border-color: var(--color-line-hover); }
 .chip.accent { color: var(--color-accent-hi); border-color: var(--color-line-accent); background: var(--color-accent-dim); }
 .chip.warn { color: var(--color-warn); border-color: var(--color-warn); background: var(--color-warn-dim); }
+.chip.ok { color: var(--color-ok); border-color: var(--color-ok); background: var(--color-ok-dim); }
+.chip.bad { color: var(--color-danger); border-color: var(--color-danger); background: var(--color-danger-dim); }
 
 /* filter chip (worklist): a toggle with a count, tinted when it filters */
 .fchip {
@@ -702,10 +704,23 @@ input[type="range"].styled::-moz-range-thumb {
 .seqstrip button:hover { color: var(--color-text); border-color: var(--color-line-hover); }
 .seqstrip button.on { color: var(--color-on-accent); background: var(--color-accent); border-color: var(--color-accent); }
 
+/* ---- report: a few cards, one column, a readable measure ---------------- */
+.report { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 720px; }
+.rcard {
+  padding: var(--sp-4) var(--sp-5); background: var(--color-surface-1);
+  border: 1px solid var(--color-line); border-radius: var(--radius-md);
+  display: flex; flex-direction: column; gap: var(--sp-3);
+}
+.rcard h2 {
+  display: flex; align-items: center; gap: var(--sp-3); margin: 0;
+  font-size: var(--fs-xs); font-weight: 600; color: var(--color-muted);
+}
+.rcard .kv { margin: 0; }
+
 .tfed-curve { cursor: crosshair; border-radius: var(--radius-sm); background: var(--color-sunken); }
 .tfed-stops { display: flex; gap: var(--sp-2); align-items: center; margin-top: var(--sp-3); flex-wrap: wrap; }
 .tfed-stop input[type="color"] {
-  width: 28px; height: 22px; padding: 0; background: transparent;
+  width: 32px; height: var(--tap); padding: 2px; background: transparent;
   border: 1px solid var(--color-line-strong); border-radius: var(--radius-xs); cursor: pointer;
 }
 
