@@ -9,6 +9,7 @@ import {
 import { EDUCATION_BADGE, validateKnowledgeEntry, type KnowledgeEntry } from '@carys/study';
 import { fitMeshToBox, parseMz3, renderMesh } from '@carys/render-cpu';
 import { ensureTerms } from '../lib/atlasTerms';
+import { STAGE_BG } from '../lib/palette';
 import { session } from '../lib/session';
 import { setAmbientStatus, setStatus } from '../lib/status';
 import { toast } from '../lib/toasts';
@@ -19,7 +20,7 @@ import { BodyAtlasView } from './BodyAtlasView';
 const W = 560, H = 560;
 /** Bone tint on near-black (quarantine: never the measurement grayscale). */
 const BONE: [number, number, number] = [224, 213, 184];
-const BG: [number, number, number] = [16, 16, 17];
+const BG = STAGE_BG;
 
 // Load + validate state per structure id (module-ephemeral, like cine
 // playing flags: the mesh itself is the cache, keyed by structure id).

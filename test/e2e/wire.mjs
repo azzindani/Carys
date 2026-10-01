@@ -322,7 +322,7 @@ try {
     let bg = 0, transparent = 0, other = 0;
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] === 0) transparent++;
-      else if (d[i] === 17 && d[i + 1] === 19 && d[i + 2] === 20) bg++;
+      else if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) bg++;
       else other++;
     }
     return { bg, transparent, other, ro: document.getElementById('ro-3d')?.textContent };
