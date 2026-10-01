@@ -308,7 +308,7 @@ every colour a palette colour (token values are read back from the page), and
 zero axe violations. A new view or panel adds a state there.
 
 980px is the mobile edge, shared with `lib/isMobile.ts`. Control height is
-26px under a mouse and 44px under a finger, set by one variable, so the
+28px under a mouse (24 to 36px by the Controls level) and 44px under a finger, set by one variable, so the
 touch-target floor and desktop density do not fight.
 
 The look is built for reading images, as a reading-room workstation is: a

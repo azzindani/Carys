@@ -10,7 +10,7 @@ tree. A suite that cannot run reports a **skip**, never a pass
 | Command | When | What it runs |
 |---|---|---|
 | `npx tsc -b` (`npm run build`) | Every change | Compiles every package, tests included |
-| `npm run ci` | Before every commit; CI on every push | `build` → `typecheck:app` → `lint` → `test:unit` → `test:markers` → `build:app` → `check:entry` → `audit:a11y` |
+| `npm run ci` | Before every commit; CI on every push | `build` → `typecheck:app` → `lint` → `test:unit` → `test:markers` → `build:app` → `check:entry` → `audit:a11y` → `audit:appearance` → `audit:ui` |
 | `npm run verify` | Before a release, with a complete sample set | `samples:check` → `build` → every unit suite with `CARYS_REQUIRE_SAMPLES=1` → `test:e2e` |
 | `npm run test:image` | CI on every push; after a deploy | The production image over HTTP and in Chromium ([DEPLOYMENT.md](DEPLOYMENT.md#verify-a-deployment)) |
 
@@ -23,6 +23,14 @@ These steps are part of `ci` as well:
 - **`audit:a11y`** runs axe-core against WCAG 2.1 A and AA over the eight
   routes at desktop and mobile widths. It also runs a keyboard audit (a full
   Tab cycle with visible focus and no traps) and a reduced-motion audit.
+- **`audit:appearance`** presses all 25 appearance levels (five settings, five
+  levels), checks each moves only its own setting, that the smallest and
+  largest of everything fit on every route, and that prefs persist and reset.
+- **`audit:ui`** drives about 70 route, pop-out, tool and panel states at
+  desktop, tablet and phone (`UIAUDIT_VP` takes seven screens, `UIAUDIT_ONLY`
+  a state-name regex, `UIAUDIT_SHOTS` a screenshot directory) and asserts
+  layout, design-token conformance, row alignment, target size and axe in each.
+  New views add a state in `test/e2e/uistates.mjs`.
 
 On a shared or CPU-limited machine, run the heavy ones with `nice -n 10`,
 one at a time.
@@ -103,6 +111,8 @@ passes.
 | `journeys.mjs` | `test:journeys` | Whole tasks end to end, not just reachability |
 | `geometry.mjs` | `test:geometry` | Radiological orientation, true proportions in millimetres, series grouping, and masks exported onto the source grid |
 | `a11y.mjs` | `audit:a11y` | WCAG 2.1 A and AA, keyboard and reduced motion (uses `keyboard.mjs`) |
+| `appearance.mjs` | `audit:appearance` | The five appearance settings x five levels, and their extremes on every route |
+| `uiaudit.mjs`, `uistates.mjs` | `audit:ui` | Every route, panel and tool state against the design system and axe |
 | `image.mjs` | `test:image` | The production image: the gate, headers, cache policy, MIME types and compression, then every route under the real CSP |
 | `pacs-verify.mjs` | `test:pacs` | The DICOMweb path against a mock server: add an endpoint, search, pull a series into the viewer |
 
