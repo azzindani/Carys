@@ -1,170 +1,204 @@
 /* ============================================================================
    Semantic component classes. Shared by every view, so a change here is a
    change everywhere — which is the point (CODING-STANDARDS §4).
-   Rounding always steps down one rung when a surface nests inside another.
+
+   The control system, in four rules:
+   1. One height. Buttons, selects, inputs, segmented controls and scrub
+      fields are all --ctl-h tall, so any mix of them sits on one line.
+   2. One shape. 6px corners on every control, 8px on panels.
+   3. Two states, told apart. SOLID accent = this is the active mode (the
+      selected tool, the pressed toggle, the chosen segment). TINTED accent =
+      an action you can take. Everything else is neutral.
+   4. Every button looks like a button. Only chrome that is plainly a
+      toolbar glyph (a pane's zoom and close, the top bar's icons) goes bare.
    ========================================================================= */
 
 /* ---------------------------------------------------------------- buttons */
 .iconbtn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
-  min-height: var(--ctl-h);
-  padding: 0 var(--sp-3);
-  border: 1px solid transparent;
+  min-height: var(--ctl-h); padding: 0 var(--sp-4);
+  border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-muted);
-  font-size: var(--fs-sm); font-weight: 500;
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-size: var(--fs-sm); font-weight: 500; line-height: 1;
   white-space: nowrap;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
               border-color var(--dur-fast) var(--ease);
 }
-.iconbtn:hover { background: var(--color-surface-3); color: var(--color-text); }
+.iconbtn:hover { background: var(--color-surface-3); border-color: var(--color-line-hover); }
 .iconbtn:active { background: var(--color-surface-4); }
-.iconbtn svg { width: 15px; height: 15px; flex: none; }
-.iconbtn.accent { color: var(--color-accent); }
-.iconbtn.accent:hover { background: var(--color-accent-dim); }
-/* On is a lighter surface and full-strength ink, the way every current
-   tool marks a pressed toggle; the accent stays for the one thing that is
-   selected, not every switch that is on. */
-.iconbtn.on, .iconbtn[aria-pressed="true"] {
-  color: var(--color-text);
-  background: var(--color-surface-3);
-  border-color: var(--color-line-strong);
-}
-.iconbtn.danger:hover { color: var(--color-danger); background: var(--color-danger-dim); }
-/* `<label for=…>` fronting a file input is an action, not a toggle, so it
-   carries a visible edge — otherwise "Open file" reads as static text. */
-label.iconbtn { background: var(--color-surface-2); border-color: var(--color-line); }
-label.iconbtn:hover { border-color: var(--color-line-strong); }
+.iconbtn svg { width: 16px; height: 16px; flex: none; }
 
-/* solid call-to-action (worklist open, primary confirms) */
+/* An action worth finding (a demo, an export): tinted, never solid. */
+.iconbtn.accent {
+  color: var(--color-accent-hi); background: var(--color-accent-dim);
+  border-color: var(--color-line-accent);
+}
+.iconbtn.accent:hover { background: var(--color-line-accent); border-color: var(--color-accent); color: var(--color-text); }
+
+/* On: solid. The one thing here that is the active mode. */
+.iconbtn.on, .iconbtn[aria-pressed="true"] {
+  color: var(--color-on-accent); background: var(--color-accent);
+  border-color: var(--color-accent); font-weight: 600;
+}
+.iconbtn.on:hover, .iconbtn[aria-pressed="true"]:hover { background: var(--color-accent-hi); border-color: var(--color-accent-hi); }
+.iconbtn.danger:hover { color: var(--color-danger); background: var(--color-danger-dim); border-color: var(--color-danger); }
+
+/* Toolbar glyphs go bare: they are in a strip whose edge already frames them,
+   and a box round each of three tiny buttons is noise. They still show a
+   hover and a pressed state. */
+:is(.pane-head, .vrail, .top, .vptools) .iconbtn {
+  background: transparent; border-color: transparent; color: var(--color-muted);
+  min-width: var(--ctl-h); padding: 0 var(--sp-2);
+}
+:is(.pane-head, .vrail, .top, .vptools) .iconbtn:hover { background: var(--color-surface-3); color: var(--color-text); border-color: transparent; }
+:is(.pane-head, .vrail, .top, .vptools) .iconbtn:active { background: var(--color-surface-4); }
+:is(.pane-head, .vrail, .top, .vptools) .iconbtn.on { color: var(--color-on-accent); background: var(--color-accent); }
+
+/* solid call-to-action (primary confirms) */
 .btn-primary {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
   min-height: var(--ctl-h); padding: 0 var(--sp-5);
-  border: none; border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  font-size: var(--fs-sm); font-weight: 600;
+  border: 1px solid var(--color-accent); border-radius: var(--radius-sm);
+  background: var(--color-accent); color: var(--color-on-accent);
+  font-size: var(--fs-sm); font-weight: 600; line-height: 1;
   transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
-.btn-primary:hover { background: var(--color-accent-hi); }
+.btn-primary:hover { background: var(--color-accent-hi); border-color: var(--color-accent-hi); }
 .btn-primary:active { transform: translateY(1px); }
 
+/* the same neutral button, for the places that spell it as a label */
 .btn-ghost {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
   min-height: var(--ctl-h); padding: 0 var(--sp-4);
   border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
   background: var(--color-surface-2); color: var(--color-text);
-  font-size: var(--fs-sm); font-weight: 500;
+  font-size: var(--fs-sm); font-weight: 500; line-height: 1;
   transition: all var(--dur-fast) var(--ease);
 }
-.btn-ghost:hover { color: var(--color-text); background: var(--color-surface-3); border-color: var(--color-surface-4); }
+.btn-ghost:hover { background: var(--color-surface-3); border-color: var(--color-line-hover); }
 
-/* --------------------------------------------------------- segmented set */
-/* Inset track, raised thumb: the control current tools use for a mode. */
+/* A run of buttons that act together (Undo / Clear): one object with shared
+   edges, not two boxes with a gap. */
+.btns { display: inline-flex; align-items: stretch; }
+.btns > .iconbtn { border-radius: 0; }
+.btns > .iconbtn + .iconbtn { margin-left: -1px; }
+.btns > .iconbtn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.btns > .iconbtn:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.btns > .iconbtn:only-child { border-radius: var(--radius-sm); }
+.btns > .iconbtn:hover, .btns > .iconbtn:focus-visible { position: relative; z-index: 1; }
+
+/* --------------------------------------------------------- segmented set
+   A track with a solid thumb on the chosen option. The track is the control
+   height; the options inside it are 6px shorter, so the thumb sits 2px from
+   the track on every side. */
 .seg {
-  display: inline-flex; align-items: stretch; gap: 1px;
-  padding: 2px;
+  display: inline-flex; align-items: stretch; gap: 2px;
+  min-height: var(--ctl-h); padding: 2px;
   background: var(--color-sunken);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
 }
 .seg button {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: calc(var(--ctl-h) - 6px); padding: 0 var(--sp-3);
   border: none; background: transparent; color: var(--color-muted);
-  min-height: calc(var(--ctl-h) - 6px);
-  padding: 0 var(--sp-3);
-  /* concentric inside the 2px track */
-  border-radius: calc(var(--radius-md) - 2px);
-  font-size: var(--fs-sm); font-weight: 500; white-space: nowrap;
+  /* concentric inside the 2px padding and 1px border of the track */
+  border-radius: calc(var(--radius-sm) - 3px);
+  font-size: var(--fs-sm); font-weight: 500; line-height: 1; white-space: nowrap;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
-.seg button:hover { color: var(--color-text); background: var(--color-surface-2); }
+.seg button:hover { color: var(--color-text); background: var(--color-surface-3); }
 .seg button.on, .seg button[aria-pressed="true"] {
-  background: var(--color-surface-3);
-  color: var(--color-text);
-  box-shadow: var(--shadow-1);
+  background: var(--color-accent); color: var(--color-on-accent); font-weight: 600;
 }
-.seg button.on[data-accent], .seg button[aria-pressed="true"][data-accent] { color: var(--color-accent); }
+.seg button.on[data-accent], .seg button[aria-pressed="true"][data-accent] { color: var(--color-on-accent); }
 
 /* ------------------------------------------------------------------ chips
-   Readouts. Quiet tags in the UI face with tabular figures, so numbers
-   line up without the whole bar turning into a terminal. */
+   Readouts: outlined, flat, not clickable. A readout must never be mistaken
+   for a button, so it has no fill, only a hairline. */
 .chip {
   display: inline-flex; align-items: center; gap: var(--sp-1);
   /* A readout is not a tap target: holding chips at the 44px touch floor
      made every phone screen a stack of giant boxes. Interactive chips
      (.chip.zoom) take the floor below; plain readouts stay compact. */
-  min-height: 24px; padding: 2px var(--sp-3);
-  border: 1px solid transparent;
+  min-height: 22px; padding: 0 var(--sp-3);
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-xs);
-  background: var(--color-surface-2);
+  background: transparent;
   color: var(--color-muted);
-  font-size: var(--fs-xs); font-weight: 500; font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xs); font-weight: 500; line-height: 1;
   white-space: nowrap;
 }
-.chip.zoom { margin-left: auto; cursor: pointer; transition: all var(--dur-fast) var(--ease); }
-.chip.zoom:hover { color: var(--color-text); border-color: var(--color-line-strong); }
-.chip.accent { color: var(--color-accent); border-color: var(--color-line-accent); background: var(--color-accent-dim); }
-.chip.warn { color: var(--color-warn); background: var(--color-warn-dim); }
+.chip.zoom {
+  margin-left: auto; cursor: pointer; background: var(--color-surface-2); border-color: var(--color-line-strong);
+  color: var(--color-text); transition: all var(--dur-fast) var(--ease);
+}
+.chip.zoom:hover { background: var(--color-surface-3); border-color: var(--color-line-hover); }
+.chip.accent { color: var(--color-accent-hi); border-color: var(--color-line-accent); background: var(--color-accent-dim); }
+.chip.warn { color: var(--color-warn); border-color: var(--color-warn); background: var(--color-warn-dim); }
 
-/* filter chip (worklist) */
+/* filter chip (worklist): a toggle with a count, tinted when it filters */
 .fchip {
   display: inline-flex; align-items: center; gap: var(--sp-2);
   min-height: var(--ctl-h); padding: 0 var(--sp-3);
-  background: var(--color-surface-1); border: 1px solid var(--color-line);
+  background: transparent; border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm); color: var(--color-muted);
-  font-size: var(--fs-sm); font-weight: 500;
+  font-size: var(--fs-sm); font-weight: 500; line-height: 1;
   transition: all var(--dur-fast) var(--ease);
 }
-.fchip span { font-size: var(--fs-2xs); color: var(--color-faint); font-variant-numeric: tabular-nums; }
-.fchip:hover { color: var(--color-text); border-color: var(--color-line-strong); }
-.fchip.on { color: var(--color-text); border-color: var(--color-line-strong); background: var(--color-surface-3); }
-.fchip.on span { color: var(--color-muted); }
+.fchip span { font-size: var(--fs-xs); color: var(--color-faint); }
+.fchip:hover { color: var(--color-text); border-color: var(--color-line-hover); background: var(--color-surface-2); }
+.fchip.on { color: var(--color-accent-hi); border-color: var(--color-line-accent); background: var(--color-accent-dim); }
+.fchip.on span { color: var(--color-accent-hi); }
 
 /* ------------------------------------------------------------ field label
-   Sentence case at reading size. Letter-spaced 9.5px capitals were half of
-   every toolbar and the hardest text in the app to read. */
+   Sentence case at reading size, one step quieter than the control it
+   names. */
 .lbl, .dock label.lbl, .dock .lbl {
   font-size: var(--fs-xs); font-weight: 500; color: var(--color-faint);
   white-space: nowrap;
 }
 
-/* ------------------------------------------------------------------ dock */
-/* Control bar: a panel, not a floating glass capsule. */
+/* ------------------------------------------------------------------ dock
+   A toolbar panel, full width, so every route's controls start and end on
+   the same edges as the panes under them. Groups wrap as whole units. */
 .dock {
   display: flex; align-items: center; flex-wrap: wrap;
-  gap: var(--sp-1);
-  padding: var(--sp-2);
-  width: fit-content; max-width: 100%;
+  gap: var(--sp-3) var(--sp-5);
+  padding: var(--sp-3) var(--sp-4);
+  width: 100%; max-width: 100%;
   background: var(--color-surface-1);
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   color: var(--color-muted); font-size: var(--fs-sm);
 }
-.dock .grp { display: flex; align-items: center; gap: var(--sp-2); padding: 0 var(--sp-1); }
-.dock .sep { width: 1px; align-self: stretch; background: var(--color-line); margin: var(--sp-1) var(--sp-1); }
+.dock .grp { display: flex; align-items: center; gap: var(--sp-2); }
+/* Groups are told apart by space, not by rules: a divider in a toolbar that
+   wraps ends up at the end of a line, pointing at nothing. The pop-outs and
+   the tool strip, which stack, keep their horizontal rules (viewport.css). */
+.dock .sep { display: none; }
 /* A dock that carries a caption or a list is a panel: each of those takes a
    row of its own. As plain flex items they sat beside whatever came before —
    the cohort's source line floated between two case rows, mid-panel. */
-.dock > .hint, .dock > dl { flex: 1 1 100%; min-width: 0; padding: 0 var(--sp-1); }
-.dock > dl.kv { margin-top: 0; }
-/* a divider with nothing after it divides nothing */
-.dock > .sep:last-child { display: none; }
+.dock > .hint, .dock > dl { flex: 1 1 100%; min-width: 0; }
+.dock > dl.kv { margin: 0; }
 
 /* ----------------------------------------------------------------- panes */
 .pane {
   display: flex; flex-direction: column; min-width: 0;
   background: var(--color-surface-1);
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
-/* Viewport header: a thin strip carrying the view's name and its own
-   controls, on the pane's own surface with a hairline under it. */
+/* Viewport header: one line carrying the view's name, its readouts and its
+   own controls, with a hairline under it. */
 .pane-head {
-  display: flex; align-items: center; gap: var(--sp-2); flex: none;
-  min-height: calc(var(--ctl-h) + var(--sp-2));
-  padding: 0 var(--sp-2) 0 var(--sp-3);
+  display: flex; align-items: center; gap: var(--sp-3); flex: none;
+  min-height: calc(var(--ctl-h) + var(--sp-3));
+  padding: 0 var(--sp-2) 0 var(--sp-4);
   font-size: var(--fs-sm);
   border-bottom: 1px solid var(--color-line);
 }
@@ -184,19 +218,18 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
 .pane-body { padding-block: var(--sp-3); min-width: 0; }
 .pane-body > .hint:first-child { margin: 0; }
 
-/* the imaging surface itself — see viewport.css for the 3D-tool treatment */
+/* The imaging surface itself, true black and edge to edge: the pane's own
+   rounded corners clip it, so no frame of panel grey shows around an image.
+   See viewport.css for the viewer's treatment. */
 .stage {
   position: relative; overflow: hidden;
-  margin: var(--sp-1);
   background: var(--color-stage);
-  /* concentric with .pane: inset by --sp-1, so radius is R - sp-1 */
-  border-radius: calc(var(--radius-lg) - var(--sp-1));
 }
-.stage canvas { display: block; width: 100%; height: auto; border-radius: calc(var(--radius-lg) - var(--sp-1)); cursor: crosshair; }
+.stage canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
 .pane .stage canvas.tall { width: auto; max-width: 100%; max-height: var(--tall-canvas-max-h); margin: 0 auto; }
 
 .pane.loading .stage::after {
-  content: ""; position: absolute; inset: 0; border-radius: calc(var(--radius-lg) - var(--sp-1));
+  content: ""; position: absolute; inset: 0;
   background: linear-gradient(100deg, transparent 32%, var(--color-surface-2) 50%, transparent 68%);
   background-size: 200% 100%; animation: shimmer 1.3s infinite;
 }
@@ -206,29 +239,31 @@ label.iconbtn:hover { border-color: var(--color-line-strong); }
 select.dark {
   appearance: none; -webkit-appearance: none;
   min-height: var(--ctl-h);
-  padding: var(--sp-2) calc(var(--sp-7) + var(--sp-1)) var(--sp-2) var(--sp-4);
-  background: var(--color-surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M1 1l3.5 3.5L8 1' stroke='%23adaba1' fill='none' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right var(--sp-4) center;
-  border: 1px solid var(--color-line); border-radius: var(--radius-sm);
-  color: var(--color-text); font-size: var(--fs-sm); font-weight: 500;
-  max-width: 220px;
-  transition: border-color var(--dur-fast) var(--ease);
+  padding: 0 calc(var(--sp-7) + var(--sp-1)) 0 var(--sp-4);
+  background: var(--color-surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394a0b3' fill='none' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right var(--sp-4) center;
+  border: 1px solid var(--color-line-strong); border-radius: var(--radius-sm);
+  color: var(--color-text); font-size: var(--fs-sm); font-weight: 500; line-height: 1;
+  max-width: 240px; text-overflow: ellipsis;
+  transition: border-color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
 }
-select.dark:hover { border-color: var(--color-line-strong); }
-select.dark:focus-visible { border-color: var(--color-accent); }
+select.dark:hover { border-color: var(--color-line-hover); background-color: var(--color-surface-3); }
+select.dark:focus-visible { border-color: var(--color-accent); outline-offset: 0; }
+select.dark option { background: var(--color-surface-2); color: var(--color-text); }
 
 .urlinput, .wl-search, .textinput {
   min-height: var(--ctl-h);
-  padding: 0 var(--sp-3);
+  padding: 0 var(--sp-4);
   background: var(--color-sunken);
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   color: var(--color-text);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-sm); line-height: 1;
   outline: none;
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
-.urlinput { font-family: var(--font-mono); width: 260px; }
+.urlinput { font-family: var(--font-mono); font-size: var(--fs-xs); width: 260px; }
 .wl-search { width: 300px; }
+.urlinput:hover, .wl-search:hover, .textinput:hover { border-color: var(--color-line-hover); }
 .urlinput::placeholder, .wl-search::placeholder, .textinput::placeholder { color: var(--color-faint); }
 .urlinput:focus, .wl-search:focus, .textinput:focus {
   border-color: var(--color-accent); box-shadow: var(--ring-accent);
@@ -237,34 +272,38 @@ select.dark:focus-visible { border-color: var(--color-accent); }
 .chk {
   display: inline-flex; align-items: center; gap: var(--sp-2);
   min-height: var(--ctl-h);
-  font-size: var(--fs-sm); color: var(--color-muted);
+  font-size: var(--fs-sm); color: var(--color-text); font-weight: 500;
   cursor: pointer;
 }
-.chk input { accent-color: var(--color-accent); width: 18px; height: 18px; }
+.chk input { accent-color: var(--color-accent); width: 16px; height: 16px; margin: 0; }
 
-/* ---- scrub field: the 3D-tool numeric control -------------------------
-   A rectangle carrying its own label and value, filled to the current
-   proportion, dragged horizontally. The native range input sits on top at
-   full size and stays keyboard-operable — the wire suite focuses these and
-   sends real arrow keys. */
+/* ---- scrub field: the numeric slider ---------------------------------
+   One box carrying its label on the left and its value on the right, filled
+   to the current proportion, with a bright line along the bottom edge. The
+   native range input sits on top at full size and stays keyboard-operable —
+   the wire suite focuses these and sends real arrow keys. */
 .field {
   position: relative; display: inline-flex; align-items: center;
-  height: var(--field-h); min-width: 104px; flex: 0 1 auto;
+  height: var(--field-h); min-width: 112px; flex: 0 1 auto;
   padding: 0 var(--sp-3);
   background: var(--color-sunken);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
   overflow: hidden; cursor: ew-resize;
   transition: border-color var(--dur-fast) var(--ease);
 }
-.field:hover { border-color: var(--color-line-strong); }
-/* Solid fill behind the text, no edge rule — a 1px accent line landed
-   mid-label and read as a rendering glitch rather than a value. */
+.field:hover { border-color: var(--color-line-hover); }
 .field-fill {
   position: absolute; left: 0; top: 0; bottom: 0; width: var(--pct, 0%);
-  background: var(--color-surface-3);
+  background: var(--color-accent-dim);
   pointer-events: none;
   transition: width var(--dur-fast) linear;
+}
+/* the value as a line too, along the bottom edge: exact at a glance, and
+   clear of the label and the figure that sit on the tint */
+.field-fill::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: var(--color-accent);
 }
 .field-lbl {
   position: relative; z-index: 1; flex: 1; min-width: 0;
@@ -274,8 +313,8 @@ select.dark:focus-visible { border-color: var(--color-accent); }
 }
 .field-val {
   position: relative; z-index: 1; flex: none; padding-left: var(--sp-3);
-  font-size: var(--fs-xs); font-weight: 500; color: var(--color-text);
-  font-variant-numeric: tabular-nums; pointer-events: none;
+  font-size: var(--fs-xs); font-weight: 600; color: var(--color-text);
+  pointer-events: none;
 }
 /* the input itself is the whole field, invisible but present and focusable */
 .field input[type="range"].styled {
@@ -293,110 +332,119 @@ select.dark:focus-visible { border-color: var(--color-accent); }
 .field input[type="range"].styled::-moz-range-thumb { width: 2px; height: 100%; background: transparent; border: none; border-radius: 0; }
 .field:focus-within { border-color: var(--color-accent); box-shadow: var(--ring-accent); }
 
-/* plain range (viewport side rails) — knob reads as a control */
+/* plain range (viewport side rails): a 4px track, a round accent thumb */
 input[type="range"] { accent-color: var(--color-accent); }
 input[type="range"].styled {
   -webkit-appearance: none; appearance: none;
   height: var(--ctl-h); background: transparent; cursor: pointer;
 }
 input[type="range"].styled::-webkit-slider-runnable-track {
-  height: 3px; background: var(--color-surface-4); border-radius: var(--radius-pill);
+  height: 4px; background: var(--color-surface-4); border-radius: var(--radius-pill);
 }
 input[type="range"].styled::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 13px; height: 13px; margin-top: -5px;
-  border-radius: 50%; background: var(--color-text); border: none;
-  box-shadow: var(--shadow-2);
+  -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px;
+  border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-text);
+  box-shadow: var(--shadow-1);
   transition: transform var(--dur-fast) var(--ease);
 }
-input[type="range"].styled:hover::-webkit-slider-thumb { transform: scale(1.12); }
-input[type="range"].styled::-moz-range-track { height: 3px; background: var(--color-surface-4); border-radius: var(--radius-pill); }
+input[type="range"].styled:hover::-webkit-slider-thumb { transform: scale(1.15); }
+input[type="range"].styled::-moz-range-track { height: 4px; background: var(--color-surface-4); border-radius: var(--radius-pill); }
 input[type="range"].styled::-moz-range-thumb {
-  width: 13px; height: 13px; border-radius: 50%; background: var(--color-text); border: none;
-  box-shadow: var(--shadow-2);
+  width: 10px; height: 10px; border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-text);
+  box-shadow: var(--shadow-1);
 }
 
 /* switch — sized by three variables so touch can scale it in one place */
 .switch {
-  --sw-w: 36px; --sw-h: 20px; --sw-thumb: 14px;
+  --sw-w: 34px; --sw-h: 20px; --sw-thumb: 14px;
   position: relative; width: var(--sw-w); height: var(--sw-h); flex: none; cursor: pointer;
 }
 .switch input { opacity: 0; width: 100%; height: 100%; position: absolute; margin: 0; cursor: pointer; }
 .switch .tr {
-  position: absolute; inset: 0; background: var(--color-sunken);
+  position: absolute; inset: 0; background: var(--color-surface-3);
   border: 1px solid var(--color-line-strong); border-radius: var(--radius-pill);
   transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 .switch .tr::after {
   content: ""; position: absolute; top: 2px; left: 2px;
   width: var(--sw-thumb); height: var(--sw-thumb);
-  border-radius: 50%; background: var(--color-faint);
+  border-radius: 50%; background: var(--color-muted);
   transition: transform var(--dur) var(--ease), background var(--dur) var(--ease);
 }
-.switch input:checked + .tr { background: var(--color-accent-dim); border-color: var(--color-accent); }
+.switch:hover .tr { border-color: var(--color-line-hover); }
+.switch input:checked + .tr { background: var(--color-accent); border-color: var(--color-accent); }
 .switch input:checked + .tr::after {
   transform: translateX(calc(var(--sw-w) - var(--sw-thumb) - 6px));
-  background: var(--color-accent);
+  background: var(--color-text);
 }
 .switch input:focus-visible + .tr { box-shadow: var(--ring-accent); }
 
-/* ------------------------------------------------------------ data lists */
-/* The value column keeps a floor: with a bare `auto 1fr` a long label ate
-   the row and the value collapsed to 15px, wrapping its buttons one
-   character per line. */
-.kv { display: grid; grid-template-columns: minmax(0, auto) minmax(96px, 1fr); gap: var(--sp-2) var(--sp-4); font-size: var(--fs-xs); margin: var(--sp-3) 0 0; }
+/* ------------------------------------------------------------ data lists
+   A label and its value. In a panel the value sits beside its label, in a
+   column of readable width: a value pushed to the far edge of a 1300px
+   panel is too far from its label to read as one row. The details drawer,
+   which is narrow, sets its values to the right instead. */
+.kv {
+  display: grid; grid-template-columns: minmax(96px, 200px) minmax(0, 1fr);
+  gap: var(--sp-2) var(--sp-5); font-size: var(--fs-sm); margin: var(--sp-3) 0 0;
+  max-width: 880px;
+}
 .kv dt, .kv dd { min-width: 0; }
 .kv dt { color: var(--color-faint); }
 /* a segment's colour in the 2D panes (F14), before its row's name */
 .lblswatch { display: inline-block; width: var(--sp-2); height: var(--sp-2); margin-right: var(--sp-1); border-radius: 50%; vertical-align: middle; }
 .kv dd {
-  margin: 0; text-align: right; color: var(--color-muted);
-  font-size: var(--fs-xs); font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+  margin: 0; color: var(--color-text);
+  font-size: var(--fs-sm); overflow-wrap: anywhere;
 }
 /* Spin buttons ate a third of the field, so "1.000" showed as "1.0(". The
    arrow keys still step the value. */
 .kv input.cal { appearance: textfield; -moz-appearance: textfield; }
 .kv input.cal::-webkit-inner-spin-button, .kv input.cal::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .kv input.cal {
-  width: 5em; padding: 2px var(--sp-2); margin-left: var(--sp-1); min-height: 26px;
-  background: var(--color-surface-3); border: 1px solid var(--color-line-strong);
-  border-radius: var(--radius-2xs); color: var(--color-muted); font: inherit;
+  width: 5em; padding: 0 var(--sp-2); margin-left: var(--sp-1); min-height: 24px;
+  background: var(--color-sunken); border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-xs); color: var(--color-text); font: inherit; font-size: var(--fs-xs);
 }
 .mrow { display: contents; }
-.mrow dd { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-2); flex-wrap: wrap; }
+.mrow dd { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 /* A label and a value are one line of a table: the label sits on the
    value's first line, not above it (a row of 24px links stood 5px lower
    than its label). */
 .kv dt { align-self: baseline; }
 .kv dd { align-self: baseline; }
 
-/* Readouts are right-aligned monospace numbers. Prose is not: a story, a
-   glossary or a quiz set that way read as ragged right-aligned code. */
+/* The drawer's property list: narrow, so label left and value right. */
+.inspector .kv { grid-template-columns: minmax(0, auto) minmax(96px, 1fr); max-width: none; gap: var(--sp-2) var(--sp-4); font-size: var(--fs-xs); }
+.inspector .kv dd { text-align: right; justify-content: flex-end; color: var(--color-muted); font-size: var(--fs-xs); }
+
+/* Prose is not a readout: a story, a glossary, a quiz. Full size, ink
+   colour, left aligned, wrapping at a readable measure. */
 .kv.prose dd {
   text-align: left; justify-content: flex-start;
-  font-family: var(--font-sans); font-size: var(--fs-sm); color: var(--color-text);
+  color: var(--color-text); font-size: var(--fs-md); line-height: 1.55;
   overflow-wrap: break-word;
 }
 /* numbered steps: a narrow counter column, the step beside it */
 .kv.steps { grid-template-columns: auto minmax(0, 1fr); column-gap: var(--sp-3); }
-.kv.steps dt { color: var(--color-faint); font-variant-numeric: tabular-nums; }
+.kv.steps dt { color: var(--color-faint); font-variant-numeric: tabular-nums; font-weight: 600; }
 /* a question over its answers, full width */
 .kv.stack { grid-template-columns: minmax(0, 1fr); row-gap: var(--sp-2); }
-.kv.stack dt { color: var(--color-text); font-size: var(--fs-sm); font-weight: 500; }
-.kv.stack dt:not(:first-child) { margin-top: var(--sp-4); }
+.kv.stack dt { color: var(--color-text); font-size: var(--fs-md); font-weight: 600; }
+.kv.stack dt:not(:first-child) { margin-top: var(--sp-5); }
 .kv.stack dd .hint { flex: 1 1 100%; }
 
-/* Quiz answers. They were bare text links, and a wrong pick drew nothing
-   at all: the only way to learn you had answered was the status line. */
+/* Quiz answers, as buttons, with the verdict on the one picked. */
 .opt {
   display: inline-flex; align-items: center; text-align: left;
-  min-height: var(--tap); padding: var(--sp-1) var(--sp-4);
-  background: var(--color-surface-2); border: 1px solid var(--color-line);
-  border-radius: var(--radius-sm); color: var(--color-muted);
+  min-height: var(--ctl-h); padding: var(--sp-1) var(--sp-4);
+  background: var(--color-surface-2); border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm); color: var(--color-text);
   font: inherit; font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: 500;
   transition: all var(--dur-fast) var(--ease);
 }
-.opt:hover { color: var(--color-text); border-color: var(--color-line-strong); background: var(--color-surface-3); }
-.opt[aria-pressed="true"] { color: var(--color-text); border-color: var(--color-line-strong); background: var(--color-surface-3); }
+.opt:hover { border-color: var(--color-line-hover); background: var(--color-surface-3); }
+.opt[aria-pressed="true"] { border-color: var(--color-line-hover); background: var(--color-surface-3); }
 .opt.right { color: var(--color-ok); border-color: var(--color-ok); background: var(--color-ok-dim); }
 .opt.wrong { color: var(--color-danger); border-color: var(--color-danger); background: var(--color-danger-dim); }
 /* colour is not the only cue: a mark survives colour blindness and the
@@ -405,7 +453,7 @@ input[type="range"].styled::-moz-range-thumb {
 .opt.wrong::before { content: "✗"; margin-right: var(--sp-2); }
 .mx {
   background: transparent; border: 1px solid transparent; color: var(--color-faint);
-  font-size: var(--fs-3xs); padding: 2px var(--sp-2); border-radius: var(--radius-2xs);
+  font-size: var(--fs-xs); min-height: 22px; padding: 0 var(--sp-2); border-radius: var(--radius-xs);
   transition: all var(--dur-fast) var(--ease);
 }
 .mx:hover { color: var(--color-danger); background: var(--color-danger-dim); }
@@ -416,15 +464,15 @@ input[type="range"].styled::-moz-range-thumb {
 }
 .bigstat small { font-family: var(--font-sans); font-size: var(--fs-sm); font-weight: 500; color: var(--color-faint); letter-spacing: 0; }
 
-.meter { height: 5px; background: var(--color-surface-3); border-radius: var(--radius-pill); margin-top: var(--sp-4); overflow: hidden; }
+.meter { height: 4px; background: var(--color-surface-3); border-radius: var(--radius-pill); margin-top: var(--sp-4); overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--color-accent); border-radius: var(--radius-pill); transition: width var(--dur) var(--ease); }
 
-.hint { color: var(--color-faint); font-size: var(--fs-xs); }
+.hint { color: var(--color-faint); font-size: var(--fs-xs); line-height: 1.5; }
 .hint kbd, .pal-foot kbd, .kbd-btn kbd {
   white-space: nowrap;
   font-family: var(--font-mono); font-size: var(--fs-3xs); font-weight: 500;
   background: var(--color-surface-3); border: 1px solid var(--color-line-strong);
-  border-radius: var(--radius-2xs); padding: 2px var(--sp-2); color: var(--color-muted);
+  border-radius: var(--radius-xs); padding: 1px var(--sp-2); color: var(--color-muted);
 }
 
 /* --------------------------------------------------------------- toasts */
@@ -435,7 +483,7 @@ input[type="range"].styled::-moz-range-thumb {
   pointer-events: none;
 }
 .toast {
-  padding: var(--sp-3) var(--sp-6);
+  padding: var(--sp-3) var(--sp-5);
   background: var(--color-surface-3); border: 1px solid var(--color-line-strong);
   border-left-width: 3px;
   border-radius: var(--radius-md); color: var(--color-text);
@@ -447,14 +495,13 @@ input[type="range"].styled::-moz-range-thumb {
 /* A coloured edge carries the severity without an icon set to maintain. */
 .toast[data-sev="ok"] { border-left-color: var(--color-ok); }
 .toast[data-sev="warn"] { border-left-color: var(--color-warn); }
-.toast[data-sev="error"] { border-left-color: var(--color-danger); background: var(--color-danger-dim); }
+.toast[data-sev="error"] { border-left-color: var(--color-danger); background: var(--color-surface-3); }
 
 /* --------------------------------------------------------- command palette */
 .pal-wrap {
   position: fixed; inset: 0; z-index: 50;
   display: flex; align-items: flex-start; justify-content: center; padding-top: 11vh;
   background: var(--color-scrim);
-  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
   animation: fade-in var(--dur) var(--ease);
 }
 @keyframes fade-in { from { opacity: 0; } }
@@ -469,7 +516,7 @@ input[type="range"].styled::-moz-range-thumb {
 }
 @keyframes pal-in { from { opacity: 0; transform: translateY(-8px) scale(0.985); } }
 .pal input {
-  width: 100%; padding: var(--sp-5) var(--sp-6);
+  width: 100%; padding: var(--sp-4) var(--sp-5);
   background: transparent; border: none; outline: none;
   color: var(--color-text); font-size: var(--fs-lg);
   border-bottom: 1px solid var(--color-line);
@@ -478,16 +525,17 @@ input[type="range"].styled::-moz-range-thumb {
 .pal ul { list-style: none; margin: 0; padding: var(--sp-2); max-height: 340px; overflow-y: auto; }
 .pal li {
   display: flex; align-items: center; gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-4);
+  padding: var(--sp-2) var(--sp-4);
+  min-height: var(--ctl-h);
   /* concentric inside .pal's --sp-2 list padding */
   border-radius: calc(var(--radius-xl) - var(--sp-2));
   font-size: var(--fs-md); color: var(--color-muted); cursor: pointer;
 }
-.pal li.sel, .pal li:hover { background: var(--color-surface-3); color: var(--color-text); }
+.pal li.sel, .pal li:hover { background: var(--color-accent-dim); color: var(--color-text); }
 .pal li span { margin-left: auto; color: var(--color-faint); font-size: var(--fs-xs); }
 .pal-foot {
-  display: flex; gap: var(--sp-5); padding: var(--sp-3) var(--sp-6);
-  border-top: 1px solid var(--color-line); color: var(--color-faint); font-size: var(--fs-2xs);
+  display: flex; gap: var(--sp-5); padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--color-line); color: var(--color-faint); font-size: var(--fs-xs);
 }
 
 /* ---------------------------------------------------------------- popovers */
@@ -506,28 +554,28 @@ input[type="range"].styled::-moz-range-thumb {
    under the file-tab row (z 20) — the appearance panel's top row of buttons
    was unclickable where the two overlap. */
 .pop-layer { position: relative; z-index: 45; }
-.appear { min-width: 268px; }
+.appear { min-width: 280px; }
 .appear .grp { display: flex; align-items: center; gap: var(--sp-3); }
-.appear .lbl { min-width: 46px; }
+.appear .lbl { min-width: 48px; }
 .appear .seg { flex: 1; }
 .appear .seg button { flex: 1; justify-content: center; padding-inline: 0; }
 .navdrop { gap: 2px; min-width: 216px; padding: var(--sp-2); }
 .navdrop button {
   display: flex; align-items: center; gap: var(--sp-3); width: 100%;
-  min-height: var(--tap); padding: var(--sp-3) var(--sp-4);
+  min-height: var(--tap); padding: var(--sp-2) var(--sp-4);
   text-align: left; background: transparent; border: none;
   /* concentric inside .navdrop's --sp-2 padding */
   border-radius: calc(var(--radius-lg) - var(--sp-2)); color: var(--color-text);
   font-size: var(--fs-md); font-weight: 500;
 }
 .navdrop button:hover { background: var(--color-surface-3); }
-.navdrop button[data-on="true"] { color: var(--color-accent); background: var(--color-accent-dim); }
+.navdrop button[data-on="true"] { color: var(--color-accent-hi); background: var(--color-accent-dim); }
 
 /* --------------------------------------------------------------- tooltip */
 .tip {
   padding: var(--sp-2) var(--sp-3);
   background: var(--color-surface-4);
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--color-line-hover);
   border-radius: var(--radius-sm);
   color: var(--color-text);
   font-size: var(--fs-xs); font-weight: 500; line-height: 1.3;
@@ -546,24 +594,24 @@ input[type="range"].styled::-moz-range-thumb {
 }
 .route-stub h1 { font-family: var(--font-display); font-size: var(--fs-2xl); margin-bottom: var(--sp-3); }
 .route-stub p { color: var(--color-muted); }
-.route-stub .btn-primary { margin-top: var(--sp-6); }
+.route-stub .btn-primary { margin-top: var(--sp-5); }
 
 .seqstrip { display: flex; flex-wrap: wrap; gap: var(--sp-1); padding: var(--sp-4); max-height: 480px; overflow: auto; }
 .seqstrip button {
-  min-height: 28px; padding: var(--sp-1) var(--sp-2);
-  font-family: var(--font-mono); font-size: var(--fs-3xs); font-weight: 500;
+  min-height: 24px; padding: 0 var(--sp-2);
+  font-family: var(--font-mono); font-size: var(--fs-3xs); font-weight: 500; line-height: 1;
   color: var(--color-muted); background: var(--color-surface-2);
-  border: 1px solid var(--color-line); border-radius: var(--radius-2xs);
+  border: 1px solid var(--color-line); border-radius: var(--radius-xs);
   transition: all var(--dur-fast) var(--ease);
 }
-.seqstrip button:hover { color: var(--color-text); border-color: var(--color-line-strong); }
+.seqstrip button:hover { color: var(--color-text); border-color: var(--color-line-hover); }
 .seqstrip button.on { color: var(--color-on-accent); background: var(--color-accent); border-color: var(--color-accent); }
 
 .tfed-curve { cursor: crosshair; border-radius: var(--radius-sm); background: var(--color-sunken); }
 .tfed-stops { display: flex; gap: var(--sp-2); align-items: center; margin-top: var(--sp-3); flex-wrap: wrap; }
 .tfed-stop input[type="color"] {
   width: 28px; height: 22px; padding: 0; background: transparent;
-  border: 1px solid var(--color-line-strong); border-radius: var(--radius-2xs); cursor: pointer;
+  border: 1px solid var(--color-line-strong); border-radius: var(--radius-xs); cursor: pointer;
 }
 
 /* ---- forced colors (Windows high contrast) ----------------------------
@@ -585,4 +633,5 @@ input[type="range"].styled::-moz-range-thumb {
   /* a bar under the label, not a fill behind it: Highlight behind forced
      text is not a contrast the palette promises */
   .field-fill { forced-color-adjust: none; top: auto; height: 4px; background: var(--fc-on-bg); }
+  .field-fill::after { display: none; }
 }

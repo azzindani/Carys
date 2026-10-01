@@ -9,7 +9,7 @@ import { EDUCATION_BADGE } from '@carys/study';
 import { SERIES } from '../lib/catalog';
 import type { Extractor } from '../lib/extractor';
 import { paintBus } from '../lib/paintBus';
-import { FIBER_BG } from '../lib/palette';
+import { FIBER_BG, STAGE_BG } from '../lib/palette';
 import { maskBox, maskField, physicalMesh, toMm, vrBounds } from '../lib/physical3d';
 import { session } from '../lib/session';
 import { setEngineFromExtractor } from '../lib/sessionOps';
@@ -172,7 +172,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
           shade, density, bounds,
           // in mm, like the surface: a 5 mm-slice CT is not a fifth of its height
           spacing: img.spacing ?? [1, 1, 1],
-          clip: clipOf(getUi().clip3d, img.dims, -0.5),
+          clip: clipOf(getUi().clip3d, img.dims, -0.5), bg: STAGE_BG,
         });
         // anything else drawn since (an orbit, a control, the surface) ends it
         if (mine !== vrToken.current || pmine !== session.paintToken || getUi().series !== s0 || getUi().render3d !== 'volume') return;
@@ -230,7 +230,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     if (session.mesh) {
       // orbit frames draw the coarse level when there is one (F11)
       const out = renderMesh(physicalMesh(ss === 1 && session.mesh.lod ? session.mesh.lod : session.mesh, sp), box, {
-        ...view, color: SERIES[getUi().series]?.color ?? [225, 215, 200], supersample: ss,
+        ...view, color: SERIES[getUi().series]?.color ?? [225, 215, 200], supersample: ss, bg: STAGE_BG,
         ao: cuesRef.current, outline: cuesRef.current, clip: clipOf(getUi().clip3d, box),
       });
       ctx.putImageData(new ImageData(new Uint8ClampedArray(out), cv.width, cv.height), 0, 0);

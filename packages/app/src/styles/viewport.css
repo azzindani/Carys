@@ -1,10 +1,9 @@
 /* ============================================================================
-   Viewport grid + the 3D-tool treatment.
+   Viewport grid + the viewer's chrome.
 
-   The look is borrowed from three.js/Blender-class viewports — graded stage,
-   floor grid, corner HUD, axis gizmo — but every pixel of actual imagery is
-   still CPU-rasterised into a 2D canvas. No WebGL context is created and no
-   `three` import exists; verify.test.ts enforces both.
+   Every pixel of actual imagery is CPU-rasterised into a 2D canvas. No WebGL
+   context is created and no `three` import exists; verify.test.ts enforces
+   both. This file is only the frame around those canvases.
    ========================================================================= */
 
 /* Tool column + viewports. A tool palette is an icon strip, not a menu:
@@ -17,95 +16,109 @@
   /* below the pane header, so it never covers it — chrome may float over
      the image, never over other chrome. */
   position: absolute; left: var(--sp-3);
-  top: calc(var(--ctl-h) + var(--sp-5));
+  top: calc(var(--ctl-h) + var(--sp-8) + var(--sp-2));
   z-index: 12; width: var(--toolstrip-w);
-  max-height: calc(100% - var(--ctl-h) - var(--sp-8));
+  max-height: calc(100% - var(--ctl-h) - var(--sp-8) - var(--sp-5));
   display: flex; flex-direction: column;
   background: var(--glass);
-  border: 1px solid var(--color-line); border-radius: var(--radius-lg);
+  border: 1px solid var(--color-line-strong); border-radius: var(--radius-md);
   backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-2);
-  /* 0.72 put the tool captions at 2.33:1 against the image */
-  opacity: 0.85; transition: opacity var(--dur) var(--ease);
 }
-.toolstrip:hover, .toolstrip:focus-within { opacity: 1; }
 
-/* A dock laid out as a column: groups stack, controls go full width. */
+/* A dock laid out as a column: groups stack, controls go full width. It sits
+   inside the strip, which already draws the frame. */
 .dock.column {
-  width: 100%; flex-direction: column; align-items: stretch; flex-wrap: nowrap;
-  gap: var(--sp-2); overflow-y: auto; padding: var(--sp-2) var(--sp-1);
+  flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+  gap: var(--sp-2); overflow-y: auto; padding: var(--sp-1);
+  background: transparent; border: 0; border-radius: 0;
 }
 .dock.column .grp { flex-direction: column; align-items: stretch; gap: var(--sp-1); padding: 0; }
-.dock.column .seg { flex-direction: column; gap: 1px; background: transparent; border: 0; padding: 0; }
+.dock.column .seg { flex-direction: column; gap: 2px; background: transparent; border: 0; padding: 0; }
 .dock.column .seg button {
-  flex-direction: column; justify-content: center; gap: 2px;
-  display: flex; align-items: center; padding: var(--sp-1) 0;
-  /* concentric inside .toolstrip's --sp-1 padding */
-  min-height: 42px; border-radius: calc(var(--radius-lg) - var(--sp-1));
+  flex-direction: column; justify-content: center; gap: 3px;
+  padding: var(--sp-1) 0; min-height: 46px;
+  /* concentric inside the strip's --sp-1 padding */
+  border-radius: calc(var(--radius-md) - var(--sp-1));
 }
-.dock.column .seg button svg { width: 17px; height: 17px; flex: none; }
-.dock.column .seg button .tl { font-size: var(--fs-3xs); font-weight: 600; letter-spacing: 0.02em; }
-/* The palette is 54px wide, so a field stacks its label over its value
-   instead of beside it. Hiding the label left a bare "3" under the tools
-   with nothing to say it was the brush size. */
+.dock.column .seg button svg { width: 18px; height: 18px; flex: none; }
+.dock.column .seg button .tl { font-size: var(--fs-3xs); font-weight: 500; line-height: 1; }
+/* The strip is narrow, so a field stacks its label over its value instead of
+   beside it. Hiding the label left a bare "3" under the tools with nothing
+   to say it was the brush size. */
 .dock.column .field {
   flex-direction: column; justify-content: center; gap: 0;
-  height: auto; min-height: var(--field-h); padding: 2px 0;
+  height: auto; min-height: var(--field-h); padding: 3px 0; width: 100%; min-width: 0;
 }
-.dock.column .field-lbl { flex: none; max-width: 100%; letter-spacing: 0; text-align: center; text-overflow: clip; }
+.dock.column .field-lbl { flex: none; max-width: 100%; text-align: center; text-overflow: clip; font-size: var(--fs-3xs); }
 .dock.column .field-val { padding-left: 0; margin: 0 auto; }
-.dock.column #undogrp { flex-direction: column; gap: 1px; }
-.dock.column #undogrp .iconbtn { padding: 0; font-size: var(--fs-3xs); width: 100%; }
-.dock.column #undogrp .iconbtn svg { width: 13px; height: 13px; }
+.dock.column .btns { flex-direction: column; }
+.dock.column .btns > .iconbtn { padding: 0; width: 100%; font-size: var(--fs-3xs); min-height: 26px; }
+.dock.column .btns > .iconbtn + .iconbtn { margin-left: 0; margin-top: -1px; }
+.dock.column .btns > .iconbtn:first-child { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.dock.column .btns > .iconbtn:last-child { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+.dock.column .btns > .iconbtn:only-child { border-radius: var(--radius-sm); }
+/* the strip is 56px wide: the word alone, without the arrow crowding it */
+.dock.column .btns > .iconbtn svg { display: none; }
 .dock.column .switch { margin: 0 auto; }
-.dock.column .sep { width: auto; height: 1px; align-self: stretch; margin: var(--sp-1) 0; }
-.dock.column .field { width: 100%; min-width: 0; }
+.dock.column .sep { display: block; width: auto; height: 1px; align-self: stretch; margin: var(--sp-1) 0; background: var(--color-line-strong); }
 /* a switch keeps its name: the label sits under it, as the tools' do */
-.dock.column .grp:has(.switch) { align-items: center; gap: 2px; }
-.dock.column .grp:has(.switch) .lbl { letter-spacing: 0.02em; }
-
+.dock.column .grp:has(.switch) { align-items: center; gap: 3px; }
+.dock.column .grp:has(.switch) .lbl { font-size: var(--fs-3xs); }
 
 .viewgrid {
   flex: 1; min-height: 0; min-width: 0;
-  display: grid; gap: var(--sp-2); align-items: stretch;
+  display: grid; gap: var(--sp-3); align-items: stretch;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
 }
 /* Tools that act on the image float over it; see .popout below. */
 .workarea {
   position: relative;
-  --toolstrip-w: 54px;
+  --toolstrip-w: 56px;
   --cpr-h: 190px;
 }
 /* portal target for the 3D dock: contributes no box of its own */
 .dockslot { display: contents; }
 
-/* ---- pop-outs (ui/PopOut.tsx) -------------------------------------------
-   The display tools sit behind buttons in the viewer's bar and open as a
-   panel over the image. They replaced a strip across the top of the
-   viewport that pushed the panes down by a row. A panel is a column of the
-   dock's groups, scrolling if it outgrows the screen. */
-.popbar { display: flex; align-items: center; gap: var(--sp-1); flex: none; }
+/* ---- the viewer's tool bar and its pop-outs (ui/PopOut.tsx) --------------
+   The display tools sit behind buttons in one grouped bar beside the file
+   tabs and open as a panel over the image. They replaced a strip across the
+   top of the viewport that pushed the panes down by a row. A panel is a
+   column of the dock's groups, scrolling if it outgrows the screen. */
+.popbar {
+  display: flex; align-items: center; gap: 2px; flex: none;
+  min-height: var(--ctl-h); padding: 2px;
+  background: var(--color-sunken); border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+}
+.popbar .iconbtn.poptrigger {
+  min-height: calc(var(--ctl-h) - 6px); padding: 0 var(--sp-3);
+  background: transparent; border-color: transparent; color: var(--color-muted);
+  border-radius: calc(var(--radius-sm) - 3px);
+}
+.popbar .iconbtn.poptrigger:hover { background: var(--color-surface-3); color: var(--color-text); }
+/* open is not a mode, so it is a pressed surface, not the solid accent */
+.popbar .iconbtn.poptrigger.on { background: var(--color-surface-4); color: var(--color-text); border-color: transparent; font-weight: 500; }
 .popwrap { position: relative; }
 .popout {
   position: absolute; top: calc(100% + var(--sp-2)); left: 0; z-index: 30;
-  width: max-content; min-width: 220px;
-  max-width: min(420px, calc(100vw - var(--sp-8)));
+  width: max-content; min-width: 240px;
+  max-width: min(440px, calc(100vw - var(--sp-8)));
   max-height: calc(var(--screen-h) - 150px); overflow-y: auto;
-  padding: var(--sp-3);
-  background: var(--color-surface-1);
-  border: 1px solid var(--color-line-strong); border-radius: var(--radius-lg);
+  padding: var(--sp-4);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line-hover); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
 }
 .popout[hidden] { display: none; }
 .popout[data-align="end"] { left: auto; right: 0; }
 .popout .dock {
   flex-direction: column; align-items: stretch; flex-wrap: nowrap;
-  gap: var(--sp-2); width: auto; max-width: none; padding: 0;
-  background: transparent; border: 0; box-shadow: none;
-  backdrop-filter: none; -webkit-backdrop-filter: none;
+  gap: var(--sp-3); width: auto; max-width: none; padding: 0;
+  background: transparent; border: 0; box-shadow: none; border-radius: 0;
 }
 .popout .dock .grp { justify-content: space-between; flex-wrap: wrap; padding: 0; }
-.popout .dock .sep { width: auto; height: 1px; align-self: stretch; margin: var(--sp-1) 0; }
+.popout .dock .sep { display: block; width: auto; height: 1px; align-self: stretch; margin: 0; background: var(--color-line); }
 .popout .dock .field { width: 100%; }
 /* a switch reads with its label beside it, not across the panel */
 .popout .dock .grp:has(> .switch) { justify-content: flex-start; }
@@ -123,27 +136,35 @@
   flex: 1 1 0; min-height: 0; gap: 0;
   display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch;
 }
-.panes-2d { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.panes-2d { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
 .panes-2d[data-layout="axial"] #pane-axial,
 .panes-2d[data-layout="coronal"] #pane-coronal,
 .panes-2d[data-layout="sagittal"] #pane-sagittal { flex-grow: 1.8; }
-.vp .pane { flex: 1 1 0; min-height: 0; max-width: none; }
+.vp .pane { flex: 1 1 0; min-height: 0; max-width: none; container-type: inline-size; container-name: pane; }
+/* A narrow pane (three slices in a row on a tablet) keeps its name, its
+   position readout and fullscreen; the +/- pair goes, because the wheel and
+   a pinch zoom already, and the zoom chip beside it resets. */
+@container pane (max-width: 360px) {
+  .pane-head .vptools .iconbtn:not(.full) { display: none; }
+  .pane-head .sub { display: none; }
+}
+@container pane (max-width: 250px) {
+  .pane-head .chip:not(.zoom) { display: none; }
+}
 .vp3d .pane { flex: 1; }
 .vp3d .tfpane, .vp3d .clippane { max-width: none; flex: none; }
 
 /* ---- the stage ----------------------------------------------------------
-   A flat, near-neutral black. Grey levels are read against it, so it carries
-   no tint and no glow; the letterbox around the image is the same black as
-   the image's own background. */
+   True black, edge to edge. Grey levels are read against it, so it carries
+   no tint, no glow and no frame; the letterbox around an image is the same
+   black as the image's own background (every renderer clears to
+   `STAGE_BG`, lib/palette.ts). It is also a size container, so the overlay
+   can drop its secondary lines when a pane is small. */
 .vp .stage {
   flex: 1; min-height: 0; min-width: 0;
   display: flex; flex-direction: row; align-items: stretch;
-  background: var(--color-stage);
+  container-type: size; container-name: stage;
 }
-.vp3d .stage { background: var(--color-stage-3d); }
-/* Atlas, Protein and Capsid draw 3D renders too, each clearing to a grey
-   within a step of the rasteriser's */
-.panes > .pane > .stage { background: var(--color-stage-3d); }
 /* what an empty render stage says, centred where the render would be */
 .stage-empty {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -153,7 +174,6 @@
 .vp .stage canvas {
   width: 100%; height: 100%; object-fit: contain;
   min-width: 0; min-height: 0;
-  border-radius: 0;
   /* Inside the grid the pane decides the box and object-fit letterboxes the
      raster. An intrinsic ratio here would out-vote the row height and push
      the pane past its track (it did, on phones). The standalone Surface page
@@ -170,9 +190,9 @@
 .vp3d .viewport-canvas::before {
   content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background-image:
-    linear-gradient(rgb(255 255 255 / 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.04) 1px, transparent 1px);
-  background-size: 36px 36px;
+    linear-gradient(var(--color-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-line) 1px, transparent 1px);
+  background-size: 40px 40px; opacity: 0.55;
   mask-image: linear-gradient(180deg, transparent 12%, black 92%);
   -webkit-mask-image: linear-gradient(180deg, transparent 12%, black 92%);
 }
@@ -180,13 +200,14 @@
 
 /* ---- viewport corner overlay ------------------------------------------
    Study identity in the four corners, the way a reading workstation shows
-   it. Never intercepts the pointer: painting and window/level drags belong
-   to the canvas underneath. */
+   it: sans, bright, with a dark halo so it reads over any anatomy. Never
+   intercepts the pointer: painting and window/level drags belong to the
+   canvas underneath. */
 .vp-ov {
   position: absolute; inset: 0; pointer-events: none; z-index: 2;
-  font-family: var(--font-mono); font-size: var(--fs-3xs); line-height: 1.45;
-  color: rgb(255 255 255 / 0.5);
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
+  font-size: var(--fs-xs); font-weight: 500; line-height: 1.45; font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--color-text) 78%, transparent);
+  text-shadow: 0 0 3px var(--color-stage), 0 1px 2px var(--color-stage);
 }
 .vp-ov-row {
   position: absolute; left: var(--sp-3); right: var(--sp-3);
@@ -198,6 +219,9 @@
 /* Corners share what the notice leaves, equally — so the notice stays
    centred whether or not a corner has anything to say. */
 .vp-ov-tl, .vp-ov-tr, .vp-ov-bl, .vp-ov-br { flex: 1 1 0; }
+/* The bottom corners leave the middle free: the scale bar is drawn there. */
+.vp-ov-bl { flex: 0 1 36%; }
+.vp-ov-br { flex: 1 1 0; }
 .vp-ov span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vp-ov-tr, .vp-ov-br { text-align: right; align-items: flex-end; }
 /* The tool strip floats over the leftmost viewport's top-left corner: that
@@ -210,23 +234,34 @@
 .viewgrid[data-full="sagittal"] #pane-sagittal .vp-ov-top {
   left: calc(var(--toolstrip-w) + var(--sp-3) * 2);
 }
-/* The first line of each corner is the identifying one — brighten it. */
-.vp-ov-tl span:first-child { color: rgb(255 255 255 / 0.74); }
+/* The first line of each corner is the identifying one — full strength. */
+.vp-ov-tl span:first-child { color: var(--color-text); font-weight: 600; }
 /* The notice may wrap onto two short lines; it may not be cut off. */
 .vp-ov-warn {
   flex: 0 1 auto; min-width: 0; max-width: 50%;
-  color: var(--color-warn); opacity: 0.7;
-  text-align: center; white-space: normal;
+  color: var(--color-warn);
+  text-align: center; white-space: normal; font-size: var(--fs-2xs);
 }
-/* Geometry cautions: amber like the notice, full-strength — they change
-   how the image may be read. Long ones truncate; the title keeps the text. */
+/* Geometry cautions: amber like the notice — they change how the image may
+   be read. Long ones truncate; the title keeps the text. */
 .vp-ov-bl .vp-ov-caution { color: var(--color-warn); }
+/* A small pane keeps what must be read (the notice, the caution, the
+   window) and drops the series line, which the pane header and the drawer
+   already carry. */
+@container stage (max-height: 300px) {
+  .vp-ov-bl span:not(.vp-ov-caution) { display: none; }
+}
+@container stage (max-width: 380px) {
+  .vp-ov-tl span:nth-child(n+2), .vp-ov-tr span:nth-child(n+2) { display: none; }
+}
 
-/* ---- axis gizmo: SVG, bottom-left of the 3D viewport ------------------- */
+/* ---- axis gizmo: SVG, bottom-right of the 3D viewport ------------------ */
 .gizmo {
-  position: absolute; left: var(--sp-3); bottom: var(--sp-3); z-index: 4;
+  /* bottom right, above the window readout: the tool strip owns the left
+     edge and was drawn over it in a short pane */
+  position: absolute; right: var(--sp-3); bottom: calc(var(--sp-3) + var(--sp-7)); z-index: 4;
   width: 58px; height: 58px; pointer-events: none;
-  opacity: 0.88; transition: opacity var(--dur) var(--ease);
+  opacity: 0.9; transition: opacity var(--dur) var(--ease);
 }
 .gizmo text { font-family: var(--font-mono); font-size: 7px; font-weight: 700; }
 /* operable gizmo: each axis is a click target that snaps the camera */
@@ -236,20 +271,19 @@
 .gizmo.live .gz-ax circle { transition: r var(--dur-fast) var(--ease); }
 .gizmo.live .gz-ax:hover circle { r: 7.4; }
 
-/* ---- side rail: per-viewport sliders + zoom, uniform in every pane ----- */
+/* ---- side rail: per-viewport sliders, uniform in every pane ------------ */
 .vrail {
-  /* a slim track against the pane's edge, not a glass panel inside it */
+  /* a slim track against the pane's edge, framed by one hairline */
   flex: none; width: 48px;
-  display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2);
-  padding: var(--sp-3) var(--sp-1);
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-3);
+  padding: var(--sp-3) 0;
   border-left: 1px solid var(--color-line);
   background: var(--color-surface-1);
 }
-.vrail .grp { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); }
+.vrail .grp { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }
 .vrail .grp .lbl { font-size: var(--fs-3xs); }
 .vrail .vzoom { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.vrail .iconbtn { min-width: 32px; min-height: 32px; padding: var(--sp-1); }
-.vrail .chip.zoom { margin-left: 0; font-size: var(--fs-3xs); padding: 2px var(--sp-2); }
+.vrail .chip.zoom { margin-left: 0; font-size: var(--fs-3xs); padding: 0 var(--sp-2); }
 #pane-3d .vrail { justify-content: flex-start; }
 #pane-3d .vrail .grp { flex: 1 1 0; min-height: 104px; max-height: 210px; }
 
@@ -262,12 +296,12 @@
   width: 4px; height: auto; background: var(--color-surface-4); border-radius: var(--radius-pill);
 }
 .vrail input[type="range"].styled.vert::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 15px; height: 15px; margin-left: -5.5px;
-  border-radius: 50%; background: var(--color-text); border: none;
-  box-shadow: var(--shadow-2);
+  -webkit-appearance: none; width: 14px; height: 14px; margin-top: 0; margin-left: -5px;
+  border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-text);
+  box-shadow: var(--shadow-1);
 }
 .vrail input[type="range"].styled.vert::-moz-range-track { width: 4px; background: var(--color-surface-4); border-radius: var(--radius-pill); }
-.vrail input[type="range"].styled.vert::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: var(--color-text); border: none; }
+.vrail input[type="range"].styled.vert::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-text); }
 
 /* Standalone Surface route keeps a square stage; inside the viewport grid
    (`.vp`) the pane owns the box and object-fit letterboxes the raster, so an
@@ -288,35 +322,35 @@
 .viewgrid[data-full="sagittal"] #pane-axial, .viewgrid[data-full="sagittal"] #pane-coronal { display: none; }
 
 .tfpane { flex: 1 1 560px; max-width: 700px; }
-.tfwrap { padding: var(--sp-2) var(--sp-4) var(--sp-4); }
+.tfwrap { padding: var(--sp-3) var(--sp-4) var(--sp-4); }
 #c-cells { width: 100%; height: auto; image-rendering: pixelated; aspect-ratio: 1; }
-#chaninfo .mrow dd, #cellinfo .mrow dd, #track-list .mrow dd { white-space: normal; text-align: right; line-height: 1.5; }
+#chaninfo .mrow dd, #cellinfo .mrow dd, #track-list .mrow dd { white-space: normal; text-align: right; justify-content: flex-end; line-height: 1.5; }
 /* Inline row links inside data lists. They read as text, but they are real
    buttons, so they clear the 24px floor on BOTH axes (§22) — several of
    these share one `dd`, and flex was squeezing each to a 15px sliver that
    wrapped one character per line. */
 .cellrow, #track-list .reslink {
   display: inline-flex; align-items: center;
-  font: inherit; background: none; border: 0;
+  font: inherit; background: none; border: 0; border-radius: var(--radius-xs);
   min-height: 24px; min-width: 24px;
-  padding: var(--sp-1) var(--sp-1); text-align: right;
+  padding: var(--sp-1) var(--sp-2); text-align: right;
 }
 #cellinfo .cellrow { color: inherit; }
-#cellinfo .cellrow:hover { color: var(--color-text); }
-#cellinfo .cellrow.on { color: var(--color-accent); }
-#track-list .reslink { color: var(--color-accent); }
-#track-list .reslink:hover { color: var(--color-text); }
+#cellinfo .cellrow:hover { color: var(--color-text); background: var(--color-surface-3); }
+#cellinfo .cellrow.on { color: var(--color-accent-hi); }
+#track-list .reslink { color: var(--color-accent-hi); }
+#track-list .reslink:hover { color: var(--color-text); background: var(--color-surface-3); }
 #storeinfo { white-space: normal; line-height: 1.6; word-break: break-word; overflow-wrap: anywhere; }
 #pane-channels #chaninfo, #pane-channels #storeinfo { margin-inline: var(--sp-4); }
 
 /* the straightened view along the Curve tool's curve (F16), under the 3D image */
 .vp3d .cprpane { flex: none; max-width: none; }
-.cprwrap { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); }
-.cprwrap canvas { width: 100%; height: var(--cpr-h); object-fit: contain; background: var(--color-sunken); cursor: crosshair; }
+.cprwrap { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); }
+.cprwrap canvas { width: 100%; height: var(--cpr-h); object-fit: contain; background: var(--color-stage); cursor: crosshair; }
 .cprctl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); }
 
 /* the 3D clip controls (F13), under the 3D image */
 .clippane { flex: none; }
 .clipwrap .grp { display: flex; align-items: center; gap: var(--sp-2); }
-.clipwrap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); padding: var(--sp-2) var(--sp-4); }
+.clipwrap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); padding: var(--sp-3) var(--sp-4); }
 .clipwrap + .clipwrap { padding-top: 0; }

@@ -289,12 +289,30 @@ which stops iOS Safari zooming the page on focus.
 26px under a mouse and 44px under a finger, set by one variable, so the
 touch-target floor and desktop density do not fight.
 
-The chrome follows current desktop tools: a warm neutral dark palette,
-one restrained clay accent for the selected thing and the primary action,
-sentence-case labels at reading size in Inter, and modest corners. The
-imaging stage is a flat near-black with no tint, because grey levels are
-read against it. The 3D viewport adds a floor grid, corner readouts and an
-orientation gizmo. Every pixel of imagery is still
+The look is built for reading images, as a reading-room workstation is: a
+true black imaging stage that every renderer clears to (`STAGE_BG` in
+`lib/palette.ts`, the CSS `--color-stage`), cool neutral near-black chrome
+around it, and one clinical blue accent. Contrast is measured, not judged:
+every ink step clears WCAG AA on every surface, and the a11y gate checks it.
+
+The control system has four rules (`styles/components.css`):
+
+1. **One height.** Buttons, selects, inputs, segmented controls and scrub
+   fields are all `--ctl-h` tall (28px under a mouse, 44px under a finger),
+   so any mix of them sits on one line.
+2. **One shape.** 6px corners on every control, 8px on panels, 12px only on
+   what floats.
+3. **Two states, told apart.** A solid accent fill means the active mode (the
+   selected tool or segment, a pressed toggle); a tinted accent means an
+   action you can take; everything else is neutral.
+4. **Every button looks like a button.** Only toolbar glyphs (a pane's zoom
+   and fullscreen, the top bar's icons) go bare.
+
+Labels are sentence case at 12px, figures are tabular, and mono is kept for
+identifiers (UIDs, URLs, queries) and the image overlays. Toolbars are
+full-width panels whose groups are separated by space, not by dividers that
+would dangle at the end of a wrapped line. The 3D viewport adds a floor grid,
+corner readouts and an orientation gizmo. Every pixel of imagery is still
 CPU-rasterised. The gizmo is SVG chrome that reflects the orbit and snaps
 the camera when an axis is clicked. The anatomical edge letters are drawn on
 the canvas from the volume's patient geometry, so NIfTI gets them too.

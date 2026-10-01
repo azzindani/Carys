@@ -218,10 +218,13 @@ export function UndoGroup({ onUndo, onClear, undoTitle = 'Undo', clearTitle = 'C
 }): JSX.Element {
   return (
     <div className="grp" id="undogrp">
-      <IconBtn onClick={onUndo} title={undoTitle}>
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6 3L3 6l3 3M3 6h6a4 4 0 010 8h-2" /></svg>Undo
-      </IconBtn>
-      <IconBtn onClick={onClear} title={clearTitle}>Clear</IconBtn>
+      {/* one grouped control: the two act on the same history */}
+      <span className="btns">
+        <IconBtn onClick={onUndo} title={undoTitle}>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6 3L3 6l3 3M3 6h6a4 4 0 010 8h-2" /></svg>Undo
+        </IconBtn>
+        <IconBtn onClick={onClear} title={clearTitle}>Clear</IconBtn>
+      </span>
     </div>
   );
 }
