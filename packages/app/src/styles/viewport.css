@@ -243,6 +243,9 @@
 @container stage (max-height: 300px) {
   .vp-ov-bl span:not(.vp-ov-caution) { display: none; }
 }
+@container stage (max-width: 440px) {
+  .vp-ov-warn .lead { display: none; }
+}
 @container stage (max-width: 380px) {
   .vp-ov-tl span:nth-child(n+2), .vp-ov-tr span:nth-child(n+2) { display: none; }
 }

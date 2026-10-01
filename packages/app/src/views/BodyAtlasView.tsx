@@ -540,12 +540,14 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
       <div className="dock" id="dock-body">
         {modeSwitch}
         <div className="sep" />
-        {systems.map((s) => (
-          <div className="grp" key={s}>
-            <span className="lblswatch" style={{ background: bodyCss(s) }} aria-hidden="true" />
-            <Switch checked={on.has(s)} label={`${SYSTEM_LABEL[s]} ${idx!.systems[s]}`} onChange={(v) => toggle(s, v)} />
-          </div>
-        ))}
+        <div className="syslist">
+          {systems.map((s) => (
+            <div className="grp" key={s}>
+              <span className="lblswatch" style={{ background: bodyCss(s) }} aria-hidden="true" />
+              <Switch checked={on.has(s)} label={`${SYSTEM_LABEL[s]} ${idx!.systems[s]}`} onChange={(v) => toggle(s, v)} />
+            </div>
+          ))}
+        </div>
         <div className="sep" />
         <div className="grp">
           <span className="lbl">See-through</span>

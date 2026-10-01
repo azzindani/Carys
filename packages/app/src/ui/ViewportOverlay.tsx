@@ -53,7 +53,10 @@ export function ViewportOverlay({ compact = false }: { compact?: boolean }): JSX
       <div className="vp-ov-row vp-ov-top">
         <div className="vp-ov-tl">{tl.map((t) => <span key={t}>{t}</span>)}</div>
         {/* A non-diagnostic viewer says so on the image, not only in a footnote. */}
-        <div className="vp-ov-warn">{EDUCATION_BADGE}</div>
+        <div className="vp-ov-warn">
+          {/* a narrow pane keeps the verdict and drops the lead-in, one line instead of a wrap over the image */}
+          <span className="lead">{EDUCATION_BADGE.split(' — ')[0]} — </span>{EDUCATION_BADGE.split(' — ').slice(1).join(' — ') || ''}
+        </div>
         <div className="vp-ov-tr">{tr.map((t) => <span key={t}>{t}</span>)}</div>
       </div>
       <div className="vp-ov-row vp-ov-bot">

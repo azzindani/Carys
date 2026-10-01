@@ -265,6 +265,9 @@
      switch in the panel is in one column */
   .dock .grp:has(> .switch) { flex-direction: row-reverse; justify-content: space-between; flex-wrap: nowrap; padding-left: 0; }
   .dock .grp > .grp:has(> .switch) { flex: 1 1 100%; }
+  /* a colour key beside its switch shares the line with it */
+  .dock .grp > .lblswatch { flex: none; align-self: center; margin-right: 0; }
+  .dock .grp > .lblswatch + .grp:has(> .switch) { flex: 1 1 0; }
   .dock .grp > .lbl:not(:first-child) { color: var(--color-muted); font-size: var(--fs-sm); }
 
   .dock .chk { min-height: var(--ctl-h); }
@@ -273,6 +276,13 @@
    row of its own. As plain flex items they sat beside whatever came before —
    the cohort's source line floated between two case rows, mid-panel. */
 .dock > .hint, .dock > dl { flex: 1 1 100%; min-width: 0; }
+/* a run of on/off switches (the atlas's body systems) is a grid of cells on a line of its own */
+.dock > .syslist {
+  flex: 1 1 100%; min-width: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(190px * var(--ts)), 1fr));
+  gap: var(--sp-2) var(--sp-5);
+}
+.syslist > .grp { flex-wrap: nowrap; }
 .dock > dl.kv { margin: 0; }
 
 /* ----------------------------------------------------------------- panes */
@@ -665,6 +675,7 @@ input[type="range"].styled::-moz-range-thumb {
   border-radius: calc(var(--radius-lg) - var(--sp-2)); color: var(--color-text);
   font-size: var(--fs-md); font-weight: 500;
 }
+.navdrop button svg { width: 18px; height: 18px; flex: none; }
 .navdrop button:hover { background: var(--color-surface-3); }
 .navdrop button[data-on="true"] { color: var(--color-accent-hi); background: var(--color-accent-dim); }
 
