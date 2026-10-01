@@ -11,71 +11,85 @@
    ========================================================================= */
 
 @theme {
-  /* -- surfaces: a real elevation ramp, darkest stage to lightest control -- */
-  --color-bg: #080a0e;
-  --color-sunken: #05070a;
-  --color-stage: #040507;
-  --color-surface-1: #0f1217;
-  --color-surface-2: #151920;
-  --color-surface-3: #1c212a;
-  --color-surface-4: #242b36;
+  /* -- surfaces --------------------------------------------------------------
+     A warm neutral ramp, the palette of current desktop tools (Claude,
+     Linear, Arc): charcoal with a trace of warmth instead of the old
+     blue-black, so the chrome reads as calm material and not as a terminal.
+     The chrome (rail, top bar, status) is the darkest band; the work area
+     sits one step up; panels one more. The imaging stage stays a near
+     neutral black, because grey levels are read against it. */
+  --color-chrome: #1c1b1a;
+  --color-bg: #232220;
+  --color-sunken: #1d1c1b;
+  --color-stage: #060606;
+  /* the surface rasteriser clears to rgb(17 17 17) (render-cpu raster.ts),
+     so the 3D stage is that grey or its render shows as a box */
+  --color-stage-3d: #111111;
+  --color-surface-1: #2a2927;
+  --color-surface-2: #31302d;
+  --color-surface-3: #393835;
+  --color-surface-4: #43413e;
 
   /* -- hairlines -- */
-  --color-line: #1f2530;
-  --color-line-strong: #2c3440;
-  --color-line-accent: #1d4a46;
+  --color-line: #383733;
+  --color-line-strong: #4b4945;
+  --color-line-accent: #6a4535;
 
   /* -- ink --
-     Measured against every surface with axe-core, not chosen by eye. The old
-     --color-faint (#5f6977) scored 2.56-3.66:1 and failed WCAG AA (4.5:1) on
-     ALL SEVEN surfaces, which was 221 contrast violations across every route:
-     the hints, micro-labels and metadata that carry a reading tool's secondary
-     information were the least legible text in it. Raised until the worst case
-     (surface-4, the lightest) clears AA with headroom, and --color-muted lifted
-     with it so the three-step hierarchy survives the change.
-       text  #e9edf3  12.13:1 on surface-4, 16.86:1 on bg
-       muted #a7b1c0   6.58:1 on surface-4,  9.14:1 on bg
-       faint #8a97a9   4.80:1 on surface-4,  6.68:1 on bg  */
-  --color-text: #e9edf3;
-  --color-muted: #a7b1c0;
-  --color-faint: #8a97a9;
-  --color-on-accent: #04110f;
+     Measured, not chosen by eye (§22a): every step clears WCAG AA on every
+     surface above, the lightest (surface-4) included.
+       text  #f3f1ea  10.2:1 on surface-4, 14.9:1 on bg
+       muted #cbc8be   6.9:1 on surface-4, 10.0:1 on bg
+       faint #adaba1   4.7:1 on surface-4,  6.8:1 on bg  */
+  --color-text: #f3f1ea;
+  --color-muted: #cbc8be;
+  --color-faint: #adaba1;
+  --color-on-accent: #1a1918;
 
-  /* -- brand + semantics -- */
-  --color-accent: #2dd4bf;
-  --color-accent-hi: #5eead4;
-  --color-accent-lo: #14b8a6;
-  --color-accent-dim: #10312e;
-  --color-violet: #818cf8;
-  --color-danger: #f0564a;
-  --color-warn: #f0b429;
-  --color-ok: #34d399;
+  /* -- brand + semantics --------------------------------------------------
+     One accent, used sparingly: the selected thing, the primary action, the
+     focus ring. A warm clay, so it sits in the palette rather than on it.
+     Danger leans rose and warning leans yellow so neither reads as the
+     accent. Selection elsewhere is a lighter surface, not a colour. */
+  --color-accent: #eba285;
+  --color-accent-hi: #f2b69d;
+  --color-accent-lo: #d98968;
+  --color-accent-dim: #3b2c25;
+  --color-accent-a: rgb(235 162 133 / 0.22);
+  --color-violet: #a9a4f2;
+  --color-danger: #f5838c;
+  --color-danger-dim: rgb(245 131 140 / 0.12);
+  --color-warn: #e8bd5a;
+  --color-warn-dim: rgb(232 189 90 / 0.1);
+  --color-ok: #6fd19b;
+  --color-ok-dim: rgb(111 209 155 / 0.1);
+  --color-scrim: rgb(12 11 10 / 0.62);
 
-  /* -- type families -- */
+  /* -- type families --
+     One sans for everything a person reads; mono only where columns of
+     figures or file names have to line up. */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
   /* -- rounding ------------------------------------------------------------
-     A softly rounded scale, each rung ~1.3x the last, so corners read as a
-     deliberate family rather than seven unrelated numbers.
+     Modest corners, each rung ~1.25x the last. The old ramp ran to 34px,
+     which made every panel a pill and every nested box a bubble.
 
      PROPORTIONAL NESTING IS THE RULE, and it is arithmetic, not vibes: a
      surface inset by `p` inside a parent of radius `R` uses `R - p`, so the
      two arcs stay concentric and the gap between them is even the whole way
      round. Every nesting site below spells that out as
-     `calc(var(--radius-*) - var(--sp-*))` against the real inset token —
-     an earlier pass claimed this in a comment while giving parent and child
-     the same radius, which cannot be concentric.
+     `calc(var(--radius-*) - var(--sp-*))` against the real inset token.
 
      Pills stay for status dots and toasts only. */
-  --radius-2xs: 6px;
-  --radius-xs: 9px;
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 21px;
-  --radius-xl: 27px;
-  --radius-2xl: 34px;
+  --radius-2xs: 4px;
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
   --radius-pill: 999px;
 }
 
@@ -84,49 +98,49 @@
   --ts: 1;
   --sp: 1;
 
-  /* type ramp: every size in the app resolves through one of these */
-  --fs-3xs: calc(9.5px * var(--ts));
-  --fs-2xs: calc(10.5px * var(--ts));
-  --fs-xs: calc(11.5px * var(--ts));
-  --fs-sm: calc(12.5px * var(--ts));
-  --fs-md: calc(13.5px * var(--ts));
+  /* type ramp: every size in the app resolves through one of these. The
+     floor is 11px: the old 9.5px micro-labels were below what a screen
+     renders legibly, and they were half of every toolbar. */
+  --fs-3xs: calc(11px * var(--ts));
+  --fs-2xs: calc(11.5px * var(--ts));
+  --fs-xs: calc(12px * var(--ts));
+  --fs-sm: calc(13px * var(--ts));
+  --fs-md: calc(14px * var(--ts));
   --fs-lg: calc(16px * var(--ts));
   --fs-xl: calc(20px * var(--ts));
-  --fs-2xl: calc(26px * var(--ts));
-  --fs-3xl: calc(32px * var(--ts));
+  --fs-2xl: calc(24px * var(--ts));
+  --fs-3xl: calc(30px * var(--ts));
 
   /* rhythm ramp: gaps + padding all resolve through these */
   --sp-1: calc(4px * var(--sp));
   --sp-2: calc(6px * var(--sp));
   --sp-3: calc(8px * var(--sp));
   --sp-4: calc(10px * var(--sp));
-  --sp-5: calc(13px * var(--sp));
+  --sp-5: calc(12px * var(--sp));
   --sp-6: calc(16px * var(--sp));
   --sp-7: calc(20px * var(--sp));
-  --sp-8: calc(26px * var(--sp));
+  --sp-8: calc(24px * var(--sp));
 
-  /* Control height. A 3D tool's rows are tight — Blender's fields are ~20px,
-     Unity's ~18px — which is unusable under a finger. So density is scaled by
-     pointer type, not by breakpoint: instrument-tight for a mouse, the full
-     touch floor for a finger, from one variable (§22).
-     --tap stays the audited minimum hit target. */
-  --ctl-h: 26px;
-  --tap: 26px;
-  /* the 3D-tool numeric field: label inside, fill bar, value right-aligned */
-  --field-h: 22px;
+  /* Control height. Density is scaled by pointer type, not by breakpoint:
+     compact for a mouse, the full touch floor for a finger, from one
+     variable (§22). --tap stays the audited minimum hit target. */
+  --ctl-h: 30px;
+  --tap: 28px;
+  /* the numeric scrub field: label inside, fill bar, value right-aligned */
+  --field-h: 26px;
   /* a portrait render (the whole-body atlas) keeps its head and feet on screen */
   --tall-canvas-max-h: 72vh;
 
-  /* elevation: restrained. The old sheet stacked 50px blurs on every
-     surface, which reads as mud. Two levels, both tight. */
-  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.22);
-  --shadow-2: 0 4px 14px rgb(0 0 0 / 0.42), 0 12px 38px rgb(0 0 0 / 0.3);
-  --shadow-pop: 0 10px 34px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(0 0 0 / 0.5);
-  --ring-accent: 0 0 0 3px rgb(45 212 191 / 0.16);
+  /* elevation: soft and low. Panels separate by surface and hairline, not
+     by shadow; shadows are for things that float. */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.18);
+  --shadow-2: 0 6px 20px rgb(0 0 0 / 0.28), 0 1px 3px rgb(0 0 0 / 0.2);
+  --shadow-pop: 0 12px 36px rgb(0 0 0 / 0.42), 0 0 0 1px rgb(0 0 0 / 0.25);
+  --ring-accent: 0 0 0 3px var(--color-accent-a);
 
   /* the glass used by floating chrome — one recipe, not six */
-  --glass: color-mix(in srgb, var(--color-surface-1) 82%, transparent);
-  --glass-blur: blur(14px) saturate(1.25);
+  --glass: color-mix(in srgb, var(--color-surface-1) 88%, transparent);
+  --glass-blur: blur(12px);
 
   --dur-fast: 110ms;
   --dur: 170ms;

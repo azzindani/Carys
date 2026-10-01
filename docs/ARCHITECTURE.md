@@ -289,8 +289,12 @@ which stops iOS Safari zooming the page on focus.
 26px under a mouse and 44px under a finger, set by one variable, so the
 touch-target floor and desktop density do not fight.
 
-The viewport borrows a 3D tool's look: a graded stage, a floor grid, corner
-brackets and an orientation gizmo. Every pixel of imagery is still
+The chrome follows current desktop tools: a warm neutral dark palette,
+one restrained clay accent for the selected thing and the primary action,
+sentence-case labels at reading size in Inter, and modest corners. The
+imaging stage is a flat near-black with no tint, because grey levels are
+read against it. The 3D viewport adds a floor grid, corner readouts and an
+orientation gizmo. Every pixel of imagery is still
 CPU-rasterised. The gizmo is SVG chrome that reflects the orbit and snaps
 the camera when an axis is clicked. The anatomical edge letters are drawn on
 the canvas from the volume's patient geometry, so NIfTI gets them too.

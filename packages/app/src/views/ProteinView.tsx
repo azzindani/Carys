@@ -567,6 +567,7 @@ function ModelView({ initial, modeSwitch }: { initial: StructureLink | null; mod
           <div className="stage">
             <canvas id="c-protein" ref={canvasRef} width={W} height={H}
               role="img" aria-label="Protein spacefill projection" />
+            {!model && <div className="stage-empty">No structure loaded</div>}
           </div>
         </div>
         <div className="pane" id="pane-sequence">

@@ -20,13 +20,8 @@ body {
      control's own pressed state */
   -webkit-tap-highlight-color: transparent;
   text-rendering: optimizeLegibility;
+  /* flat: the old teal and violet washes read as a demo, not as a tool */
   background: var(--color-bg);
-  /* One soft horizon wash instead of three stacked radials. Reads as depth,
-     not as a gradient demo. */
-  background-image:
-    radial-gradient(1200px 560px at 18% -12%, rgb(45 212 191 / 0.055), transparent 62%),
-    radial-gradient(980px 520px at 84% -14%, rgb(129 140 248 / 0.05), transparent 60%);
-  background-attachment: fixed;
 }
 
 #root {
@@ -52,7 +47,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 :focus:not(:focus-visible) { outline: none; }
 
-::selection { background: rgb(45 212 191 / 0.28); }
+::selection { background: var(--color-accent-a); }
 
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-thumb {

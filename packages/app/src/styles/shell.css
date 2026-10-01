@@ -10,31 +10,32 @@
 .rail {
   flex: none; z-index: 20;
   display: flex; flex-direction: column; align-items: center; gap: var(--sp-1);
-  width: 60px; padding: var(--sp-3) var(--sp-2);
-  background: var(--color-surface-1);
+  width: 64px; padding: var(--sp-3) var(--sp-2);
+  background: var(--color-chrome);
   border-right: 1px solid var(--color-line);
 }
 .rail-mark {
   display: flex; align-items: center; justify-content: center;
-  width: 34px; height: 34px; margin-bottom: var(--sp-3);
+  width: 32px; height: 32px; margin-bottom: var(--sp-4);
   border: none; border-radius: var(--radius-md);
-  background: linear-gradient(140deg, var(--color-accent-hi), var(--color-accent-lo));
-  box-shadow: 0 2px 10px rgb(45 212 191 / 0.3);
+  background: var(--color-accent);
 }
 .rail-btn {
   position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  width: 100%; min-height: 46px; padding: var(--sp-2) 0;
+  width: 100%; min-height: 50px; padding: var(--sp-2) 0;
   background: transparent; border: none;
   /* concentric inside the rail's --sp-2 padding */
   border-radius: calc(var(--radius-lg) - var(--sp-2));
   color: var(--color-faint);
   transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
-.rail-btn svg { width: 19px; height: 19px; }
-.rail-btn .rl { font-size: var(--fs-3xs); font-weight: 600; letter-spacing: 0.02em; }
-.rail-btn:hover { color: var(--color-text); background: var(--color-surface-2); }
-.rail-btn[aria-current="page"] { color: var(--color-accent); background: var(--color-accent-dim); }
+.rail-btn svg { width: 18px; height: 18px; }
+.rail-btn .rl { font-size: var(--fs-3xs); font-weight: 500; }
+.rail-btn:hover { color: var(--color-text); background: var(--color-surface-1); }
+/* the current route: a lighter tile and full ink, with the accent only in
+   the edge marker */
+.rail-btn[aria-current="page"] { color: var(--color-text); background: var(--color-surface-2); }
 /* active marker rides the left edge, like a tool rail */
 .rail-btn[aria-current="page"]::before {
   content: ""; position: absolute; left: calc(var(--sp-2) * -1); top: 50%;
@@ -50,24 +51,23 @@
 .top {
   flex: none; position: relative; z-index: 30;
   display: flex; align-items: center; gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-4);
-  background: var(--color-surface-1);
+  min-height: 48px; padding: var(--sp-2) var(--sp-5);
+  background: var(--color-chrome);
   border-bottom: 1px solid var(--color-line);
 }
 .logo { display: flex; align-items: center; gap: var(--sp-3); }
 .logo .mark {
   display: none; align-items: center; justify-content: center;
   width: 28px; height: 28px; flex: none; border-radius: var(--radius-sm);
-  background: linear-gradient(140deg, var(--color-accent-hi), var(--color-accent-lo));
+  background: var(--color-accent);
 }
-.logo .word { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; letter-spacing: -0.02em; }
+.logo .word { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 600; letter-spacing: -0.01em; }
 .logo .word span { color: var(--color-muted); font-weight: 500; }
 .logo .tag {
-  padding: 2px var(--sp-2);
-  font-family: var(--font-mono); font-size: var(--fs-3xs); font-weight: 500;
-  letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--color-accent); background: var(--color-accent-dim);
-  border: 1px solid var(--color-line-accent); border-radius: var(--radius-pill);
+  padding: 1px var(--sp-2);
+  font-size: var(--fs-3xs); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--color-muted); background: var(--color-surface-2);
+  border-radius: var(--radius-xs);
 }
 /* The views menu is the phone's navigation. Wherever the rail is on screen
    it was a second copy of it, one button to the left of the brand. */
@@ -82,13 +82,13 @@
   transition: all var(--dur-fast) var(--ease);
 }
 .navlink:hover { color: var(--color-text); background: var(--color-surface-3); }
-.navlink[aria-current="page"] { color: var(--color-accent); background: var(--color-accent-dim); }
+.navlink[aria-current="page"] { color: var(--color-text); background: var(--color-surface-3); }
 
 .kbd-btn {
   display: flex; align-items: center; gap: var(--sp-3);
-  min-height: var(--tap); padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-4);
-  background: var(--color-sunken); border: 1px solid var(--color-line);
-  border-radius: var(--radius-md); color: var(--color-faint); font-size: var(--fs-sm);
+  min-height: var(--ctl-h); padding: 0 var(--sp-2) 0 var(--sp-4);
+  background: var(--color-surface-1); border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm); color: var(--color-faint); font-size: var(--fs-sm);
   transition: all var(--dur-fast) var(--ease);
 }
 .kbd-btn:hover { color: var(--color-text); border-color: var(--color-line-strong); }
@@ -110,27 +110,27 @@
 .filetabs .tab {
   display: flex; align-items: center; gap: var(--sp-2);
   min-height: var(--tap); padding: var(--sp-2) var(--sp-4);
-  background: var(--color-surface-1); border: 1px solid var(--color-line);
-  border-radius: var(--radius-md); color: var(--color-muted);
+  background: transparent; border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm); color: var(--color-muted);
   font-size: var(--fs-sm); font-weight: 500;
   transition: all var(--dur-fast) var(--ease);
 }
 .filetabs .tab:hover { color: var(--color-text); border-color: var(--color-line-strong); }
 .filetabs .tab.on {
   color: var(--color-text); background: var(--color-surface-3);
-  border-color: var(--color-line-strong); box-shadow: var(--shadow-1);
+  border-color: var(--color-line-strong);
 }
 .filetabs .tab .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-faint); flex: none; }
-.filetabs .tab.on .dot { background: var(--color-accent); box-shadow: 0 0 7px var(--color-accent); }
-.filetabs .tab .tname { font-family: var(--font-mono); font-size: var(--fs-xs); }
+.filetabs .tab.on .dot { background: var(--color-accent); }
+.filetabs .tab .tname { font-size: var(--fs-sm); }
 .filetabs .tab .x {
   display: flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; margin-right: -4px;
   color: var(--color-faint); border-radius: var(--radius-xs); font-size: var(--fs-md); line-height: 1;
 }
-.filetabs .tab .x:hover { color: var(--color-danger); background: rgb(240 86 74 / 0.12); }
+.filetabs .tab .x:hover { color: var(--color-danger); background: var(--color-danger-dim); }
 .filetabs .tab.plus { border-style: dashed; color: var(--color-faint); padding-inline: var(--sp-4); }
-.filetabs .tab.plus:hover { color: var(--color-accent); border-color: var(--color-accent); }
+.filetabs .tab.plus:hover { color: var(--color-text); border-color: var(--color-line-strong); }
 
 /* ------------------------------------------------------------- main grid */
 .main {
@@ -138,7 +138,7 @@
   flex: 1; display: grid; gap: var(--sp-4);
   grid-template-columns: minmax(0, 1fr);
   min-height: 0; min-width: 0;
-  padding: var(--sp-2) var(--sp-3) var(--sp-2);
+  padding: var(--sp-3) var(--sp-5) var(--sp-3);
 }
 .main-full { grid-template-columns: minmax(0, 1fr); }
 .viewport {
@@ -146,8 +146,11 @@
   min-width: 0; min-height: 0; overflow: auto;
   scrollbar-gutter: stable;
 }
-.view-title { display: flex; align-items: baseline; gap: var(--sp-4); margin-bottom: var(--sp-5); flex-wrap: wrap; }
-.view-title h1 { font-family: var(--font-display); font-size: var(--fs-xl); letter-spacing: -0.025em; line-height: 1.2; }
+/* Page routes stack toolbars, panels and lists: each block gets the same
+   gap to the next, instead of borders touching borders. */
+:is(.viewport, .worklist, .pacs) > :is(.dock, .panes, .wl-rows, .pane) { margin-bottom: var(--sp-4); }
+.view-title { display: flex; align-items: baseline; gap: var(--sp-4); margin: var(--sp-2) 0 var(--sp-6); flex-wrap: wrap; }
+.view-title h1 { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
 .view-title p { margin: 0; color: var(--color-faint); font-size: var(--fs-sm); }
 .view-title .right { margin-left: auto; display: flex; align-items: center; gap: var(--sp-3); }
 
@@ -182,22 +185,23 @@
   width: var(--inspector-w);
   display: flex; flex-direction: column;
   overflow-y: auto;
-  padding: 0 var(--sp-4) var(--sp-4);
-  background: color-mix(in srgb, var(--color-surface-1) 96%, transparent);
-  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  padding: 0 var(--sp-5) var(--sp-5);
+  background: var(--color-surface-1);
   box-shadow: var(--shadow-2);
   animation: drawer-in var(--dur) var(--ease);
-  border-left: 1px solid var(--color-line-strong);
-  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
 }
 @keyframes drawer-in { from { transform: translateX(14px); opacity: 0; } }
+/* the series name is a title, not a figure: the 30px numeral size made a
+   hyphenated name look letter-spaced and pushed long ones off the drawer */
+.inspector #series-big { font-size: var(--fs-xl); letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .inspector section { padding: var(--sp-5) 0; border-bottom: 1px solid var(--color-line); }
 .inspector section:last-child { border-bottom: none; }
 .inspector h2 {
   display: flex; align-items: center;
   margin-bottom: var(--sp-3);
-  font-size: var(--fs-3xs); font-weight: 700; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--color-faint);
+  font-size: var(--fs-xs); font-weight: 600; color: var(--color-muted);
 }
 /* A section's actions wrap under its title when they outgrow the drawer:
    Measure's seven ran 150px past the drawer's right edge, off screen. */
@@ -231,9 +235,9 @@
 /* ---------------------------------------------------------------- status */
 .status {
   flex: none; display: flex; align-items: center; gap: var(--sp-3);
-  min-height: 22px; padding: 0 var(--sp-4);
-  background: var(--color-surface-1); border-top: 1px solid var(--color-line);
-  color: var(--color-muted); font-size: var(--fs-2xs);
+  min-height: 26px; padding: 0 var(--sp-5);
+  background: var(--color-chrome); border-top: 1px solid var(--color-line);
+  color: var(--color-faint); font-size: var(--fs-2xs);
   white-space: nowrap; overflow: hidden;
 }
 .status .dot { color: var(--color-accent); font-size: var(--fs-3xs); animation: pulse 2.2s infinite; }
@@ -244,21 +248,21 @@
 .status[data-sev="error"] .dot { color: var(--color-danger); animation: none; }
 .status[data-sev="warn"] #status-text { color: var(--color-warn); }
 .status[data-sev="error"] #status-text { color: var(--color-danger); font-weight: 600; }
-.status[data-sev="error"] { background: rgb(240 86 74 / 0.08); border-top-color: rgb(240 86 74 / 0.35); }
+.status[data-sev="error"] { background: var(--color-danger-dim); }
 .status-inline[data-sev="warn"] { color: var(--color-warn); }
 .status-inline[data-sev="error"] { color: var(--color-danger); font-weight: 600; }
 @keyframes pulse { 50% { opacity: 0.3; } }
 #status-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .status .sp { flex: 1; }
 .status .pill {
-  padding: 1px var(--sp-3); flex: none;
-  border: 1px solid var(--color-line); border-radius: var(--radius-pill);
-  color: var(--color-faint); font-family: var(--font-mono); font-size: var(--fs-3xs);
+  padding: 0 var(--sp-2); flex: none;
+  border-radius: var(--radius-xs); background: var(--color-surface-1);
+  color: var(--color-faint); font-size: var(--fs-3xs);
 }
 .status-inline {
   flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   text-align: center; color: var(--color-faint);
-  font-family: var(--font-mono); font-size: var(--fs-2xs);
+  font-size: var(--fs-2xs);
 }
 
 /* --------------------------------------------------------------- worklist */
@@ -267,16 +271,16 @@
 .wl-row {
   display: flex; gap: var(--sp-4); align-items: center;
   padding: var(--sp-3) var(--sp-5) var(--sp-3) var(--sp-3);
+  min-height: 0;
   background: var(--color-surface-1); border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
   transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
 .wl-row:hover { border-color: var(--color-line-strong); background: var(--color-surface-2); }
 .wl-thumb {
-  width: 76px; height: 76px; flex: none; object-fit: contain;
+  width: 64px; height: 64px; flex: none; object-fit: contain;
   /* concentric with .wl-row: inset by --sp-3 */
   background: var(--color-stage); border-radius: calc(var(--radius-lg) - var(--sp-3));
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05);
 }
 /* no data to preview: a hatched well, not a black square that reads as an
    image still loading (or a scan of nothing) */
@@ -288,8 +292,8 @@
 .wl-title { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
 .wl-key { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 600; }
 .wl-meta {
-  display: flex; gap: var(--sp-6); flex-wrap: wrap; margin-top: var(--sp-2);
-  color: var(--color-faint); font-family: var(--font-mono); font-size: var(--fs-2xs);
+  display: flex; gap: var(--sp-6); flex-wrap: wrap; margin-top: var(--sp-1);
+  color: var(--color-faint); font-size: var(--fs-xs); font-variant-numeric: tabular-nums;
 }
 .wl-actions { display: flex; align-items: center; gap: var(--sp-2); flex: none; }
 /* The read flow: its status chip and the one action it allows next. These
@@ -311,16 +315,17 @@
   display: inline-flex; align-items: center; justify-content: center;
   min-height: var(--tap); padding: var(--sp-2) var(--sp-7);
   border: none; border-radius: var(--radius-sm);
-  background: linear-gradient(180deg, var(--color-accent-hi), var(--color-accent-lo));
-  color: var(--color-on-accent); font-size: var(--fs-sm); font-weight: 650;
-  box-shadow: var(--shadow-1);
-  transition: filter var(--dur-fast) var(--ease);
+  /* one per row, so it is a light neutral button: twenty accent buttons
+     down a list is twenty things shouting at once */
+  background: var(--color-text);
+  color: var(--color-on-accent); font-size: var(--fs-sm); font-weight: 600;
+  transition: background var(--dur-fast) var(--ease);
 }
-.wl-open:hover { filter: brightness(1.07); }
+.wl-open:hover { background: var(--color-accent-hi); }
 .wl-anon {
   min-height: var(--tap); padding: var(--sp-2) var(--sp-5);
   background: var(--color-surface-2); border: 1px solid var(--color-line);
-  border-radius: var(--radius-sm); color: var(--color-muted);
+  border-radius: var(--radius-sm); color: var(--color-text);
   font-size: var(--fs-sm); font-weight: 500;
   transition: all var(--dur-fast) var(--ease);
 }
@@ -331,4 +336,4 @@
 .pacs { padding-bottom: var(--sp-7); }
 /* A catalog entry whose files this server does not have: the chip names what
    fills it (lib/sampleAvailability.ts), in the caution colour. */
-.chip.wl-missing { color: var(--color-warn); border-color: var(--color-warn); }
+.chip.wl-missing { color: var(--color-warn); background: var(--color-warn-dim); }
