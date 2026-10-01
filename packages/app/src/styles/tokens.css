@@ -129,6 +129,12 @@
   --ctl-sm: 22px;
   --tap: 28px;
   --field-h: 28px;
+  /* a readout beside controls is as tall as they are, so the row has one
+     top edge and one bottom edge; it is not a tap target, so it does not
+     grow to the touch floor */
+  --chip-h: 28px;
+  /* the label column of a narrow toolbar's form layout */
+  --form-label-w: 84px;
   /* a portrait render (the whole-body atlas) keeps its head and feet on screen */
   --tall-canvas-max-h: 72vh;
 
@@ -191,5 +197,5 @@ html[data-density="xl"] { --sp: 1.4; }
 
 /* Coarse pointers get bigger targets everywhere at once (§22). */
 @media (pointer: coarse) {
-  :root { --ctl-h: 44px; --ctl-sm: 36px; --tap: 44px; --field-h: 44px; }
+  :root { --ctl-h: 44px; --ctl-sm: 36px; --tap: 44px; --field-h: 44px; --chip-h: 32px; }
 }

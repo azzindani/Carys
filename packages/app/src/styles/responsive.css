@@ -186,30 +186,18 @@
     display: flex; flex-direction: column; gap: var(--sp-3);
   }
   /* Docks go flat inside the deck: the deck is already a panel, so a second
-     bordered box around each group is noise. A hairline separates them. */
+     bordered box around each group is noise. A hairline separates them. The
+     controls themselves are laid out by the form layout (components.css),
+     the same one the pop-outs use, so the deck's labels, selects, segments
+     and toggles line up exactly as they do there. */
   .deck-body .dock {
     width: 100%; max-width: 100%; margin: 0; padding: var(--sp-2) 0;
     background: transparent; border: 0; border-radius: 0;
-    box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
-    justify-content: flex-start; row-gap: var(--sp-3); column-gap: var(--sp-2);
   }
-  .deck-body .dock + .dock { border-top: 1px solid var(--color-line); }
+  .deck-body .dock + .dock { border-top: 1px solid var(--color-line); padding-top: var(--sp-4); }
   .deck-body #deck-3d:empty { display: none; }
-
-  /* Docks were authored for a wide toolbar: their groups never had to
-     shrink. In a 390px deck an unshrinkable group pushes the whole document
-     sideways, so every level here is allowed to wrap and give up width. */
-  /* Groups stack into rows here, so the dock's vertical dividers would
-     dangle at the end of each wrapped line. The row gap separates them. */
-  .deck-body .dock .sep { display: none; }
-  .deck-body .dock .grp { min-width: 0; max-width: 100%; flex-wrap: wrap; }
-  .deck-body .dock .grp > * { min-width: 0; }
-  .deck-body .seg { flex-wrap: wrap; max-width: 100%; }
-  .deck-body select.dark { max-width: 100%; min-width: 0; flex: 1 1 140px; }
-  .deck-body input[type="range"].styled { width: auto; flex: 1 1 110px; min-width: 80px; }
-  .deck-body .urlinput, .deck-body .textinput { width: 100%; min-width: 0; }
-  /* a long readout (the plane card) wraps instead of running off the deck */
-  .deck-body .chip { white-space: normal; max-width: 100%; }
+  /* the Files panel's own controls run the width of the deck, like the forms */
+  .deck-body > :is(select.dark, .btn-ghost, .filetabs) { width: 100%; max-width: none; }
 
   .minfo { display: flex; flex-direction: column; gap: var(--sp-1); }
   .minfo div { display: flex; justify-content: space-between; gap: var(--sp-4); font-size: var(--fs-xs); }
@@ -241,21 +229,9 @@
 
   /* Page-flow docks wrap. They used to scroll sideways as one strip, which
      put most of each route's controls off screen with nothing to say they
-     were there: Protein's bar ran to 2,100px on a 390px phone, and the
-     worklist's search field and Cells' store URL were cut in half at the
-     edge. A few rows of controls cost less than controls nobody finds.
-     Dividers dangle at the end of a wrapped row, so they go; the row gap
-     separates the groups instead. */
-  .main:not(:has(.viewgrid)) .dock { width: 100%; row-gap: var(--sp-2); }
-  .main:not(:has(.viewgrid)) .dock .sep { display: none; }
-  .main:not(:has(.viewgrid)) .dock .grp { flex-wrap: wrap; min-width: 0; max-width: 100%; }
-  .main:not(:has(.viewgrid)) .dock .grp > * { min-width: 0; }
-  /* text fields take the row they are on */
-  .main:not(:has(.viewgrid)) .dock .grp:has(> :is(.urlinput, .wl-search, .textinput)) { flex: 1 1 100%; }
-  .main:not(:has(.viewgrid)) .dock :is(.urlinput, .wl-search, .textinput) { flex: 1 1 160px; width: auto; }
-  .main:not(:has(.viewgrid)) .dock select.dark { max-width: 100%; min-width: 0; }
-  /* a long readout wraps inside the screen instead of running off it */
-  .main:not(:has(.viewgrid)) .dock .chip { white-space: normal; max-width: 100%; }
+     were there. On a phone they are forms: the form layout in components.css
+     applies on its own, because the dock is narrower than 560px. */
+  .main:not(:has(.viewgrid)) .dock { width: 100%; }
   /* the panel form: one column, full width, nothing sideways */
   .main:not(:has(.viewgrid)) .dock:has(dl) > * { flex: 1 1 100%; min-width: 0; }
 

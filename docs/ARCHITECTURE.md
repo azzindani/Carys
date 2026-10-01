@@ -308,6 +308,14 @@ The control system has four rules (`styles/components.css`):
 4. **Every button looks like a button.** Only toolbar glyphs (a pane's zoom
    and fullscreen, the top bar's icons) go bare.
 
+A toolbar narrower than 560px (a pop-out, the phone's control deck, a desktop
+toolbar wrapped onto a phone) stops being a row and becomes a form, by a
+container query on the toolbar itself, so no view needs to know: every group
+takes a line, labels hang in one column, controls fill the other, segmented
+controls split into equal cells, runs of buttons share their line, and
+toggles sit on the right edge. Wide toolbars stay inline, and adjacent
+buttons of the same kind in them are joined into one grouped control.
+
 Labels are sentence case at 12px, figures are tabular, and mono is kept for
 identifiers (UIDs, URLs, queries) and the image overlays. Toolbars are
 full-width panels whose groups are separated by space, not by dividers that
