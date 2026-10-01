@@ -76,10 +76,10 @@
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
 }
 /* Tools that act on the image float over it; see .popout below. */
+:root { --toolstrip-w: calc(56px + (var(--ts) - 1) * 44px); }
 .workarea {
   position: relative;
   /* its captions are text, so it grows with the text level */
-  --toolstrip-w: calc(56px + (var(--ts) - 1) * 44px);
   --cpr-h: 190px;
 }
 /* portal target for the 3D dock: contributes no box of its own */
@@ -218,13 +218,16 @@
 .vp-ov-tr, .vp-ov-br { text-align: right; align-items: flex-end; }
 /* The tool strip floats over the leftmost viewport's top-left corner: that
    viewport's top readouts start to its right instead of under it. */
-.viewgrid:not([data-full]) .vp3d .vp-ov-top,
-.viewgrid[data-full=""] .vp3d .vp-ov-top,
-.viewgrid[data-full="v3d"] .vp3d .vp-ov-top,
-.viewgrid[data-full="axial"] #pane-axial .vp-ov-top,
-.viewgrid[data-full="coronal"] #pane-coronal .vp-ov-top,
-.viewgrid[data-full="sagittal"] #pane-sagittal .vp-ov-top {
-  left: calc(var(--toolstrip-w) + var(--sp-3) * 2);
+/* desktop only: on a phone the strip is not there and the row keeps its own edge */
+@media (min-width: 981px) {
+  .viewgrid:not([data-full]) .vp3d .vp-ov-top,
+  .viewgrid[data-full=""] .vp3d .vp-ov-top,
+  .viewgrid[data-full="v3d"] .vp3d .vp-ov-top,
+  .viewgrid[data-full="axial"] #pane-axial .vp-ov-top,
+  .viewgrid[data-full="coronal"] #pane-coronal .vp-ov-top,
+  .viewgrid[data-full="sagittal"] #pane-sagittal .vp-ov-top {
+    left: calc(var(--toolstrip-w) + var(--sp-3) * 2);
+  }
 }
 /* The first line of each corner is the identifying one — full strength. */
 .vp-ov-tl span:first-child { color: var(--color-text); font-weight: 600; }
