@@ -145,7 +145,7 @@
     border: 1px solid var(--color-line-strong);
     border-bottom: 0;
     border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
-    box-shadow: 0 -6px 24px rgb(0 0 0 / 0.34);
+    box-shadow: var(--shadow-2);
   }
   /* collapsed: only the switcher + tabs show, image takes the screen */
   .deck[data-open="false"] { height: auto; }
@@ -168,7 +168,7 @@
     transition: all var(--dur-fast) var(--ease);
   }
   .mbtn:hover { color: var(--color-text); background: var(--color-surface-2); }
-  .mbtn.on { color: var(--color-accent); background: var(--color-accent-dim); border-color: var(--color-line-accent); }
+  .mbtn.on { color: var(--color-text); background: var(--color-surface-3); border-color: var(--color-line-strong); }
 
   .deck-body {
     flex: 1; min-height: 0; min-width: 0;
@@ -205,7 +205,7 @@
   .minfo { display: flex; flex-direction: column; gap: var(--sp-1); }
   .minfo div { display: flex; justify-content: space-between; gap: var(--sp-4); font-size: var(--fs-xs); }
   .minfo dt { color: var(--color-faint); }
-  .minfo dd { margin: 0; font-family: var(--font-mono); }
+  .minfo dd { margin: 0; font-variant-numeric: tabular-nums; }
 
   .mp-head { display: flex; align-items: center; justify-content: space-between; }
   .mp-head .name { font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 600; }
@@ -216,6 +216,9 @@
   .kv { grid-template-columns: minmax(0, 1fr); gap: var(--sp-1) 0; }
   .kv dd { text-align: left; }
   .kv dt { margin-top: var(--sp-2); }
+  /* numbered steps keep their counter beside the step */
+  .kv.steps { grid-template-columns: auto minmax(0, 1fr); column-gap: var(--sp-3); }
+  .kv.steps dt { margin-top: 0; }
   .mrow dd { justify-content: flex-start; }
   .cellrow, #track-list .reslink, #cellinfo .cellrow { text-align: left; }
   #chaninfo .mrow dd, #cellinfo .mrow dd, #track-list .mrow dd { text-align: left; }

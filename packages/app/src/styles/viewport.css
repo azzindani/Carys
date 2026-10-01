@@ -21,7 +21,7 @@
   z-index: 12; width: var(--toolstrip-w);
   max-height: calc(100% - var(--ctl-h) - var(--sp-8));
   display: flex; flex-direction: column;
-  background: color-mix(in srgb, var(--color-surface-1) 88%, transparent);
+  background: var(--glass);
   border: 1px solid var(--color-line); border-radius: var(--radius-lg);
   backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-2);
@@ -131,15 +131,24 @@
 .vp3d .pane { flex: 1; }
 .vp3d .tfpane, .vp3d .clippane { max-width: none; flex: none; }
 
-/* ---- the stage: a graded 3D viewport, not a black box -------------------
-   Canvases letterbox with object-fit, so this backdrop is what fills the
-   void around the image — turning dead space into viewport. */
+/* ---- the stage ----------------------------------------------------------
+   A flat, near-neutral black. Grey levels are read against it, so it carries
+   no tint and no glow; the letterbox around the image is the same black as
+   the image's own background. */
 .vp .stage {
   flex: 1; min-height: 0; min-width: 0;
   display: flex; flex-direction: row; align-items: stretch;
-  background:
-    radial-gradient(120% 90% at 50% 0%, rgb(45 212 191 / 0.045), transparent 58%),
-    linear-gradient(180deg, #0a0d12 0%, var(--color-stage) 62%);
+  background: var(--color-stage);
+}
+.vp3d .stage { background: var(--color-stage-3d); }
+/* Atlas, Protein and Capsid draw 3D renders too, each clearing to a grey
+   within a step of the rasteriser's */
+.panes > .pane > .stage { background: var(--color-stage-3d); }
+/* what an empty render stage says, centred where the render would be */
+.stage-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding: var(--sp-6); text-align: center; pointer-events: none;
+  color: var(--color-faint); font-size: var(--fs-sm);
 }
 .vp .stage canvas {
   width: 100%; height: 100%; object-fit: contain;
@@ -229,15 +238,12 @@
 
 /* ---- side rail: per-viewport sliders + zoom, uniform in every pane ----- */
 .vrail {
-  flex: none; width: 60px;
+  /* a slim track against the pane's edge, not a glass panel inside it */
+  flex: none; width: 48px;
   display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2);
-  padding: var(--sp-3) var(--sp-2);
-  margin: var(--sp-2) var(--sp-2) var(--sp-2) 0;
-  background: color-mix(in srgb, var(--color-surface-2) 72%, transparent);
-  border: 1px solid var(--color-line);
-  /* concentric with the stage it floats in */
-  border-radius: calc(var(--radius-lg) - var(--sp-1) - var(--sp-2));
-  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  padding: var(--sp-3) var(--sp-1);
+  border-left: 1px solid var(--color-line);
+  background: var(--color-surface-1);
 }
 .vrail .grp { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); }
 .vrail .grp .lbl { font-size: var(--fs-3xs); }
@@ -258,7 +264,7 @@
 .vrail input[type="range"].styled.vert::-webkit-slider-thumb {
   -webkit-appearance: none; width: 15px; height: 15px; margin-left: -5.5px;
   border-radius: 50%; background: var(--color-text); border: none;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.6), var(--ring-accent);
+  box-shadow: var(--shadow-2);
 }
 .vrail input[type="range"].styled.vert::-moz-range-track { width: 4px; background: var(--color-surface-4); border-radius: var(--radius-pill); }
 .vrail input[type="range"].styled.vert::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: var(--color-text); border: none; }
