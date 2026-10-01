@@ -112,6 +112,8 @@ const measure = () => {
     if (m) pal.add(m.slice(0, 3).map((n) => Math.round(+n)).join(','));
   }
   pal.add('0,0,0'); pal.add('255,255,255');
+  const ctlH = px(resolve('height', 'var(--ctl-h)')) || 28;
+  const chipH = px(resolve('height', 'var(--chip-h)')) || ctlH;
   probe.remove();
   const rgbKey = (c) => {
     const m = c.match(/[\d.]+/g);
@@ -139,7 +141,6 @@ const measure = () => {
     return false;
   };
   const controls = [...document.querySelectorAll('button, select, input:not([type=hidden]):not([type=file]), a[href], [role=button], [role=tab], [role=switch], textarea')];
-  const ctlH = px(root.getPropertyValue('--ctl-h')) || 28;
 
   for (const el of document.querySelectorAll('body *')) {
     if (el.closest('canvas, option, [hidden]') || el.matches('script, style, canvas, option')) continue;
@@ -151,7 +152,7 @@ const measure = () => {
     const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 0);
     if (own && !el.closest('svg')) {
       const fs = +px(cs.fontSize).toFixed(2);
-      const ok = ramp.has(fs) || (inOverlay && [...ramp].some((v) => Math.abs(v - fs / ovs) < 0.6)) || [...ramp].some((v) => Math.abs(v - fs) < 0.05);
+      const ok = ramp.has(fs) || (inOverlay && [11, 11.5, 12, 13].some((v) => Math.abs(v * ovs - fs) < 0.3)) || [...ramp].some((v) => Math.abs(v - fs) < 0.05);
       if (!ok) note(out.type, `${fs}px`, el);
       const fam = cs.fontFamily.split(',')[0].replace(/["']/g, '').trim();
       if (fam !== 'Inter' && fam !== 'IBM Plex Mono') note(out.family, fam, el);
@@ -198,7 +199,7 @@ const measure = () => {
     if (Math.min(r.width, r.height) < 23.5) out.small.push(`${name(el)} ${Math.round(r.width)}x${Math.round(r.height)}`);
     // a control that is none of the system heights
     if (el.matches('button, select, input:not([type=range])') && !el.closest('.seg, .popbar, .pal, [role=tablist], .kv, .vrail, .toolstrip, .pane-head, .tile, .wl-row, .swatches, .tabs, .rail') && !el.matches('.tab, .lnk, .linkbtn')) {
-      const known = [ctlH, ctlH - 6, Math.max(24, ctlH), px(root.getPropertyValue('--chip-h')) || ctlH];
+      const known = [ctlH, ctlH - 6, Math.max(24, ctlH), chipH];
       if (!known.some((h) => Math.abs(h - r.height) < 1.01)) out.odd.push(`${name(el)} h=${Math.round(r.height * 10) / 10} (system ${ctlH})`);
     }
   }
