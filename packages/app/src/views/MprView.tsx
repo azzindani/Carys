@@ -361,7 +361,7 @@ export function SegDock(): JSX.Element {
           />
         </div>
         {SEG_OPS.map((op) => (
-          <div className="grp" key={op.name}>
+          <div className="grp cell" key={op.name}>
             {/* bump() inside applySegOp repaints via the ver effect; no
                 manual paintBus here — it would clobber the op summary. */}
             <IconBtn title={op.title} onClick={() => { void applySegOp(op.name); }}>

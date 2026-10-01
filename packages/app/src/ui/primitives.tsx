@@ -103,7 +103,7 @@ export function SliderRow({ id, label, min, max, step, value, onInput, onCommit,
   return (
     <div
       className="field" title={`${label}: ${fmtVal(value, step)}`}
-      style={{ ...(width ? { width } : undefined), ['--pct' as string]: `${pct}%` }}
+      style={{ ['--field-w' as string]: width ? `${width}px` : undefined, ['--pct' as string]: `${pct}%` }}
     >
       <span className="field-fill" aria-hidden="true" />
       <span className="field-lbl">{label}</span>

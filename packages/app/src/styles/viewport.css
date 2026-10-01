@@ -102,30 +102,25 @@
 .popwrap { position: relative; }
 .popout {
   position: absolute; top: calc(100% + var(--sp-2)); left: 0; z-index: 30;
-  width: max-content; min-width: 240px;
-  max-width: min(440px, calc(100vw - var(--sp-8)));
+  /* a fixed width, not max-content: the dock inside is a size container
+     (components.css), and its form layout needs a width to lay out against */
+  width: min(380px, calc(100vw - var(--sp-8)));
   max-height: calc(var(--screen-h) - 150px); overflow-y: auto;
-  padding: var(--sp-4);
+  padding: var(--sp-5);
   background: var(--color-surface-2);
   border: 1px solid var(--color-line-hover); border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
 }
 .popout[hidden] { display: none; }
 .popout[data-align="end"] { left: auto; right: 0; }
+/* the dock inside is bare: the panel is its frame, and its groups lay out
+   as the form (components.css) */
 .popout .dock {
-  flex-direction: column; align-items: stretch; flex-wrap: nowrap;
-  gap: var(--sp-3); width: auto; max-width: none; padding: 0;
+  width: 100%; max-width: none; padding: 0; gap: var(--sp-4) var(--sp-3);
   background: transparent; border: 0; box-shadow: none; border-radius: 0;
 }
-.popout .dock .grp { justify-content: space-between; flex-wrap: wrap; padding: 0; }
-.popout .dock .sep { display: block; width: auto; height: 1px; align-self: stretch; margin: 0; background: var(--color-line); }
-.popout .dock .field { width: 100%; }
-/* a switch reads with its label beside it, not across the panel */
-.popout .dock .grp:has(> .switch) { justify-content: flex-start; }
-/* readout chips keep their own width in the column, and a long one (the
-   plane card) wraps inside the panel instead of running out of it */
-.popout .dock > .chip { align-self: flex-start; }
-.popout .chip { white-space: normal; max-width: 100%; }
+/* a hairline between jobs, a full line wide */
+.popout .dock .sep { display: block; flex: 1 1 100%; width: 100%; height: 1px; margin: 0; background: var(--color-line); }
 
 .vp { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 /* SurfaceView wraps its pane in a `.panes` row, whose page-flow defaults

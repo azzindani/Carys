@@ -179,6 +179,94 @@
    wraps ends up at the end of a line, pointing at nothing. The pop-outs and
    the tool strip, which stack, keep their horizontal rules (viewport.css). */
 .dock .sep { display: none; }
+/* A readout in a toolbar is as tall as the controls beside it: one top edge
+   and one bottom edge per row. (22px chips beside 28px buttons read as a
+   misalignment even when their centres line up.) */
+.dock .chip, .wl-read .chip { min-height: var(--chip-h); }
+.dock .grp > .chip { align-self: stretch; }
+.dock .switch { align-self: center; }
+.dock .grp:has(> .switch) { min-height: var(--ctl-h); }
+
+/* ---- grouped buttons ------------------------------------------------------
+   Two or more buttons of the same kind side by side in a toolbar are one
+   object with shared edges, not loose boxes with uneven gaps. A neutral
+   button never joins a tinted one. */
+@container dock (min-width: 561px) {
+  .dock .grp > .iconbtn:not(.accent):not(.on) + .iconbtn:not(.accent):not(.on),
+  .dock .grp > .iconbtn.accent + .iconbtn.accent {
+    margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0;
+  }
+  .dock .grp > .iconbtn:not(.accent):not(.on):has(+ .iconbtn:not(.accent):not(.on)),
+  .dock .grp > .iconbtn.accent:has(+ .iconbtn.accent) {
+    border-top-right-radius: 0; border-bottom-right-radius: 0;
+  }
+  .dock .grp > .iconbtn:hover, .dock .grp > .iconbtn:focus-visible { position: relative; z-index: 1; }
+}
+
+/* ---- the form layout ------------------------------------------------------
+   A toolbar narrower than 560px (a pop-out, the phone's control deck, a
+   desktop toolbar wrapped onto a phone) stops being a row and becomes a
+   form: every group takes a line, labels hang in one column, and the
+   controls fill one aligned column beside them. Segmented controls split
+   into equal cells, runs of buttons share their line equally, selects and
+   fields run to the edge, toggles sit on the right edge. Every left and
+   right edge in the panel lines up, because each control is sized by the
+   column, not by its own content.
+   A container query, so it applies wherever the toolbar is narrow with no
+   per-view markup, and a wide toolbar keeps its inline layout. */
+.dock:not(.column) { container: dock / inline-size; }
+
+@container dock (max-width: 560px) {
+  .dock { row-gap: var(--sp-3); column-gap: var(--sp-3); }
+  .dock > :is(.grp, .field, .seg, .chip, .hint, dl) { flex: 1 1 100%; min-width: 0; }
+  .dock > .field { width: 100%; }
+
+  .dock .grp { position: relative; flex-wrap: wrap; min-width: 0; min-height: var(--ctl-h); }
+  /* the label hangs in its own column, level with the first control */
+  .dock .grp:has(> .lbl:first-child) { padding-left: calc(var(--form-label-w) + var(--sp-3)); }
+  .dock .grp > .lbl:first-child {
+    position: absolute; left: 0; top: 0; width: var(--form-label-w); height: var(--ctl-h);
+    display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* what fills the control column */
+  .dock .grp > :is(select.dark, .seg) { flex: 1 1 100%; width: 100%; min-width: 0; max-width: none; }
+  .dock .grp > :is(.field, .urlinput, .wl-search, .textinput) { flex: 1 1 120px; width: auto; min-width: 0; }
+  .dock .grp > .chip { flex: 0 1 auto; white-space: normal; max-width: 100%; }
+  /* a readout that wraps (the plane card) needs leading, not a 1.0 line box */
+  .dock .chip { line-height: 1.35; padding-block: var(--sp-1); }
+  /* the threshold's number is already the field's own value */
+  .dock .chip:has(> #tval) { display: none; }
+  /* a group marked .cell is a cell, not a line: a run of them (the
+     segmentation operations) forms an even grid of thirds. A lone button
+     keeps its line, and a group of several buttons shares its line. */
+  .dock > .grp.cell { flex: 0 0 calc((100% - 2 * var(--sp-3)) / 3); }
+  .dock .grp:not(:has(> :not(.chip))) > .chip { flex: 1 1 100%; }
+
+  /* buttons: with no label they share the line equally (an even row of
+     cells); beside a label or a text field they keep their own width */
+  .dock .grp:not(:has(> .lbl:first-child)) > :is(.iconbtn, .fchip, .btns) { flex: 1 1 96px; }
+  .dock .grp > .btns > .iconbtn { flex: 1 1 0; }
+  .dock .grp:has(> .lbl:first-child) > :is(.iconbtn),
+  .dock .grp:has(> :is(.urlinput, .wl-search, .textinput)) > .iconbtn { flex: 0 0 auto; }
+
+  /* segmented controls: equal cells in rows of up to four */
+  .dock .seg { display: grid; grid-template-columns: repeat(var(--seg-cols, 4), minmax(0, 1fr)); width: 100%; }
+  .dock .seg > button { justify-content: center; padding-inline: var(--sp-2); }
+  .dock .seg:has(> :nth-child(5)) { --seg-cols: 3; }
+  .dock .seg:has(> :nth-child(7)) { --seg-cols: 4; }
+  .dock .seg:has(> :nth-child(3):last-child) { --seg-cols: 3; }
+  .dock .seg:has(> :nth-child(2):last-child) { --seg-cols: 2; }
+  .dock .seg:has(> :nth-child(1):last-child) { --seg-cols: 1; }
+
+  /* toggles: the name on the left, the switch on the right edge, so every
+     switch in the panel is in one column */
+  .dock .grp:has(> .switch) { flex-direction: row-reverse; justify-content: space-between; flex-wrap: nowrap; padding-left: 0; }
+  .dock .grp > .grp:has(> .switch) { flex: 1 1 100%; }
+  .dock .grp > .lbl:not(:first-child) { color: var(--color-muted); font-size: var(--fs-sm); }
+
+  .dock .chk { min-height: var(--ctl-h); }
+}
 /* A dock that carries a caption or a list is a panel: each of those takes a
    row of its own. As plain flex items they sat beside whatever came before —
    the cohort's source line floated between two case rows, mid-panel. */
@@ -284,6 +372,9 @@ select.dark option { background: var(--color-surface-2); color: var(--color-text
    the wire suite focuses these and sends real arrow keys. */
 .field {
   position: relative; display: inline-flex; align-items: center;
+  /* a field may name its own width (--field-w, set by SliderRow); a narrow
+     toolbar's form layout overrides it, which an inline style could not */
+  width: var(--field-w, auto);
   height: var(--field-h); min-width: 112px; flex: 0 1 auto;
   padding: 0 var(--sp-3);
   background: var(--color-sunken);
