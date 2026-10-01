@@ -53,6 +53,7 @@ interface VolumeRequest {
   jitter?: { pass: number; of: number };
   cinematic?: boolean;
   clip?: Clip;
+  bg?: [number, number, number];
 }
 
 /** An orbit level of a surface (F11): decimated in mm, returned in voxels. */
@@ -108,7 +109,7 @@ onmessage = (e: MessageEvent<Request>) => {
         {
           width: req.w, height: req.h, angleY: req.angleY, tiltX: req.tiltX,
           zoom: req.zoom, tf: req.tf, step: req.step, shade: req.shade, density: req.density,
-          bounds: req.bounds, spacing: req.spacing, alphaStep: req.alphaStep, jitter: req.jitter, rows: req.rows, cinematic: req.cinematic, clip: req.clip,
+          bounds: req.bounds, spacing: req.spacing, alphaStep: req.alphaStep, jitter: req.jitter, rows: req.rows, cinematic: req.cinematic, clip: req.clip, bg: req.bg,
         },
       );
       const buf = rgba.buffer as ArrayBuffer;

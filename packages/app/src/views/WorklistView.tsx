@@ -537,24 +537,24 @@ function WorklistRow({ record: r, available, onOpen, onStats }: {
 
   return (
     <article className="wl-row" ref={rowRef}>
-      <canvas ref={canvasRef} className="wl-thumb" width={112} height={112} role="img" aria-label={`${r.key} thumbnail`} />
+      <canvas ref={canvasRef} className="wl-thumb" data-state={thumbState} width={112} height={112} role="img" aria-label={thumbState === 'error' ? `${r.key}: no preview` : `${r.key} thumbnail`} />
       <div className="wl-main">
-        <div className="wl-title">
-          <span className="wl-key">{r.key}</span>
-          <Chip>{r.modality}</Chip>
-          <Chip>{r.source}</Chip>
-          {r.hasSeg && <Chip>seg</Chip>}
-          {r.anonymized && <Chip>anonymized</Chip>}
-          {available === false && SERIES[r.key] && (() => {
-            const hint = missingHint(SERIES[r.key]!);
-            return <Chip className="wl-missing" title={hint.title}>{hint.label}</Chip>;
-          })()}
-        </div>
+        <div className="wl-title"><span className="wl-key" title={r.key}>{r.key}</span></div>
         <div className="wl-meta">
           <span>{r.patientName ?? 'no identity'} · {r.patientID ?? '—'}</span>
-          <span>{r.dims ? `${r.dims[0]}×${r.dims[1]}×${r.dims[2]}` : 'dims on open'} · {r.voxels ? `${r.voxels.toLocaleString()} vox` : ''}</span>
+          <span>{r.dims ? `${r.dims[0]}×${r.dims[1]}×${r.dims[2]}` : 'dims on open'}{r.voxels ? ` · ${r.voxels.toLocaleString()} vox` : ''}</span>
           <span>{r.seriesDescription ?? r.files.length + ' files'} · {fmtBytes(r.bytes)}</span>
         </div>
+      </div>
+      <div className="wl-tags">
+        <Chip>{r.modality}</Chip>
+        <Chip>{r.source}</Chip>
+        {r.hasSeg && <Chip>seg</Chip>}
+        {r.anonymized && <Chip>anonymized</Chip>}
+        {available === false && SERIES[r.key] && (() => {
+          const hint = missingHint(SERIES[r.key]!);
+          return <Chip className="wl-missing" title={hint.title}>{hint.label}</Chip>;
+        })()}
       </div>
       <div className="wl-actions">
         <button className="wl-open" onClick={() => { markReading(r.key); bump(); onOpen(); }}>Open</button>

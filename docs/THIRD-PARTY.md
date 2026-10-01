@@ -45,7 +45,6 @@ font service.
 | Font | Package | Licence | Copyright |
 |---|---|---|---|
 | Inter | `@fontsource/inter` 5.3.0 | OFL-1.1 | Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter) |
-| Space Grotesk | `@fontsource/space-grotesk` 5.3.0 | OFL-1.1 | Copyright 2020 The Space Grotesk Project Authors (https://github.com/floriankarsten/space-grotesk) |
 | IBM Plex Mono | `@fontsource/ibm-plex-mono` 5.3.0 | OFL-1.1 | Copyright 2017 IBM Corp. All rights reserved. |
 
 The SIL Open Font License 1.1 is in [section 5](#ofl-11-fonts).
@@ -482,7 +481,6 @@ PERFORMANCE OF THIS SOFTWARE.
 
 ```text
 Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
-Copyright 2020 The Space Grotesk Project Authors (https://github.com/floriankarsten/space-grotesk)
 Copyright 2017 IBM Corp. All rights reserved. (IBM Plex Mono)
 ```
 

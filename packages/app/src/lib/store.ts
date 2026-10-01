@@ -1,37 +1,10 @@
 import { useSyncExternalStore } from 'react';
 import { CLIP_OFF } from './clip3d';
-import type { CompareMode, Density, TextSize, UiState } from './types';
+import { loadAppearance } from './appearance';
+import type { CompareMode, UiState } from './types';
 
 // Tiny typed external store. State owns the DOM: components subscribe and
 // render; canvas effects paint imperatively from the same state.
-
-const APPEAR_KEY = 'carys.appearance';
-/** Prefs written before the Carys rename — read once, then saved under the new key. */
-const APPEAR_KEY_LEGACY = 'omniviewer.appearance';
-
-function loadAppearance(): { textSize: TextSize; density: Density } {
-  const fallback = { textSize: 'm' as TextSize, density: 'm' as Density };
-  try {
-    const raw = localStorage.getItem(APPEAR_KEY) ?? localStorage.getItem(APPEAR_KEY_LEGACY);
-    if (!raw) return fallback;
-    const p = JSON.parse(raw) as Partial<Record<'textSize' | 'density', unknown>>;
-    const sizes: TextSize[] = ['xs', 's', 'm', 'l', 'xl'];
-    // Legacy prefs predate the 5-level scale: cozy->m, compact->s.
-    const legacy: Record<string, Density> = { cozy: 'm', compact: 's' };
-    const textSize: TextSize = typeof p.textSize === 'string' && (sizes as string[]).includes(p.textSize) ? p.textSize as TextSize : 'm';
-    const density: Density = typeof p.density === 'string' && (sizes as string[]).includes(p.density)
-      ? p.density as Density : (typeof p.density === 'string' && legacy[p.density]) || 'm';
-    return { textSize, density };
-  } catch {
-    return fallback;
-  }
-}
-
-export function saveAppearance(textSize: TextSize, density: Density): void {
-  try {
-    localStorage.setItem(APPEAR_KEY, JSON.stringify({ textSize, density }));
-  } catch { /* private mode: prefs just don't survive */ }
-}
 
 const initial: UiState = {
   view: 'mpr', render3d: 'surface', tool: 'view', src: 'mask', method: 'smooth', smooth3d: 0,

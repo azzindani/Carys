@@ -52,7 +52,9 @@ jobs:
       - run: npx playwright install --with-deps chromium
 
       # build → typecheck:app → lint → test:unit → test:markers → build:app
-      # → audit:a11y (WCAG 2.1 A/AA over 8 routes x 2 breakpoints).
+      # → check:entry → audit:a11y (WCAG 2.1 A/AA over 8 routes x 2
+      # breakpoints) → audit:appearance (5 settings x 5 levels and their
+      # extremes). audit:ui is its own job below: it is the slowest gate.
       # No samples/ on the runner: suites that need a fixture skip and say so,
       # and the run reports the skip count rather than passing silently.
       - run: npm run ci
@@ -60,6 +62,32 @@ jobs:
       - name: Report skipped suites
         if: always()
         run: npm run test:unit 2>&1 | grep -E '^# (tests|pass|fail|skipped)'
+
+  ui:
+    # Every route, panel and tool state against the design system and axe
+    # (test/e2e/uiaudit.mjs). One screen per runner: a state takes seconds,
+    # there are about 70 of them, and the screens do not depend on each other.
+    name: ui audit (${{ matrix.screen }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        screen: [desktop, tablet, phone]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      # the app bundles the compiled packages, so they build first
+      - run: npm run build
+      - run: npm run build:app
+      - run: npm run audit:ui
+        env:
+          UIAUDIT_VP: ${{ matrix.screen }}
 
   synthetic:
     name: e2e on generated samples

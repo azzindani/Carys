@@ -277,8 +277,12 @@ export function TracksView(): JSX.Element {
       <div id="view-tracks" className="panes" data-testid="tracks">
         <div className="pane" id="pane-tracks">
           <div className="pane-head"><span className="name">Features</span></div>
-          <div className="stage">
-            {inLocus.length === 0 && <p className="hint">No features loaded.</p>}
+          <div className="pane-body">
+            {inLocus.length === 0 && (
+              <p className="hint">{rows.length === 0
+                ? 'No features loaded. Open a BED, GFF/GTF or VCF track to list its features here.'
+                : 'No features in this locus. Widen the locus or clear it to see them all.'}</p>
+            )}
             <dl className="kv" id="track-list">
               {inLocus.length === 0 ? null : inLocus.slice(0, MAX_ROWS).map((r, i) => {
                 const target = residueOf(r);

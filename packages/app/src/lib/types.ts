@@ -1,6 +1,7 @@
 // Shared domain types for the app shell. Engine math stays in packages/*;
 // this file only describes what flows between chrome and canvas.
 import type { PatientGeometry, Reorientation } from '@carys/volume-core';
+import type { Level } from './appearance';
 
 export type View = 'mpr';
 /** Fullscreen viewport: null = grid, 'v3d' = 3D, or one 2D plane. */
@@ -94,9 +95,9 @@ export type MSheet = null | 'tools' | 'display' | 'files' | 'nav';
 
 export type Render3D = 'surface' | 'volume';
 
-/** Appearance: UI text scale + layout size (chrome prefs, persisted, 5 levels each). */
-export type TextSize = 'xs' | 's' | 'm' | 'l' | 'xl';
-export type Density = 'xs' | 's' | 'm' | 'l' | 'xl';
+/** Appearance prefs are five settings of five levels each (lib/appearance.ts). */
+export type TextSize = Level;
+export type Density = Level;
 
 /** The 3D views' clip (F13): a plane across one axis at a fraction of the
  *  volume (keeping the low side, or the high one flipped) and a crop box
@@ -168,8 +169,11 @@ export interface UiState {
   /** 2D pane colormap (Papaya LUT name; 'Grayscale' = identity fast path) */
   lut: string;
   /** appearance prefs (persisted to localStorage, applied to <html>) */
-  textSize: TextSize;
-  density: Density;
+  textSize: Level;
+  density: Level;
+  controlSize: Level;
+  corners: Level;
+  imageText: Level;
 }
 
 export const PLANES: Plane[] = ['axial', 'coronal', 'sagittal'];

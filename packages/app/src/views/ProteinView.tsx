@@ -561,16 +561,18 @@ function ModelView({ initial, modeSwitch }: { initial: StructureLink | null; mod
         <div className="pane" id="pane-protein">
           <div className="pane-head">
             <span className="name">Structure</span>
-            <Chip><span id="ro-protein">{model ? `${model.atoms.length} atoms` : '—'}</span></Chip>
+            {/* an empty readout chip read as a collapse button */}
+            {model && <Chip><span id="ro-protein">{`${model.atoms.length} atoms`}</span></Chip>}
           </div>
           <div className="stage">
             <canvas id="c-protein" ref={canvasRef} width={W} height={H}
               role="img" aria-label="Protein spacefill projection" />
+            {!model && <div className="stage-empty">No structure loaded</div>}
           </div>
         </div>
         <div className="pane" id="pane-sequence">
           <div className="pane-head"><span className="name">Sequence</span>
-            <Chip><span id="ro-seq">{model ? `${model.residues.length} residues` : '—'}</span></Chip>
+            {model && <Chip><span id="ro-seq">{`${model.residues.length} residues`}</span></Chip>}
           </div>
           <div className="seqstrip" id="seqstrip">
             {model ? model.residues.map((r) => {
@@ -580,7 +582,7 @@ function ModelView({ initial, modeSwitch }: { initial: StructureLink | null; mod
                   title={`${r.label} (chain ${r.chain})`} aria-pressed={on}
                   onClick={() => toggleResidue(r.index)}>{r.label}</button>
               );
-            }) : <div className="hint">No model loaded.</div>}
+            }) : <div className="hint">No model loaded. Open a .pdb or .cif, or pick a demo or pathogen structure above.</div>}
           </div>
         </div>
       </div>

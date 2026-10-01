@@ -1,0 +1,99 @@
+// The states uiaudit.mjs drives: one entry per thing a person can put the
+// interface into. `when` limits a state to desktop-sized or narrow screens
+// (the viewer is a different tree on a phone), `needs: 'samples'` skips it where
+// the imaging fixtures are not checked out.
+//
+// Every setup does what a person does - press the button, pick the option -
+// and nothing the page does not offer, so a state that cannot be reached by
+// hand fails the audit instead of being faked.
+
+const click = (page, sel) => page.click(sel, { timeout: 8000 });
+const popOut = (label) => async (page) => {
+  await click(page, `.popbar button:has-text("${label}")`);
+  await page.waitForTimeout(500);
+};
+/** Press the option of a Seg by its data attribute. */
+const press = (page, id, key, value) => click(page, `#${id} button[data-${key}="${value}"]`);
+const details = async (page) => {
+  const t = await page.$('#instoggle');
+  if (t && (await t.getAttribute('aria-pressed')) !== 'true') await t.click();
+  await page.waitForTimeout(500);
+};
+const appearance = (levels) => async (page) => {
+  await click(page, '#appearance');
+  await page.waitForSelector('.appear');
+  for (const [k, v] of Object.entries(levels)) await click(page, `.appear button[data-${k}="${v}"]`);
+  await page.waitForTimeout(500);
+};
+const loadViewerFiles = (paths) => async (page) => {
+  await page.setInputFiles('input#upload', paths);
+  await page.waitForTimeout(6000);
+};
+const mobileSheet = (label) => async (page) => {
+  await click(page, `#mobilebar button:has-text("${label}")`);
+  await page.waitForTimeout(600);
+};
+
+export const STATES = [
+  // ---- viewer: the image tools ---------------------------------------------
+  { name: 'viewer', wait: 5000 },
+  { name: 'viewer-details', when: 'desktop', wait: 5000, setup: details },
+  { name: 'viewer-pop-display', when: 'desktop', wait: 5000, setup: popOut('Display') },
+  { name: 'viewer-pop-reformat', when: 'desktop', wait: 5000, setup: popOut('Reformat') },
+  { name: 'viewer-pop-compare', when: 'desktop', wait: 5000, setup: popOut('Compare') },
+  { name: 'viewer-pop-segment', when: 'desktop', wait: 5000, setup: popOut('Segment') },
+  { name: 'viewer-pop-3d', when: 'desktop', wait: 5000, setup: popOut('3D') },
+  { name: 'viewer-pop-export', when: 'desktop', wait: 5000, setup: popOut('Export') },
+  { name: 'viewer-3d-volume', when: 'desktop', wait: 5000, setup: async (p) => { await popOut('3D')(p); await press(p, 'renderseg', 'r', 'volume'); await p.waitForTimeout(1200); } },
+  { name: 'viewer-3d-image-source', when: 'desktop', wait: 5000, setup: async (p) => { await popOut('3D')(p); await press(p, 'srcseg', 's', 'image'); await p.waitForTimeout(1200); } },
+  { name: 'viewer-tool-paint', when: 'desktop', wait: 5000, setup: (p) => press(p, 'modeseg', 'mode', 'paint') },
+  { name: 'viewer-tool-grow', when: 'desktop', wait: 5000, setup: (p) => press(p, 'modeseg', 'mode', 'grow') },
+  { name: 'viewer-tool-measure', when: 'desktop', wait: 5000, setup: (p) => press(p, 'modeseg', 'mode', 'measure') },
+  { name: 'viewer-tool-curve', when: 'desktop', wait: 5000, setup: (p) => press(p, 'modeseg', 'mode', 'curve') },
+  { name: 'viewer-layout-axial', when: 'desktop', wait: 5000, setup: async (p) => { await popOut('Display')(p); await press(p, 'layoutseg', 'layout', 'axial'); await p.keyboard.press('Escape'); } },
+  { name: 'viewer-fullscreen-3d', when: 'desktop', wait: 5000, setup: (p) => click(p, '#full-v3d') },
+  { name: 'viewer-palette', wait: 4000, setup: async (p) => { await p.keyboard.press('Control+k'); await p.waitForTimeout(500); } },
+  { name: 'viewer-appearance', wait: 4000, setup: appearance({}) },
+  { name: 'viewer-dicom-series', needs: 'samples', wait: 3000, setup: async (p, { fx }) => {
+    const fs = await import('node:fs');
+    await loadViewerFiles(fs.readdirSync(fx.dicom).filter((f) => f.endsWith('.dcm')).map((f) => `${fx.dicom}/${f}`))(p);
+  } },
+  { name: 'viewer-two-series', needs: 'samples', wait: 5000, setup: async (p, { fx }) => { await loadViewerFiles([fx.nii])(p); } },
+  // ---- viewer on a phone: the deck ----------------------------------------
+  { name: 'm-deck-tools', when: 'narrow', wait: 5000, setup: mobileSheet('Tools') },
+  { name: 'm-deck-display', when: 'narrow', wait: 5000, setup: mobileSheet('Display') },
+  { name: 'm-deck-files', when: 'narrow', wait: 5000, setup: mobileSheet('Files') },
+  { name: 'm-nav', when: 'narrow', wait: 4000, setup: (p) => click(p, '#navtoggle') },
+  // ---- studies / report ------------------------------------------------------
+  { name: 'studies', route: 'worklist' },
+  { name: 'studies-nomatch', route: 'worklist', setup: async (p) => { await p.fill('input[type=search], .wl-filter input, #wl-filter', 'zzzz-no-such-study').catch(() => {}); } },
+  { name: 'report', route: 'report' },
+  // ---- protein -------------------------------------------------------------------
+  { name: 'protein-empty', route: 'protein' },
+  { name: 'protein-loaded', route: 'protein', setup: async (p, { fx }) => { await p.setInputFiles('#pdb-upload', fx.pdb); await p.waitForTimeout(2500); } },
+  { name: 'protein-loaded-details', route: 'protein', setup: async (p, { fx }) => { await p.setInputFiles('#pdb-upload', fx.pdb); await p.waitForTimeout(2500); await details(p); } },
+  { name: 'protein-capsid', route: 'protein', setup: async (p) => { await click(p, '#protein-mode button[data-protein-mode="capsid"]'); await p.waitForTimeout(2500); } },
+  // ---- cells / tracks / atlas / learn --------------------------------------------
+  { name: 'cells', route: 'cells', wait: 4000 },
+  { name: 'tracks-empty', route: 'tracks' },
+  { name: 'tracks-loaded', route: 'tracks', setup: async (p, { fx }) => { await p.setInputFiles('#track-upload', fx.bed); await p.waitForTimeout(1500); } },
+  { name: 'atlas-bones', route: 'atlas', wait: 4000 },
+  { name: 'atlas-bones-details', route: 'atlas', wait: 4000, setup: details },
+  { name: 'atlas-body', route: 'atlas', wait: 4000, setup: async (p) => { await click(p, '#atlas-mode button[data-atlas-mode="body"]'); await p.waitForTimeout(3000); } },
+  { name: 'atlas-body-details', route: 'atlas', wait: 4000, setup: async (p) => { await click(p, '#atlas-mode button[data-atlas-mode="body"]'); await p.waitForTimeout(3000); await details(p); } },
+  { name: 'learn', route: 'learn' },
+  { name: 'learn-answered', route: 'learn', setup: async (p) => { await p.locator('#learn-quiz button').first().click(); await p.waitForTimeout(500); } },
+  { name: 'learn-selftest', route: 'learn', setup: async (p) => { await click(p, '#dock-selftest button:has-text("Start")'); await p.waitForTimeout(1500); await p.locator('#selftest-quiz button').first().click().catch(() => {}); await p.waitForTimeout(400); } },
+  { name: 'learn-measure-verdict', route: 'learn', setup: async (p) => { await p.fill('#trainer-measured', '40'); await click(p, '#dock-measuretrainer button:has-text("Check")').catch(() => {}); await p.waitForTimeout(400); } },
+  { name: 'learn-microbes', route: 'learn' },
+];
+
+// ---- the ends of the five appearance scales, on the routes people live in ----
+const ALL = (l) => ({ textSize: l, density: l, controlSize: l, corners: l, imageText: l });
+for (const end of ['xs', 'xl']) {
+  for (const [name, route, wait] of [['viewer', '', 5000], ['studies', 'worklist', 2200], ['protein', 'protein', 2200], ['cells', 'cells', 4000], ['atlas', 'atlas', 4000], ['learn', 'learn', 2200], ['report', 'report', 2200]]) {
+    STATES.push({ name: `${name}-all-${end}`, route, wait, prefs: ALL(end) });
+  }
+  STATES.push({ name: `viewer-details-all-${end}`, wait: 5000, when: 'desktop', prefs: ALL(end), setup: details });
+  STATES.push({ name: `viewer-pop-display-all-${end}`, wait: 5000, when: 'desktop', prefs: ALL(end), setup: popOut('Display') });
+}

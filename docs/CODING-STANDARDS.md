@@ -71,7 +71,9 @@ prefer the one with a test behind it.
     real taps. Synthetic `input`/`change` dispatches miss React handlers;
     fresh pages beat reloads for file inputs.
 19. **New UI lands with a wire leg** — tabs, fullscreen, the pop-outs all
-    shipped with assertions (`test/e2e/wire.mjs`), not screenshots.
+    shipped with assertions (`test/e2e/wire.mjs`), not screenshots. A new
+    view, panel or tool also adds a state to `test/e2e/uistates.mjs`, so the
+    design-system audit (`audit:ui`) reaches it.
 
 ## UI discipline
 
@@ -79,8 +81,8 @@ prefer the one with a test behind it.
     sync; every `id=` is referenced somewhere.
 21. **Breakpoints have a single source** — one 980px value shared by CSS
     and the `useIsMobile` twin. Never two numbers drifting.
-22. **Interactive targets ≥24px, verified by audit** — `audit:mobile`
-    measures; eyeballs don't count.
+22. **Interactive targets ≥24px, verified by audit** — `audit:ui` and
+    `audit:appearance` measure every state at every scale; eyeballs don't count.
 22a. **Text clears WCAG AA (4.5:1) on every surface it can land on** —
     checked by `audit:a11y` (`test/e2e/a11y.mjs`, axe-core over 8 routes x 2
     breakpoints, in `npm run ci`), not judged by eye. The ink ramp in

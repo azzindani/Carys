@@ -245,8 +245,8 @@ statistics, Cobb angle, RECIST and TID 1500.
   - Both are module workers emitted as files, not `blob:` URLs, so the CSP
     can stay `worker-src 'self'`.
 - **Display tools.** The viewer's display tools sit behind pop-outs in its
-  bar (`ui/PopOut.tsx`): Display, Reformat, Compare, Time, Segment, 3D and
-  Export.
+  bar (`ui/PopOut.tsx`): Display, Reformat, Compare, Time (series with frames
+  only), Segment, 3D and Export.
   - Only one pop-out is open at a time. Escape or a press outside closes
     it.
   - A closed panel stays mounted but hidden, so its readouts keep their
@@ -265,23 +265,85 @@ styles/base.css        reset, document chrome, focus, scrollbars
 styles/components.css  shared classes every view uses
 styles/shell.css       rail, top bar, main grid, inspector, status
 styles/viewport.css    viewport grid and the 3D-tool treatment
-styles/responsive.css  desktop >1280 / tablet 981–1280 / mobile ≤980
+styles/responsive.css  desktop >1100 / tablet 981–1100 / mobile ≤980
 ```
 
 The layout has three real modes:
 
-- **Desktop** pairs an icon rail with the viewport grid and the inspector
-  column.
-- **Tablet** moves the inspector under the stage.
+- **Desktop** pairs an icon rail with the viewport grid. The details
+  drawer (the inspector) takes its width from the viewport when open, so
+  it never covers the image.
+- **Tablet** keeps the rail; the drawer lies over the viewport there,
+  which is too narrow to give up its width.
 - **Mobile** gives the top half to imaging and the bottom half to a
-  permanent control deck, so tools never cover the image they act on.
+  permanent control deck, so tools never cover the image they act on. A
+  phone on its side (≤520px tall) puts the deck in a column beside the
+  image instead. Every other route's toolbar wraps into rows rather than
+  scrolling sideways, so no control sits off screen.
+
+Screen height goes through `--screen-h` (`dvh`, falling back to `vh` on
+engines without it). Under a touch pointer, text fields are at least 16px,
+which stops iOS Safari zooming the page on focus.
+
+The Appearance panel (gear in the top bar) has five settings of five levels
+each, persisted on the device and described by one list, `lib/appearance.ts`:
+**Text** (every font size, `--ts`), **Layout** (spacing, `--sp`), **Controls**
+(button, dropdown and field height, 24 to 36px, `--ctl-base`), **Corners**
+(the radius ramp from square to very round, `--rs`) and **Image text** (the
+overlay over images and the text drawn on the canvases, `--ovs` and
+`IMAGE_TEXT_SCALE`). They are data attributes on `<html>`; `tokens.css`
+turns them into the scales, and widths that carry text (the rail, tool strip,
+drawer) grow with the text level. Touch keeps its 44px target floor at every
+level. `npm run audit:appearance` presses every level and checks that it
+moves its own setting only, that the smallest and largest of everything fit
+on every route, and that prefs persist and reset.
+
+`npm run audit:ui` (`test/e2e/uiaudit.mjs`, states in `uistates.mjs`) drives
+every route, pop-out, tool, panel and dialog state, at desktop, tablet and
+phone (`UIAUDIT_VP=` takes seven screens), and at both ends of the appearance
+scales. In each state it asserts no sideways scroll, nothing off-screen or
+covered, no clipped text, no target under 24px, controls on a row sharing a
+centre line, every font size on the type ramp, every radius on the radius ramp,
+every colour a palette colour (token values are read back from the page), and
+zero axe violations. A new view or panel adds a state there.
 
 980px is the mobile edge, shared with `lib/isMobile.ts`. Control height is
-26px under a mouse and 44px under a finger, set by one variable, so the
+28px under a mouse (24 to 36px by the Controls level) and 44px under a finger, set by one variable, so the
 touch-target floor and desktop density do not fight.
 
-The viewport borrows a 3D tool's look: a graded stage, a floor grid, corner
-brackets and an orientation gizmo. Every pixel of imagery is still
+The look is built for reading images, as a reading-room workstation is: a
+true black imaging stage that every renderer clears to (`STAGE_BG` in
+`lib/palette.ts`, the CSS `--color-stage`), cool neutral near-black chrome
+around it, and one clinical blue accent. Contrast is measured, not judged:
+every ink step clears WCAG AA on every surface, and the a11y gate checks it.
+
+The control system has four rules (`styles/components.css`):
+
+1. **One height.** Buttons, selects, inputs, segmented controls and scrub
+   fields are all `--ctl-h` tall (28px under a mouse, 44px under a finger),
+   so any mix of them sits on one line.
+2. **One shape.** 6px corners on every control, 8px on panels, 12px only on
+   what floats.
+3. **Two states, told apart.** A solid accent fill means the active mode (the
+   selected tool or segment, a pressed toggle); a tinted accent means an
+   action you can take; everything else is neutral.
+4. **Every button looks like a button.** Only toolbar glyphs (a pane's zoom
+   and fullscreen, the top bar's icons) go bare.
+
+A toolbar narrower than 560px (a pop-out, the phone's control deck, a desktop
+toolbar wrapped onto a phone) stops being a row and becomes a form, by a
+container query on the toolbar itself, so no view needs to know: every group
+takes a line, labels hang in one column, controls fill the other, segmented
+controls split into equal cells, runs of buttons share their line, and
+toggles sit on the right edge. Wide toolbars stay inline, and adjacent
+buttons of the same kind in them are joined into one grouped control.
+
+Labels are sentence case at 12px, figures are tabular, and mono is kept for
+identifiers (UIDs, URLs, queries, residues) and key hints; the image overlays
+are Inter like everything else. Page toolbars are full-width panels whose
+groups are separated by space, not by dividers that would dangle at the end
+of a wrapped line (pop-outs and the tool strip keep a hairline between jobs). The 3D viewport adds
+corner readouts and an orientation gizmo. Every pixel of imagery is still
 CPU-rasterised. The gizmo is SVG chrome that reflects the orbit and snaps
 the camera when an axis is clicked. The anatomical edge letters are drawn on
 the canvas from the volume's patient geometry, so NIfTI gets them too.

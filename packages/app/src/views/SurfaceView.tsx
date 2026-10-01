@@ -9,7 +9,7 @@ import { EDUCATION_BADGE } from '@carys/study';
 import { SERIES } from '../lib/catalog';
 import type { Extractor } from '../lib/extractor';
 import { paintBus } from '../lib/paintBus';
-import { FIBER_BG } from '../lib/palette';
+import { FIBER_BG, STAGE_BG } from '../lib/palette';
 import { maskBox, maskField, physicalMesh, toMm, vrBounds } from '../lib/physical3d';
 import { session } from '../lib/session';
 import { setEngineFromExtractor } from '../lib/sessionOps';
@@ -172,7 +172,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
           shade, density, bounds,
           // in mm, like the surface: a 5 mm-slice CT is not a fifth of its height
           spacing: img.spacing ?? [1, 1, 1],
-          clip: clipOf(getUi().clip3d, img.dims, -0.5),
+          clip: clipOf(getUi().clip3d, img.dims, -0.5), bg: STAGE_BG,
         });
         // anything else drawn since (an orbit, a control, the surface) ends it
         if (mine !== vrToken.current || pmine !== session.paintToken || getUi().series !== s0 || getUi().render3d !== 'volume') return;
@@ -230,7 +230,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     if (session.mesh) {
       // orbit frames draw the coarse level when there is one (F11)
       const out = renderMesh(physicalMesh(ss === 1 && session.mesh.lod ? session.mesh.lod : session.mesh, sp), box, {
-        ...view, color: SERIES[getUi().series]?.color ?? [225, 215, 200], supersample: ss,
+        ...view, color: SERIES[getUi().series]?.color ?? [225, 215, 200], supersample: ss, bg: STAGE_BG,
         ao: cuesRef.current, outline: cuesRef.current, clip: clipOf(getUi().clip3d, box),
       });
       ctx.putImageData(new ImageData(new Uint8ClampedArray(out), cv.width, cv.height), 0, 0);
@@ -250,7 +250,9 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       const n = session.fibers?.count ?? 0;
       const fib = n > 0 ? `${n.toLocaleString()} tract${n === 1 ? '' : 's'} · ` : '';
       const scal = session.fibers?.scalarName ? `scal ${session.fibers.scalarName} · ` : '';
-      ro.textContent = `${tris}${fib}${scal}${Math.round(session.zoom3d * 100)}%`;
+      // the zoom has its own chip beside the +/- pair; saying it here too
+      // put "468%" twice in one header
+      ro.textContent = `${tris}${fib}${scal}`.replace(/ · $/, '') || '—';
     }
   };
 
@@ -418,7 +420,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
       };
       paintOrbit();
       const ro = document.getElementById('ro-3d');
-      if (ro) ro.textContent = `${keep.length.toLocaleString()} tract${keep.length === 1 ? '' : 's'} · preset ${preset.id} · ${Math.round(session.zoom3d * 100)}%`;
+      if (ro) ro.textContent = `${keep.length.toLocaleString()} tract${keep.length === 1 ? '' : 's'} · preset ${preset.id}`;
       setStatus(`${preset.title}: ${keep.length}/${pinned.count} pass · ${preset.lesson} · teaching waypoints, not patient anatomy · ${EDUCATION_BADGE}`);
     } catch (e) {
       setStatus(`preset filter failed: ${(e as Error).message}`, 'error');
@@ -592,14 +594,6 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
         </div>
       </div>
       )}
-      {ui.render3d === 'volume' && (
-        <div className="pane tfpane" id="pane-tf">
-          <div className="pane-head"><span className="name">Transfer function</span><span className="sub">drag stops · double-click adds · right-click removes</span></div>
-          <div className="tfwrap">
-            <TfEditor tf={currentTF()} range={fieldRange()} onCommit={(stops) => { setTf(stops); bump(); }} />
-          </div>
-        </div>
-      )}
       <div id="view-3d" className="panes">
         <div className="pane" id="pane-3d">
           <div className="pane-head">
@@ -651,6 +645,15 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
         </div>
       </div>
       {/* under the image: the tool strip floats over the column's top */}
+      {/* below the 3D pane, so the tool strip over the image never covers its header */}
+      {ui.render3d === 'volume' && (
+        <div className="pane tfpane" id="pane-tf">
+          <div className="pane-head"><span className="name">Transfer function</span></div>
+          <div className="tfwrap">
+            <TfEditor tf={currentTF()} range={fieldRange()} onCommit={(stops) => { setTf(stops); bump(); }} />
+          </div>
+        </div>
+      )}
       {ui.clip3d.on && <ClipPanel clip={ui.clip3d} onInput={(c) => { setUi({ clip3d: c }); queueOrbit(); }} />}
     </>
   );

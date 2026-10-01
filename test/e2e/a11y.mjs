@@ -79,6 +79,14 @@ try {
           // motion is allowed: its probe animation must show up here
           const moving = await motionAudit(page);
           if (!moving.some((m) => m.startsWith('probe animation'))) kb.push(['#/viewer', `the motion audit sees no motion without reduced motion: ${moving.join('; ') || 'nothing'}`]);
+          // Every overlay has an exit (§23). The palette's footer promises
+          // Esc, and focus sits in its input, where the app's own key
+          // handler stands aside, so the palette has to honour Esc itself.
+          await page.keyboard.press('Control+k');
+          await page.waitForSelector('#palinput', { timeout: 10000 });
+          await page.keyboard.press('Escape');
+          await page.waitForTimeout(300);
+          if (await page.locator('#palwrap').count() > 0) kb.push(['#/viewer', 'Esc does not close the command palette']);
         }
       }
       await page.close();

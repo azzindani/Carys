@@ -4,18 +4,24 @@
  *  frame, so this module is the single source on the JS side.
  *  NOTE: wire asserts the fiber-view background (FIBER_BG); change it only
  *  together with `test/e2e/wire.mjs`. */
+import { IMAGE_TEXT_SCALE } from './appearance';
+import { getUi } from './store';
 import type { BodySystem } from '@carys/render-cpu';
 
-export const ACCENT = '#2dd4bf';
-export const ACCENT_HI = '#5eead4';
-export const ACCENT_DIM = 'rgba(45,212,191,0.55)';
-export const ACCENT_DIM_FILL = 'rgba(45,212,191,0.9)';
-export const ON_ACCENT = '#06110f';
+export const ACCENT = '#3ba4ff';
+export const ACCENT_HI = '#7cc3ff';
+export const ACCENT_DIM = 'rgba(59,164,255,0.55)';
+export const ACCENT_DIM_FILL = 'rgba(59,164,255,0.9)';
+export const ON_ACCENT = '#04101e';
+/** Every imaging viewport clears to this black (the CSS `--color-stage`):
+ *  grey levels are read against it, so no render sits on a tinted or
+ *  lifted ground, and a render never shows as a box on its stage. */
+export const STAGE_BG: [number, number, number] = [0, 0, 0];
 /** Editable-mask tint stamped over slice pixels (channels written raw). */
 export const MASK_TINT: readonly [number, number, number] = [255, 60, 60];
 /** Segmentation label colours in the 2D panes (F14), label 1 first: the
  *  mask tint, then primaries softened to read over grayscale (BraTS' 1, 2,
- *  4 come out red, green, yellow). None near the teal accent, which the
+ *  4 come out red, green, yellow). None near the blue accent, which the
  *  crosshair lines use. Labels past the table take golden-angle hues.
  *  Wire leg 41g asserts labels 1, 2 and 4: change them together. */
 export const LABEL_COLORS: readonly (readonly [number, number, number])[] = [
@@ -27,17 +33,17 @@ export const LABEL_FILL_ALPHA = 0.3;
 /** Label outline width, CSS px. */
 export const LABEL_OUTLINE_PX = 1.5;
 /** The Curve tool's centreline on the panes and its clicks on the
- *  straightened view (F16): amber, apart from the teal crosshair and the
+ *  straightened view (F16): amber, apart from the blue crosshair and the
  *  label colours' reds. */
 export const CURVE_COLOR = '#fbbf24';
 export const CURVE_DIM = 'rgba(251,191,36,0.45)';
 
-/** A label's colour: the table, then hues 137.5° apart (teal skipped). */
+/** A label's colour: the table, then hues 137.5° apart (the accent's teal-to-blue band skipped). */
 export function labelRgb(v: number): readonly [number, number, number] {
   const t = LABEL_COLORS[v - 1];
   if (t) return t;
   let h = (v * 137.508) % 360;
-  if (h > 150 && h < 200) h += 60;
+  if (h > 150 && h < 245) h += 95;
   const f = (n: number): number => {
     const k = (n + h / 60) % 6;
     return Math.round(255 * (1 - 0.6 * Math.max(0, Math.min(k, 4 - k, 1))));
@@ -58,7 +64,7 @@ export function labelCss(v: number): string {
   return `rgb(${r},${g},${b})`;
 }
 /** The whole-body atlas (H2): a textbook tint per body system, apart from
- *  each other and from the teal accent that marks the tapped structure. */
+ *  each other and from the teal that marks the tapped structure. */
 export const BODY_SYSTEM_COLORS: Readonly<Record<BodySystem, readonly [number, number, number]>> = {
   skeletal: [224, 213, 184], muscular: [178, 74, 66], nervous: [240, 220, 120],
   cardiovascular: [200, 52, 52], lymphatic: [120, 200, 120], respiratory: [120, 170, 220],
@@ -68,7 +74,7 @@ export const BODY_SYSTEM_COLORS: Readonly<Record<BodySystem, readonly [number, n
 /** The tapped or found structure: the accent. */
 export const BODY_PICK_COLOR: readonly [number, number, number] = [45, 212, 191];
 /** The body atlas' clear: the bone atlas' near-black. */
-export const BODY_BG: [number, number, number] = [16, 16, 17];
+export const BODY_BG: [number, number, number] = STAGE_BG;
 /** A muscle coloured by its stretch in a gait (H6): toward blue as it
  *  shortens, yellow as it lengthens, fully at BODY_STRETCH_SPAN of its rest
  *  length; the muscle tint at rest. */
@@ -78,7 +84,7 @@ export const BODY_STRETCH_SPAN = 0.15;
 
 /** Capsids (H7): a colour per asymmetric-unit chain — its quasi-
  *  equivalent position, so all sixty copies of chain A share one — none
- *  near the teal accent that marks the picked copy; ligands and waters
+ *  near the teal that marks the picked copy; ligands and waters
  *  grey. */
 export const CAPSID_CHAIN_COLORS: readonly (readonly [number, number, number])[] = [
   [96, 165, 250], [250, 204, 21], [248, 113, 113], [192, 132, 252], [251, 146, 60],
@@ -92,7 +98,7 @@ export const CAPSID_RADIAL_OUTER: readonly [number, number, number] = [220, 70, 
 export const CAPSID_PICK_COLOR: readonly [number, number, number] = [45, 212, 191];
 /** The capsid clear (the protein view's) and how far the far side fades
  *  into it. */
-export const CAPSID_BG: [number, number, number] = [16, 18, 20];
+export const CAPSID_BG: [number, number, number] = STAGE_BG;
 export const CAPSID_FOG = 0.5;
 
 /** A body system's tint as CSS. */
@@ -100,16 +106,21 @@ export function bodyCss(s: BodySystem): string {
   const [r, g, b] = BODY_SYSTEM_COLORS[s];
   return `rgb(${r},${g},${b})`;
 }
-/** Per-view canvas clears (kept distinct deliberately — see NOTE above). */
-export const PROTEIN_BG = '#101214';
-export const FIBER_BG = '#111314';
+/** Per-view canvas clears: all the stage's black. */
+export const PROTEIN_BG = '#000000';
+export const FIBER_BG = '#000000';
 export const TF_GRID = 'rgba(255,255,255,0.12)';
-/** Canvas type: mirrors the `--mono` token (contexts can't use CSS vars). */
-export const MONO_STACK = '"IBM Plex Mono", monospace';
+/** Canvas type: mirrors the `--font-sans` token (contexts can't use CSS
+ *  vars). The text on images is the UI face, like the DOM overlay above it. */
+export const UI_STACK = '"Inter", system-ui, -apple-system, "Segoe UI", sans-serif';
 /** Viewport chrome text (anatomy letters, scale bar): near-white, dimmed. */
 export const CHROME_TEXT = 'rgba(238,242,247,0.8)';
 /** Canvas type size in CSS px. Chrome is drawn in screen space now, so one
  *  size reads the same on every pane and every grid size. */
 export const CHROME_FONT_PX = 12;
+/** …at the chosen Image text level (lib/appearance.ts), to the half pixel. */
+export function chromeFontPx(): number {
+  return Math.round(CHROME_FONT_PX * IMAGE_TEXT_SCALE[getUi().imageText] * 2) / 2;
+}
 /** Dark halo behind canvas chrome text (the DOM readouts' text-shadow twin). */
 export const CHROME_HALO = 'rgba(0,0,0,0.9)';
