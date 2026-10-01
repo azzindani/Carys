@@ -245,8 +245,8 @@ statistics, Cobb angle, RECIST and TID 1500.
   - Both are module workers emitted as files, not `blob:` URLs, so the CSP
     can stay `worker-src 'self'`.
 - **Display tools.** The viewer's display tools sit behind pop-outs in its
-  bar (`ui/PopOut.tsx`): Display, Reformat, Compare, Time, Segment, 3D and
-  Export.
+  bar (`ui/PopOut.tsx`): Display, Reformat, Compare, Time (series with frames
+  only), Segment, 3D and Export.
   - Only one pop-out is open at a time. Escape or a press outside closes
     it.
   - A closed panel stays mounted but hidden, so its readouts keep their
@@ -339,9 +339,10 @@ toggles sit on the right edge. Wide toolbars stay inline, and adjacent
 buttons of the same kind in them are joined into one grouped control.
 
 Labels are sentence case at 12px, figures are tabular, and mono is kept for
-identifiers (UIDs, URLs, queries) and the image overlays. Toolbars are
-full-width panels whose groups are separated by space, not by dividers that
-would dangle at the end of a wrapped line. The 3D viewport adds
+identifiers (UIDs, URLs, queries, residues) and key hints; the image overlays
+are Inter like everything else. Page toolbars are full-width panels whose
+groups are separated by space, not by dividers that would dangle at the end
+of a wrapped line (pop-outs and the tool strip keep a hairline between jobs). The 3D viewport adds
 corner readouts and an orientation gizmo. Every pixel of imagery is still
 CPU-rasterised. The gizmo is SVG chrome that reflects the orbit and snaps
 the camera when an axis is clicked. The anatomical edge letters are drawn on
