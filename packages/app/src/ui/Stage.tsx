@@ -78,6 +78,52 @@ function useScrollStops(root: RefObject<HTMLElement | null>, enabled: boolean): 
   }, [root, enabled]);
 }
 
+/** How far the deck is raised: 0 hidden (only its handle), 1 half, 2 full. */
+export type DeckLevel = 0 | 1 | 2;
+const LEVEL_NAME = ['hidden', 'half open', 'open'] as const;
+
+/**
+ * The deck's handle. This is a visualization tool, so the controls start out
+ * of the way and the image has the screen. A swipe up on the handle raises the
+ * deck a level, a swipe down lowers it; a press (or Enter) steps up through
+ * the levels and drops back to hidden from the top, and the arrow keys step.
+ */
+export function DeckGrip({ level, onLevel, controls, label = 'Controls' }: {
+  level: DeckLevel; onLevel: (l: DeckLevel) => void; controls: string; label?: string;
+}): JSX.Element {
+  const from = useRef<number | null>(null);
+  const swiped = useRef(false);
+  const step = (d: 1 | -1): void => onLevel(Math.max(0, Math.min(2, level + d)) as DeckLevel);
+  return (
+    <button
+      type="button" className="deck-grip" aria-expanded={level > 0} aria-controls={controls}
+      aria-label={`${label}, ${LEVEL_NAME[level]}. Swipe up or down, or press, to change.`}
+      onPointerDown={(e) => { from.current = e.clientY; swiped.current = false; e.currentTarget.setPointerCapture?.(e.pointerId); }}
+      onPointerUp={(e) => {
+        const y = from.current;
+        from.current = null;
+        if (y === null) return;
+        const dy = y - e.clientY;
+        if (Math.abs(dy) >= 24) { swiped.current = true; step(dy > 0 ? 1 : -1); }
+      }}
+      onPointerCancel={() => { from.current = null; }}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowUp') { e.preventDefault(); step(1); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); step(-1); }
+      }}
+      onClick={() => {
+        if (swiped.current) { swiped.current = false; return; }
+        onLevel(level === 2 ? 0 : ((level + 1) as DeckLevel));
+      }}
+    >
+      <span>{label}</span>
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="M3.5 6l4.5 4.5L12.5 6" />
+      </svg>
+    </button>
+  );
+}
+
 /** The deck's body, or `null` until it mounts; `undefined` outside a Stage. */
 const DeckSlot = createContext<HTMLElement | null | undefined>(undefined);
 
@@ -90,28 +136,19 @@ export function Stage({ children, preview = false, fold = true }: {
 }): JSX.Element {
   const mobile = useIsMobile();
   const [slot, setSlot] = useState<HTMLElement | null>(null);
-  const [open, setOpen] = useState(true);
+  const [level, setLevel] = useState<DeckLevel>(0);
   const bodyId = useId();
   const main = useRef<HTMLDivElement>(null);
   useScrollStops(main, mobile);
   if (!mobile) return <>{children}</>;
-  const expanded = open || !fold;
+  // a deck of a few buttons (Report) has no handle and is always up
+  const shown: DeckLevel = fold ? level : 2;
+  const expanded = shown > 0;
   return (
     <DeckSlot.Provider value={slot}>
-      <div className="stage-main" data-preview={preview} ref={main}>{children}</div>
-      <div className="deck stage-deck" data-open={expanded} data-preview={preview}>
-        {fold && (
-          <button
-            type="button" className="deck-grip" aria-expanded={open} aria-controls={bodyId}
-            title={open ? 'Fold the controls away' : 'Show the controls'}
-            onClick={() => setOpen(!open)}
-          >
-            Controls
-            <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-              <path d="M3.5 6l4.5 4.5L12.5 6" />
-            </svg>
-          </button>
-        )}
+      <div className="stage-main" data-preview={preview} data-level={shown} ref={main}>{children}</div>
+      <div className="deck stage-deck" data-open={expanded} data-level={shown} data-preview={preview}>
+        {fold && <DeckGrip level={level} onLevel={setLevel} controls={bodyId} />}
         <div className="deck-body" id={bodyId} role="region" aria-label="Controls" hidden={!expanded} ref={setSlot} />
       </div>
     </DeckSlot.Provider>

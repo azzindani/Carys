@@ -288,9 +288,13 @@ The layout has three real modes:
 - **Tablet** keeps the rail; the drawer lies over the viewport there,
   which is too narrow to give up its width.
 - **Mobile** follows one rule on every route: what you look at is on top,
-  and the controls are on the bottom, where a thumb rests. The top half
-  belongs to the previewer, and a permanent deck takes the bottom half, so
-  tools never cover the image they act on. A phone on its side (≤520px
+  and the controls are on the bottom, where a thumb rests. This is a
+  visualization tool, so the controls start **hidden**: the image has the
+  screen and the deck is a slim handle. The deck has three levels (hidden,
+  half, full): swipe the handle up or down, press it to step up (it drops
+  back to hidden from the top), or use the arrow keys. Tools never cover the
+  image they act on, and a multi-pane route shows only its first pane while
+  the deck is hidden. A phone on its side (≤520px
   tall) puts the deck in a column beside the image instead.
 
   - The **viewer** deck holds the viewport switcher, the **slice
@@ -307,7 +311,7 @@ The layout has three real modes:
     above and every `Dock` is portalled into the deck below, so the DOM order
     is the order on screen. A route whose content is a canvas (`preview`)
     locks the region to the screen, fixes the deck's height so the image
-    never jumps, and lets the deck fold to one row for a full-screen image;
+    never jumps, and starts with the deck hidden (`DeckGrip`);
     a list or a report scrolls above a deck as tall as its controls. A
     labelled `Dock` is a section of the deck, shut until opened (Studies'
     cohort and QC). A canvas keeps its aspect ratio, because pointer maths

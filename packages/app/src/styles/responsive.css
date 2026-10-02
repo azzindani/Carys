@@ -346,7 +346,16 @@
     background: transparent; border: 0; color: var(--color-muted);
     font-size: var(--fs-sm); font-weight: 600; text-align: left;
   }
-  .deck-grip { border-bottom: 1px solid var(--color-line); }
+  .deck-grip { border-bottom: 1px solid var(--color-line); position: relative; touch-action: none; padding-top: var(--sp-2); }
+  /* the pill says "drag me": swipe up to raise the deck, down to lower it */
+  .deck-grip::before {
+    content: ""; position: absolute; top: var(--sp-1); left: 50%; width: 36px; height: 4px;
+    margin-left: -18px; border-radius: var(--radius-pill); background: var(--color-line-hover);
+  }
+  /* half way: a stage deck takes half its full height */
+  .stage-deck[data-level="1"] { max-height: calc(var(--deck-h) * 0.5); }
+  .stage-deck[data-preview="true"][data-level="1"] { height: calc(var(--deck-h) * 0.5); max-height: none; }
+  .stage-deck { transition: height var(--dur) var(--ease); }
   .deck[data-open="false"] .deck-grip { border-bottom-color: transparent; }
   .deck-grip:hover, .deck-fold-head:hover { color: var(--color-text); }
   .deck-grip svg, .deck-fold-head svg { transition: transform var(--dur-fast) var(--ease); }
@@ -373,6 +382,8 @@
   .stage-main[data-preview="true"] > .panes > .pane:first-child { flex: 1 1 0; }
   .stage-main[data-preview="true"] > .panes > .pane:not(:first-child) { max-height: 34%; overflow-y: auto; }
   .stage-main[data-preview="true"] .pane { overflow-y: auto; overscroll-behavior: contain; }
+  /* hidden is hidden: with the deck down, only the image shows */
+  .stage-main[data-preview="true"][data-level="0"] > .panes > .pane:not(:first-child) { display: none; }
   /* the canvas keeps at least 60% of its pane; the credits and cards under
      it scroll inside the pane rather than squeezing the image */
   .stage-main[data-preview="true"] .pane > .stage {
@@ -453,6 +464,10 @@
     padding-bottom: var(--sp-3);
   }
   .stage-deck[data-open="false"] { height: auto; align-self: end; }
+  .stage-deck[data-level="1"], .stage-deck[data-preview="true"][data-level="1"] { height: 100%; max-height: none; }
+  /* the viewer's deck hidden: its column goes too, and the handle rests in the corner */
+  .main:has(.viewgrid) .viewport:has(> .deck[data-level="0"]) { grid-template-columns: minmax(0, 1fr) auto; }
+  .main:has(.viewgrid) .viewport > .deck[data-level="0"] { height: auto; align-self: end; }
 }
 
 /* ------------------------------------------------------- coarse pointers */

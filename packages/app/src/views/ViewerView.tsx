@@ -13,6 +13,7 @@ import { useVersion } from '../lib/version';
 import { DarkSelect, Seg } from '../ui/primitives';
 import { IconPanel } from '../ui/Icons';
 import { PopOut } from '../ui/PopOut';
+import { DeckGrip, type DeckLevel } from '../ui/Stage';
 import type { MSheet, MView } from '../lib/types';
 import {
   CompareDock, DisplayDock, ExportDock, MprToolDock, ReformatDock, SegDock, TimeDock, useHasFrames,
@@ -182,6 +183,8 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
   const mobile = useIsMobile();
   const mView = useUiPick('mView');
   const mSheet = useUiPick('mSheet');
+  // the deck starts hidden: this is a visualization tool, so the image has the screen
+  const [level, setLevel] = useState<DeckLevel>(0);
   const series = useUiPick('series');
   const insOpen = useUiPick('insOpen');
 
@@ -244,16 +247,19 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
   }
 
   // Deck tabs behave like tabs, not toggles: picking one always shows it,
-  // and re-tapping the open one collapses the deck to give the image room.
-  const pick = (s: Exclude<MSheet, null>): void => setUi({ mSheet: mSheet === s ? null : s });
+  // and re-tapping the open one lowers the deck to its bar.
+  const panel: MSheet = level === 2 ? (mSheet && mSheet !== 'nav' ? mSheet : 'tools') : null;
+  const pick = (s: Exclude<MSheet, null>): void => {
+    if (panel === s) { setUi({ mSheet: null }); setLevel(1); } else { setUi({ mSheet: s }); setLevel(2); }
+  };
   // Disclosure buttons, not tabs. `pick` closes the open panel when you tap it
   // again, so none may be selected — a tablist promises exactly one always is,
   // and screen readers announced a broken one (axe: aria-required-children).
   // aria-expanded + aria-controls describes what these actually do.
   const deckTab = (s: Exclude<MSheet, null>, label: string): JSX.Element => (
     <button
-      className={`mbtn${mSheet === s ? ' on' : ''}`} aria-pressed={mSheet === s}
-      aria-expanded={mSheet === s} aria-controls={`mpanel-${s}`}
+      className={`mbtn${panel === s ? ' on' : ''}`} aria-pressed={panel === s}
+      aria-expanded={panel === s} aria-controls={`mpanel-${s}`}
       title={`${label} panel`} onClick={() => pick(s)}
     >
       {label}
@@ -268,8 +274,9 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
         sliceInit={sliceInit} axialCanvasRef={axialCanvasRef}
         extractor={extractor} full={full ?? ''} mView={mView}
       />
-      <div className="deck" data-open={mSheet && mSheet !== 'nav' ? 'true' : 'false'}>
-        <div className="mobilebar" id="mobilebar">
+      <div className="deck" data-open={level === 2 ? 'true' : 'false'} data-level={level}>
+        <DeckGrip level={level} onLevel={setLevel} controls="mobilebar" />
+        {level >= 1 && <div className="mobilebar" id="mobilebar">
           <Seg<MView>
             id="mviewseg" dataKey="mview" ariaLabel="Viewport"
             value={mView} onChange={(v) => setUi({ mView: v })}
@@ -284,13 +291,13 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
             {deckTab('display', 'Display')}
             {deckTab('files', 'Files')}
           </div>
-        </div>
-        {mSheet === 'tools' && (
+        </div>}
+        {panel === 'tools' && (
           <div className="deck-body" id="mpanel-tools" role="region" aria-label="Tools">
             <MprToolDock />
           </div>
         )}
-        {mSheet === 'display' && (
+        {panel === 'display' && (
           <div className="deck-body" id="mpanel-display" role="region" aria-label="Display">
             {/* SurfaceView portals its 3D dock here while the 3D viewport is
                 the one on screen — same dock as desktop, hosted where mobile
@@ -304,7 +311,7 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
             <ExportDock axialCanvasRef={axialCanvasRef} />
           </div>
         )}
-        {mSheet === 'files' && (
+        {panel === 'files' && (
           <div className="deck-body" id="mpanel-files" role="region" aria-label="Files">
             <DarkSelect value={series} onChange={onOpenSeries} title="Open series" ariaLabel="Open series">
               {Object.keys(SERIES).map((k) => <option key={k} value={k}>{k}</option>)}

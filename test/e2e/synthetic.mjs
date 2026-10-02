@@ -155,6 +155,10 @@ try {
   await ph.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
   const dicomDir = 'samples/ct-head-series';
   await ph.setInputFiles('input#upload', readdirSync(dicomDir).filter((f) => f.endsWith('.dcm')).map((f) => `${dicomDir}/${f}`));
+  // the deck starts hidden (only its handle shows); one press raises its bar
+  const deckStep = async (n) => { for (let i = 0; i < n; i++) { await ph.locator('.deck-grip').tap(); await ph.waitForTimeout(250); } };
+  if (await ph.locator('#mobilebar').count() !== 0) fail('phone viewer: the deck is not hidden on first open');
+  await deckStep(1);
   await ph.locator('#mviewseg button[data-mview="axial"]').tap();
   await ph.waitForSelector('#m-slice', { timeout: 60000 });
   if (await above(ph, '#c-axial', '.deck') !== true) fail('phone viewer: the image is not above the control deck');
@@ -166,7 +170,9 @@ try {
   if (await ph.locator('#m-slice').inputValue() !== String(await slice())) fail('phone scrubber disagrees with the slice header');
   for (const [route, view, dock] of [['protein', '#c-protein', '#dock-protein'], ['cells', '#c-cells', '#dock-cells'], ['atlas', '#c-atlas', '#dock-atlas']]) {
     await ph.goto(`${BASE}#/${route}`, { waitUntil: 'networkidle' });
-    await ph.waitForSelector(dock, { timeout: 60000 });
+    await ph.waitForSelector(dock, { state: 'attached', timeout: 60000 });
+    if (await ph.locator(dock).isVisible()) fail(`phone ${route}: the controls are showing on first open, they should be hidden`);
+    await deckStep(2);
     if (await above(ph, view, dock) !== true) fail(`phone ${route}: the image is not above its controls`);
   }
   await ph.goto(`${BASE}#/worklist`, { waitUntil: 'networkidle' });

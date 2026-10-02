@@ -29,7 +29,17 @@ const loadViewerFiles = (paths) => async (page) => {
   await page.setInputFiles('input#upload', paths);
   await page.waitForTimeout(6000);
 };
+/** The phone's deck starts hidden (only its handle shows). Pressing the handle
+ *  steps it up a level: n=1 is the half-open deck (a stage route's first
+ *  rows, the viewer's bar), n=2 the full one. */
+const deckUp = async (page, n = 2) => {
+  for (let i = 0; i < n; i++) {
+    await click(page, '.deck-grip');
+    await page.waitForTimeout(300);
+  }
+};
 const mobileSheet = (label) => async (page) => {
+  await deckUp(page, 1);
   await click(page, `#mobilebar button:has-text("${label}")`);
   await page.waitForTimeout(600);
 };
@@ -70,6 +80,7 @@ export const STATES = [
     setup: async (p, { fx }) => {
       const fs = await import('node:fs');
       await loadViewerFiles(fs.readdirSync(fx.dicom).filter((f) => f.endsWith('.dcm')).map((f) => `${fx.dicom}/${f}`))(p);
+      await deckUp(p, 1);
       await click(p, '#mviewseg button[data-mview="axial"]');
       await p.waitForTimeout(800);
     },
@@ -103,6 +114,7 @@ export const STATES = [
     setup: async (p, { fx }) => {
       const fs = await import('node:fs');
       await loadViewerFiles(fs.readdirSync(fx.dicom).filter((f) => f.endsWith('.dcm')).map((f) => `${fx.dicom}/${f}`))(p);
+      await deckUp(p, 1);
       await click(p, '#mviewseg button[data-mview="axial"]');
       await click(p, '#full-axial');
       await p.waitForTimeout(800);
@@ -115,10 +127,38 @@ export const STATES = [
       return bad;
     } },
   // ---- every other route on a phone: the deck ---------------------------------
-  { name: 'm-deck-folded', route: 'protein', when: 'narrow', setup: (p) => click(p, '.deck-grip') },
-  { name: 'm-deck-folded-atlas', route: 'atlas', when: 'narrow', wait: 4000, setup: (p) => click(p, '.deck-grip') },
-  { name: 'm-studies-cohort', route: 'worklist', when: 'narrow', setup: (p) => click(p, '.deck-fold-head:has-text("Teaching cohort")') },
-  { name: 'm-studies-pacs', route: 'worklist', when: 'narrow', setup: (p) => click(p, 'button[aria-pressed]:has-text("PACS")') },
+  // the resting state of each of these is the deck hidden; these raise it
+  { name: 'm-open-protein', route: 'protein', when: 'narrow', setup: (p) => deckUp(p) },
+  { name: 'm-half-protein', route: 'protein', when: 'narrow', setup: (p) => deckUp(p, 1) },
+  { name: 'm-open-cells', route: 'cells', when: 'narrow', wait: 4000, setup: (p) => deckUp(p) },
+  { name: 'm-open-atlas', route: 'atlas', when: 'narrow', wait: 4000, setup: (p) => deckUp(p) },
+  { name: 'm-open-tracks', route: 'tracks', when: 'narrow', setup: (p) => deckUp(p) },
+  { name: 'm-open-studies', route: 'worklist', when: 'narrow', setup: (p) => deckUp(p) },
+  { name: 'm-open-viewer', when: 'narrow', wait: 5000, setup: async (p) => { await deckUp(p, 1); await click(p, '#mobilebar button:has-text("Display")'); } },
+  { name: 'm-studies-cohort', route: 'worklist', when: 'narrow', setup: async (p) => { await deckUp(p); await click(p, '.deck-fold-head:has-text("Teaching cohort")'); } },
+  { name: 'm-studies-pacs', route: 'worklist', when: 'narrow', setup: async (p) => { await deckUp(p); await click(p, 'button[aria-pressed]:has-text("PACS")'); } },
+  // the swipe itself: a touch drag up on the handle raises the deck a level, a drag down lowers it
+  { name: 'm-swipe', route: 'protein', when: 'narrow',
+    setup: async (p) => {
+      const box = await p.locator('.deck-grip').boundingBox();
+      const cdp = await p.context().newCDPSession(p);
+      const drag = async (y0, y1) => {
+        const pt = (y) => [{ x: box.x + box.width / 2, y }];
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: pt(y0) });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: pt((y0 + y1) / 2) });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: pt(y1) });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await p.waitForTimeout(500);
+      };
+      const mid = box.y + box.height / 2;
+      await drag(mid, mid - 80);
+    },
+    check: async (p) => {
+      const lvl = async () => p.locator('.stage-deck').getAttribute('data-level');
+      const bad = [];
+      if ((await lvl()) !== '1') bad.push(`a swipe up on the handle did not raise the deck to half (level ${await lvl()})`);
+      return bad;
+    } },
   // ---- studies / report ------------------------------------------------------
   { name: 'studies', route: 'worklist', scrolls: true },
   { name: 'studies-nomatch', route: 'worklist', setup: async (p) => { await p.fill('input[type=search], .wl-filter input, #wl-filter', 'zzzz-no-such-study').catch(() => {}); } },
@@ -127,15 +167,15 @@ export const STATES = [
   { name: 'protein-empty', route: 'protein' },
   { name: 'protein-loaded', route: 'protein', setup: async (p, { fx }) => { await p.setInputFiles('#pdb-upload', fx.pdb); await p.waitForTimeout(2500); } },
   { name: 'protein-loaded-details', route: 'protein', setup: async (p, { fx }) => { await p.setInputFiles('#pdb-upload', fx.pdb); await p.waitForTimeout(2500); await details(p); } },
-  { name: 'protein-capsid', route: 'protein', setup: async (p) => { await click(p, '#protein-mode button[data-protein-mode="capsid"]'); await p.waitForTimeout(2500); } },
+  { name: 'protein-capsid', route: 'protein', setup: async (p, { vp }) => { if (vp.width < 1000) await deckUp(p); await click(p, '#protein-mode button[data-protein-mode="capsid"]'); await p.waitForTimeout(2500); } },
   // ---- cells / tracks / atlas / learn --------------------------------------------
   { name: 'cells', route: 'cells', wait: 4000 },
   { name: 'tracks-empty', route: 'tracks' },
   { name: 'tracks-loaded', route: 'tracks', setup: async (p, { fx }) => { await p.setInputFiles('#track-upload', fx.bed); await p.waitForTimeout(1500); } },
   { name: 'atlas-bones', route: 'atlas', wait: 4000 },
   { name: 'atlas-bones-details', route: 'atlas', wait: 4000, setup: details },
-  { name: 'atlas-body', route: 'atlas', wait: 4000, setup: async (p) => { await click(p, '#atlas-mode button[data-atlas-mode="body"]'); await p.waitForTimeout(3000); } },
-  { name: 'atlas-body-details', route: 'atlas', wait: 4000, setup: async (p) => { await click(p, '#atlas-mode button[data-atlas-mode="body"]'); await p.waitForTimeout(3000); await details(p); } },
+  { name: 'atlas-body', route: 'atlas', wait: 4000, setup: async (p, { vp }) => { if (vp.width < 1000) await deckUp(p); await click(p, '#atlas-mode button[data-atlas-mode="body"]'); await p.waitForTimeout(3000); } },
+  { name: 'atlas-body-details', route: 'atlas', wait: 4000, setup: async (p, { vp }) => { if (vp.width < 1000) await deckUp(p); await click(p, '#atlas-mode button[data-atlas-mode="body"]'); await p.waitForTimeout(3000); await details(p); } },
   { name: 'learn', route: 'learn', scrolls: true },
   { name: 'learn-answered', route: 'learn', setup: async (p) => { await p.locator('#learn-quiz button').first().click(); await p.waitForTimeout(500); } },
   { name: 'learn-selftest', route: 'learn', setup: async (p) => { await click(p, '#dock-selftest button:has-text("Start")'); await p.waitForTimeout(1500); await p.locator('#selftest-quiz button').first().click().catch(() => {}); await p.waitForTimeout(400); } },
@@ -148,6 +188,7 @@ const ALL = (l) => ({ textSize: l, density: l, controlSize: l, corners: l, image
 for (const end of ['xs', 'xl']) {
   for (const [name, route, wait] of [['viewer', '', 5000], ['studies', 'worklist', 2200], ['protein', 'protein', 2200], ['cells', 'cells', 4000], ['atlas', 'atlas', 4000], ['learn', 'learn', 2200], ['report', 'report', 2200]]) {
     STATES.push({ name: `${name}-all-${end}`, route, wait, prefs: ALL(end) });
+    if (['studies', 'protein', 'cells', 'atlas'].includes(name)) STATES.push({ name: `${name}-open-all-${end}`, route, wait, when: 'narrow', prefs: ALL(end), setup: (p) => deckUp(p) });
   }
   STATES.push({ name: `viewer-details-all-${end}`, wait: 5000, when: 'desktop', prefs: ALL(end), setup: details });
   STATES.push({ name: `viewer-pop-display-all-${end}`, wait: 5000, when: 'desktop', prefs: ALL(end), setup: popOut('Display') });
