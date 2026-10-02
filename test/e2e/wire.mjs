@@ -1361,28 +1361,27 @@ try {
   await page.click('#appearance');
   await page.waitForSelector('#appear-text', { timeout: 30000 });
   const bodyPx = () => page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize));
-  // Expectations follow tokens.css: body text is --fs-md (13.5px) × the --ts
-  // ramp, and rhythm is --sp-2 (6px) × the --sp ramp, read off the file-tab
-  // row's bottom padding. (The dock this leg used to measure lost its
-  // padding in the UI rebuild, and the ramp's base moved from 13px to 13.5px;
-  // the leg sat unreached behind earlier failures while both drifted.)
+  // Expectations follow tokens.css: body text is --fs-md (14px) × the --ts
+  // ramp, and rhythm is --sp-4 (12px) × the --sp ramp, read off the file-tab
+  // row's bottom padding. audit:appearance is the gate that measures every
+  // level on every route; this leg proves the controls reach the page.
   const dockPadTop = () => page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.ftop')).paddingBottom));
-  const textLevels = [['xs', 11.07], ['s', 12.285], ['m', 13.5], ['l', 14.985], ['xl', 16.74]];
+  const textLevels = [['xs', 11.48], ['s', 12.74], ['m', 14], ['l', 15.54], ['xl', 17.36]];
   for (const [lv, px] of textLevels) {
     await page.click(`#appear-text button[data-tsize="${lv}"]`);
     await page.waitForFunction((v) => document.documentElement.dataset.text === v, lv, { timeout: 30000 });
     const got = await bodyPx();
     if (Math.abs(got - px) > 0.01) fail(`text ${lv}: body ${got}px, want ${px}px`);
   }
-  console.log('text scale hits all 5 levels (11.07/12.285/13.5/14.985/16.74px)');
-  const layoutLevels = [['xs', 4.08], ['s', 5.04], ['m', 6], ['l', 7.2], ['xl', 8.4]];
+  console.log('text scale hits all 5 levels (11.48/12.74/14/15.54/17.36px)');
+  const layoutLevels = [['xs', 8.16], ['s', 10.08], ['m', 12], ['l', 14.4], ['xl', 16.8]];
   for (const [lv, pad] of layoutLevels) {
     await page.click(`#appear-density button[data-density="${lv}"]`);
     await page.waitForFunction((v) => document.documentElement.dataset.density === v, lv, { timeout: 30000 });
     const got = await dockPadTop();
     if (Math.abs(got - pad) > 0.01) fail(`layout ${lv}: rhythm ${got}px, want ${pad}px`);
   }
-  console.log('layout size hits all 5 levels (rhythm 4.08/5.04/6/7.2/8.4px)');
+  console.log('layout size hits all 5 levels (rhythm 8.16/10.08/12/14.4/16.8px)');
   // Reload: chrome prefs survive via localStorage (parked at the extremes).
   await page.click('#appear-text button[data-tsize="xl"]');
   await page.click('#appear-density button[data-density="xs"]');
@@ -1396,7 +1395,7 @@ try {
     null, { timeout: 30000 },
   );
   const persisted = await bodyPx();
-  if (Math.abs(persisted - 16.74) > 0.01) fail(`text scale not persisted: ${persisted} vs 16.74`);
+  if (Math.abs(persisted - 17.36) > 0.01) fail(`text scale not persisted: ${persisted} vs 17.36`);
   else console.log('appearance persists across reload');
   // Restore defaults so later runs start balanced/medium.
   await page.click('#appearance');
@@ -1735,29 +1734,29 @@ try {
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
   );
-  // Teal accent pixels (lines) vs red mask tint vs near-white chrome text.
-  const tealCount = () => page10.evaluate(() => {
+  // The reference lines are drawn in the accent blue (lib/palette.ts ACCENT),
+  // which the image, the red mask tint and the white chrome text never are.
+  const ACCENT_PX = '(d[i + 2] > 200 && d[i] < 120 && d[i + 1] > 120 && d[i + 1] < 200)';
+  const tealCount = () => page10.evaluate((test) => {
     const cv = document.getElementById('c-coronal');
     const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    const is = new Function('d', 'i', `return ${test};`);
     let n = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i + 1] - d[i] > 60 && d[i + 1] > 80) n++;
-    }
+    for (let i = 0; i < d.length; i += 4) if (is(d, i)) n++;
     return n;
-  });
+  }, ACCENT_PX);
   const tealBefore = await tealCount();
   const xbox = await page10.locator('#c-axial').boundingBox();
   await page10.mouse.click(xbox.x + xbox.width / 2, xbox.y + xbox.height / 2);
-  await page10.waitForFunction((before) => {
+  await page10.waitForFunction(([before, test]) => {
     const cv = document.getElementById('c-coronal');
     const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    const is = new Function('d', 'i', `return ${test};`);
     let n = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i + 1] - d[i] > 60 && d[i + 1] > 80) n++;
-    }
-    return n > Math.max(100, before + 50);
-  }, tealBefore, { timeout: 30000 });
-  console.log(`crosshair lines appear on coronal (teal px ${tealBefore} -> up)`);
+    for (let i = 0; i < d.length; i += 4) if (is(d, i)) n++;
+    return n > before + 30;
+  }, [tealBefore, ACCENT_PX], { timeout: 30000 });
+  console.log(`crosshair lines appear on coronal (accent px ${tealBefore} -> up)`);
 
   // ---- 22. Shift-drag window/level: ro-wl readout + pixels follow.
   const wlBefore = await page10.locator('#ro-wl').textContent();

@@ -29,6 +29,7 @@ import { useOrbitPointer } from './orbitPointer';
 import { pick3d } from './pick3d';
 import { ClipPanel } from './ClipPanel';
 import { clipOf } from '../lib/clip3d';
+import { useWheel } from '../lib/useWheel';
 
 /** Quiet time after the last orbit frame before the anti-aliased repaint. */
 const ORBIT_SETTLE_MS = 160;
@@ -476,10 +477,10 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
   };
   const zoomStep3d = (f: number): void => setZoom3d(Math.min(8, Math.max(0.5, session.zoom3d * f)));
 
-  const wheelZoom = (e: React.WheelEvent): void => {
+  useWheel(() => [canvasRef.current], (e) => {
     e.preventDefault();
     zoomStep3d(e.deltaY < 0 ? 1.15 : 1 / 1.15);
-  };
+  });
 
   // drag orbits, pinch zooms, a tap picks: the panes jump to the point (F12)
   const { onOrbitDown, onOrbitMove, onOrbitUp } = useOrbitPointer({
@@ -646,7 +647,6 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
               <canvas
                 id="view3d" ref={canvasRef} width={560} height={560}
                 role="img" aria-label="3D surface. Drag to orbit, wheel to zoom."
-                onWheel={wheelZoom}
                 onDoubleClick={() => setZoom3d(1)}
                 onPointerDown={onOrbitDown}
                 onPointerMove={onOrbitMove}

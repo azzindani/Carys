@@ -8,7 +8,16 @@
 // them all and asserts, in each:
 //
 //   layout   no sideways page scroll; no control or panel off the screen;
-//            no control covered by something else; no text clipped mid-word
+//            no control covered by something else; no text clipped mid-word;
+//            no control cut off by a container that cannot be scrolled to it
+//            (the page itself being one: a phone's Studies and Learn pages
+//            could not scroll at all for want of this check)
+//   phone    the previewer is on top, fully on screen and not squeezed, no
+//            control sits above it (the file tabs, its own header and the top
+//            bar excepted), and every control of a deck is in the lower part of
+//            the screen, where a thumb is
+//   scroll   a page that is longer than the screen scrolls when the wheel
+//            turns over it
 //   system   every font size is on the type ramp, every radius on the radius
 //            ramp, every family Inter or Plex Mono, and every colour a palette
 //            colour (token values read back from the page, so a token change
@@ -78,8 +87,8 @@ const server = spawn('python3', ['-m', 'http.server', String(PORT), '--directory
 await new Promise((r) => setTimeout(r, 1500));
 
 /** What the page looks like, measured in the page. Returns plain data. */
-const measure = () => {
-  const out = { overflow: 0, off: [], covered: [], clipped: [], small: [], rows: [], type: {}, radius: {}, family: {}, color: {}, odd: [] };
+const measure = (arg) => {
+  const out = { overflow: 0, off: [], covered: [], clipped: [], small: [], rows: [], type: {}, radius: {}, family: {}, color: {}, odd: [], cut: [], stage: [] };
   const de = document.documentElement;
   out.overflow = de.scrollWidth - de.clientWidth;
   const vis = (el) => {
@@ -132,7 +141,7 @@ const measure = () => {
   const data = (el) => !!el.closest('.lblswatch, .swatch, .sw, .cmap, .legend');
   const note = (bag, key, el, extra = '') => { const a = (bag[key] ||= { n: 0, ex: [] }); a.n++; if (a.ex.length < 2) a.ex.push(name(el) + extra); };
 
-  const FLOATING = '.inspector, .popout, .appear, .pal-wrap, [role=dialog], [role=listbox], [role=menu], [data-radix-popper-content-wrapper], .toast, .hint-pop, [role=tooltip]';
+  const FLOATING = '.inspector, .popout, .appear, .pal-wrap, .sheet, .sheet-scrim, [role=dialog], [role=listbox], [role=menu], [data-radix-popper-content-wrapper], .toast, .hint-pop, [role=tooltip]';
   /** a control scrolled out of its own scroller is not under what shows there */
   const clippedByScroller = (el, x, y) => {
     for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
@@ -145,6 +154,46 @@ const measure = () => {
     return false;
   };
   const controls = [...document.querySelectorAll('button, select, input:not([type=hidden]):not([type=file]), a[href], [role=button], [role=tab], [role=switch], textarea')];
+  /** containers that scroll sideways on purpose */
+  const HSTRIP = '[data-hscroll]';
+  /** Is this control cut off by an ancestor that a person cannot scroll to
+   *  bring it back? A scroller that is long enough to scroll is fine for a
+   *  control below or above its box; `overflow: hidden` (or a scroller with
+   *  nothing to scroll) is not, and neither is anything off to the side. */
+  const unreachable = (el, r) => {
+    let cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+      const o = getComputedStyle(a);
+      if (o.position === 'fixed') return null; // lifted out of the flow: nothing above it clips it
+      if (!/hidden|clip|auto|scroll/.test(o.overflowX + o.overflowY)) continue;
+      const b = a.getBoundingClientRect();
+      const outX = cx < b.left - 1 || cx > b.right + 1, outY = cy < b.top - 1 || cy > b.bottom + 1;
+      if (!outX && !outY) continue;
+      const canY = /auto|scroll/.test(o.overflowY) && a.scrollHeight > a.clientHeight + 1;
+      const canX = /auto|scroll/.test(o.overflowX) && a.scrollWidth > a.clientWidth + 1 && a.matches(HSTRIP);
+      if (outY && !canY) return `cut off by ${name(a)} (y ${Math.round(r.top)}..${Math.round(r.bottom)} outside ${Math.round(b.top)}..${Math.round(b.bottom)}, not scrollable)`;
+      if (outX && !canX) return `cut off by ${name(a)} (x ${Math.round(r.left)}..${Math.round(r.right)} outside ${Math.round(b.left)}..${Math.round(b.right)})`;
+      // This scroller can bring it into view, so from here up the control
+      // counts as sitting at the scroller's edge: whatever clips the scroller
+      // is judged on the scroller, not on where the control is now scrolled to.
+      cx = Math.min(b.right, Math.max(b.left, cx));
+      cy = Math.min(b.bottom, Math.max(b.top, cy));
+    }
+    return null;
+  };
+  /** the part of a box that shows: clipped by every ancestor that clips */
+  const shown = (el) => {
+    let r = el.getBoundingClientRect();
+    let [l, t, rt, bt] = [Math.max(0, r.left), Math.max(0, r.top), Math.min(innerWidth, r.right), Math.min(innerHeight, r.bottom)];
+    for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+      const o = getComputedStyle(a);
+      if (o.position === 'fixed') break;
+      if (!/hidden|clip|auto|scroll/.test(o.overflowX + o.overflowY)) continue;
+      const b = a.getBoundingClientRect();
+      [l, t, rt, bt] = [Math.max(l, b.left), Math.max(t, b.top), Math.min(rt, b.right), Math.min(bt, b.bottom)];
+    }
+    return { w: Math.max(0, rt - l), h: Math.max(0, bt - t), top: t, bottom: bt };
+  };
 
   for (const el of document.querySelectorAll('body *')) {
     if (el.closest('canvas, option, [hidden]') || el.matches('script, style, canvas, option')) continue;
@@ -187,11 +236,16 @@ const measure = () => {
     const r = vis(el);
     if (!r || el.closest('[hidden]')) continue;
     if (r.right > innerWidth + 1 || r.left < -1) {
-      // a control scrolled out inside its own scroller is not off the screen
+      // a control in a strip that is meant to scroll sideways is not off the
+      // screen. The page's own scroller is not such a strip: it let a title
+      // row of four buttons run 40px off a phone's edge, unseen.
       let p = el.parentElement, scrolled = false;
-      while (p && p !== document.body) { const o = getComputedStyle(p).overflowX; if ((o === 'auto' || o === 'scroll') && p.scrollWidth > p.clientWidth) { scrolled = true; break; } p = p.parentElement; }
+      while (p && p !== document.body) { const o = getComputedStyle(p).overflowX; if ((o === 'auto' || o === 'scroll') && p.scrollWidth > p.clientWidth && p.matches(HSTRIP)) { scrolled = true; break; } p = p.parentElement; }
       if (!scrolled) out.off.push(`${name(el)} x=${Math.round(r.left)}..${Math.round(r.right)}`);
     }
+    // cut off by a container with no way to scroll it into view
+    const why = unreachable(el, r);
+    if (why) out.cut.push(`${name(el)} ${why}`);
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     if (cx >= 0 && cy >= 0 && cx <= innerWidth && cy <= innerHeight && !clippedByScroller(el, cx, cy)) {
       const hit = document.elementFromPoint(cx, cy);
@@ -229,6 +283,43 @@ const measure = () => {
         if (a.height < 1 || b.height < 1) continue;
         const dc = Math.abs(a.top + a.height / 2 - (b.top + b.height / 2));
         if (dc > 1.01 && !kids[i].matches('.lbl') && !kids[j].matches('.lbl')) out.rows.push(`${name(kids[i])} vs ${name(kids[j])} centres ${dc.toFixed(1)}px apart`);
+      }
+    }
+  }
+  // ---- phone: the previewer on top, the controls at the bottom -----------------
+  // Portrait only: a phone on its side puts the deck in a column beside the image.
+  if (arg && arg.phone) {
+    const CHROME = '.top, .ftop, .pane, .vp, .view-title, .toast, .sheet, .sheet-scrim, .pal-wrap, [role=dialog], [data-radix-popper-content-wrapper]';
+    let pv = null, pvEl = null;
+    for (const c of document.querySelectorAll('canvas')) {
+      if (c.closest('.wl-row, .tfed, [hidden]') || !vis(c)) continue;
+      const sh = shown(c);
+      if (sh.w < 100 || sh.h < 40) continue;
+      if (!pv || sh.w * sh.h > pv.w * pv.h) { pv = sh; pvEl = c; }
+    }
+    const H = innerHeight;
+    if (pvEl) {
+      const full = pvEl.getBoundingClientRect();
+      if (pv.h < full.height * 0.8) out.stage.push(`previewer is cut off: ${Math.round(pv.h)} of ${Math.round(full.height)}px shows`);
+      if (pv.h < H * 0.17) out.stage.push(`previewer is squeezed to ${Math.round(pv.h)}px (${Math.round(pv.h / H * 100)}% of the screen)`);
+      if (pv.top > H * 0.5) out.stage.push(`previewer starts at ${Math.round(pv.top)}px, below the middle of the screen`);
+      for (const el of controls) {
+        const r = vis(el);
+        if (!r || el.closest(CHROME) || el.closest('[hidden]')) continue;
+        if (r.top + r.height / 2 < pv.top + pv.h / 2) out.stage.push(`control above the previewer: ${name(el)} at y=${Math.round(r.top)} (previewer ${Math.round(pv.top)}..${Math.round(pv.bottom)})`);
+      }
+    }
+    // a deck is the controls' home: all of it in the lower part of the screen
+    for (const deck of document.querySelectorAll('.deck')) {
+      const d = vis(deck);
+      if (!d) continue;
+      if (d.top < H * 0.34) out.stage.push(`control deck starts at y=${Math.round(d.top)}: above a third of the screen`);
+      for (const el of deck.querySelectorAll('button, select, input:not([type=hidden]):not([type=file]), textarea')) {
+        const r = vis(el);
+        if (!r || el.closest('[hidden]')) continue;
+        const sh = shown(el);
+        if (sh.h < 1) continue; // scrolled out of the deck's own window: reachable by scrolling it
+        if (r.top + r.height / 2 < H * 0.34 && !el.closest('.pane, .vp')) out.stage.push(`deck control in the upper third: ${name(el)} at y=${Math.round(r.top)}`);
       }
     }
   }
@@ -275,8 +366,25 @@ try {
         continue;
       }
       if (SHOTS) await page.screenshot({ path: join(SHOTS, `${vname}-${st.name}.png`) });
-      const m = await page.evaluate(measure);
+      // a page that is longer than the screen must scroll when the wheel turns over it
+      if (st.scrolls) {
+        const moved = await page.evaluate(async () => {
+          const at = () => [...document.querySelectorAll('*')].reduce((n, e) => n + e.scrollTop, 0) + scrollY;
+          return at();
+        });
+        await page.mouse.move(vp.width / 2, vp.height * 0.4);
+        for (let i = 0; i < 4; i++) { await page.mouse.wheel(0, 300); await page.waitForTimeout(80); }
+        const after = await page.evaluate(() => [...document.querySelectorAll('*')].reduce((n, e) => n + e.scrollTop, 0) + scrollY);
+        if (!(after > moved)) fail(where, 'does not scroll: the wheel over the page moved nothing, so what is below the first screen cannot be reached');
+        // park the pointer off the page and let any hover transition finish
+        await page.mouse.move(0, 0);
+        await page.waitForTimeout(450);
+      }
+      if (st.check) for (const msg of await st.check(page, { vp })) fail(where, msg);
+      const m = await page.evaluate(measure, { phone: vp.width <= 980 && vp.height > vp.width });
       if (m.overflow > 0) fail(where, `scrolls sideways by ${m.overflow}px`);
+      for (const s of m.cut) fail(where, `unreachable: ${s}`);
+      for (const s of m.stage) fail(where, `stage: ${s}`);
       for (const s of m.off) fail(where, `off the screen: ${s}`);
       for (const s of m.covered) fail(where, `covered: ${s}`);
       for (const s of m.clipped) fail(where, `text clipped mid-word: ${s}`);

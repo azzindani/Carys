@@ -9,6 +9,7 @@ import { bump } from '../lib/version';
 import { toast } from '../lib/toasts';
 import { undoBus } from '../lib/undoBus';
 import { Chip, DarkSelect, IconBtn, Seg, SliderRow, Switch, UndoGroup } from '../ui/primitives';
+import { Dock, Stage } from '../ui/Stage';
 
 // Synthetic demo store: 2 channels x 64x64, chunked 32x32, served from memory
 // through the REAL OmeZarrStore path (open/getTile/decode). Channel 0 reads
@@ -509,12 +510,12 @@ export function CellsView(): JSX.Element {
 
   const nC = store ? store.meta.shape[store.meta.axes.indexOf('c')] ?? 1 : 0;
   return (
-    <>
+    <Stage preview>
       <div className="view-title" id="title-cells">
         <h1>Cells</h1>
         <p>{label || 'open a zarr store — OME chunk path, CPU composite'}</p>
       </div>
-      <div className="dock" id="dock-cells">
+      <Dock id="dock-cells">
         <div className="grp">
           <IconBtn accent title="Open the built-in synthetic demo store" onClick={() => { void openDemo(); }}>Demo store</IconBtn>
           <IconBtn title="Open the vendored sample store over HTTP (real fetch path)" onClick={() => { setUrl('/samples/cells_demo.zarr'); void openUrl('/samples/cells_demo.zarr'); }}>Sample .zarr</IconBtn>
@@ -610,7 +611,7 @@ export function CellsView(): JSX.Element {
               onInput={(v) => pickBrushThr(v)} />
           </>
         )}
-      </div>
+      </Dock>
       <div id="view-cells" className="panes" data-testid="cells">
         <div className="pane" id="pane-cells">
           <div className="pane-head">
@@ -665,6 +666,6 @@ export function CellsView(): JSX.Element {
           )}
         </div>
       </div>
-    </>
+    </Stage>
   );
 }

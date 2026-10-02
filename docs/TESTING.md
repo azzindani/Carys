@@ -27,10 +27,14 @@ These steps are part of `ci` as well:
   levels), checks each moves only its own setting, that the smallest and
   largest of everything fit on every route, and that prefs persist and reset.
 - **`audit:ui`** is its own CI job (one screen per runner: it is the slowest
-  gate). It drives about 70 route, pop-out, tool and panel states at
+  gate). It drives about 80 route, pop-out, tool and panel states at
   desktop, tablet and phone (`UIAUDIT_VP` takes seven screens, `UIAUDIT_ONLY`
   a state-name regex, `UIAUDIT_SHOTS` a screenshot directory) and asserts
   layout, design-token conformance, row alignment, target size and axe in each.
+  It also asserts that no control is cut off by a container that cannot be
+  scrolled to it, that long pages scroll under the wheel, and, on a portrait
+  phone, that the previewer is on top and every control of a deck is in the
+  lower part of the screen ([ARCHITECTURE.md](ARCHITECTURE.md#design-system-srcstyles-srcui)).
   New views add a state in `test/e2e/uistates.mjs`.
 
 On a shared or CPU-limited machine, run the heavy ones with `nice -n 10`,
@@ -42,8 +46,9 @@ one at a time.
 
 1. **gates** runs `npm run ci` on a runner with no sample set, so the
    suites that need fixtures skip, and it prints the skip count.
-2. **ui** runs `audit:ui` as a matrix, one runner each for desktop, tablet
-   and phone ([`audit:ui`](#gates)).
+2. **ui** runs `audit:ui` as a matrix, one runner for each of six screens:
+   desktop, tablet, portrait tablet, phone, a small 360×640 phone and a phone
+   on its side ([`audit:ui`](#gates)).
 3. **synthetic** runs `npm run gen:samples`, then `test:synthetic`.
 4. **image** builds the Dockerfile, which runs the sample-free gate in its
    build stage. It then:

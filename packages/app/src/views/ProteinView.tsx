@@ -19,7 +19,9 @@ import { ACCENT, PROTEIN_BG } from '../lib/palette';
 import { toast } from '../lib/toasts';
 import { undoBus } from '../lib/undoBus';
 import { Chip, DarkSelect, IconBtn, Seg, SliderRow, UndoGroup } from '../ui/primitives';
+import { Dock, Stage } from '../ui/Stage';
 import { CapsidView } from './CapsidView';
+import { useOrbitPointer } from './orbitPointer';
 
 type ColorBy = 'element' | 'chain' | 'plddt';
 
@@ -96,6 +98,15 @@ function ModelView({ initial, modeSwitch }: { initial: StructureLink | null; mod
     if (record) selHist.current.push(sel);
     setSelState(next);
   };
+
+  // Drag turns the model, the way the sliders do; a tap picks nothing here, and
+  // the view is fitted to the canvas, so there is no zoom for a pinch to set.
+  const angles = useRef({ orbit, tilt });
+  angles.current = { orbit, tilt };
+  const { onOrbitDown, onOrbitMove, onOrbitUp } = useOrbitPointer({
+    angles, setOrbit, setTilt, queueOrbit: () => {}, onTap: () => {},
+    zoom: { get: () => 1, set: () => {}, min: 1, max: 1 },
+  });
 
   const paint = (): void => {
     const cv = canvasRef.current;
@@ -440,12 +451,12 @@ function ModelView({ initial, modeSwitch }: { initial: StructureLink | null; mod
   };
 
   return (
-    <>
+    <Stage preview>
       <div className="view-title" id="title-protein">
         <h1>Protein</h1>
         <p>{name || 'load a .pdb/.cif — spacefill CPU projection, sequence ↔ 3D highlight'}</p>
       </div>
-      <div className="dock" id="dock-protein">
+      <Dock id="dock-protein">
         {modeSwitch}
         <div className="sep" />
         <div className="grp">
@@ -556,7 +567,7 @@ function ModelView({ initial, modeSwitch }: { initial: StructureLink | null; mod
         )}
         <div className="sep" />
         <UndoGroup onUndo={doUndoSel} onClear={clearSel} undoTitle="Undo selection" clearTitle="Clear selection" />
-      </div>
+      </Dock>
       <div id="view-protein" className="panes" data-testid="protein">
         <div className="pane" id="pane-protein">
           <div className="pane-head">
@@ -566,7 +577,8 @@ function ModelView({ initial, modeSwitch }: { initial: StructureLink | null; mod
           </div>
           <div className="stage">
             <canvas id="c-protein" ref={canvasRef} width={W} height={H}
-              role="img" aria-label="Protein spacefill projection" />
+              role="img" aria-label="Protein spacefill projection. Drag to turn it."
+              onPointerDown={onOrbitDown} onPointerMove={onOrbitMove} onPointerUp={onOrbitUp} onPointerCancel={onOrbitUp} />
             {!model && <div className="stage-empty">No structure loaded</div>}
           </div>
         </div>
@@ -586,6 +598,6 @@ function ModelView({ initial, modeSwitch }: { initial: StructureLink | null; mod
           </div>
         </div>
       </div>
-    </>
+    </Stage>
   );
 }

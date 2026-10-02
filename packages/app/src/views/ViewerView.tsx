@@ -20,6 +20,7 @@ import {
 import { MprPanes } from './MprPanes';
 import { SurfaceView } from './SurfaceView';
 import { CprPanel } from './CprPanel';
+import { SliceScrubber } from './SliceScrubber';
 
 /** File tabs: one tab per open file (series). The topbar series picker and
  *  the worklist open files into tabs; switching tabs reloads that series,
@@ -277,6 +278,7 @@ export function ViewerView({ sliceInit, axialCanvasRef, extractor, onOpenSeries 
               { value: 'coronal', label: 'Cor' }, { value: 'sagittal', label: 'Sag' },
             ]}
           />
+          {mView !== 'v3d' && <SliceScrubber plane={mView} />}
           <div className="deck-tabs" role="group" aria-label="Controls">
             {deckTab('tools', 'Tools')}
             {deckTab('display', 'Display')}

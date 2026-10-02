@@ -222,7 +222,7 @@ function SegmentsTable(): JSX.Element | null {
       ))}
       <div className="mrow">
         <dt>segments CSV</dt>
-        <dd><button id="seg-csv" title="Export segments table CSV"
+        <dd><button className="iconbtn" id="seg-csv" title="Export segments table CSV"
           onClick={() => download(`segments-${ui.series}.csv`, segmentsTableToCSV(rows), 'text/csv')}>CSV</button></dd>
       </div>
     </dl>

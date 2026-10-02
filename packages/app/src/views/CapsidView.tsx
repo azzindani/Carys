@@ -17,7 +17,9 @@ import {
 } from '../lib/palette';
 import { session } from '../lib/session';
 import { setAmbientStatus, setStatus } from '../lib/status';
+import { useWheel } from '../lib/useWheel';
 import { Chip, DarkSelect, Seg, SliderRow, Switch } from '../ui/primitives';
+import { Dock, Stage } from '../ui/Stage';
 import { useOrbitPointer } from './orbitPointer';
 
 type Level = 'atoms' | 'residues' | 'chains';
@@ -213,11 +215,11 @@ export function CapsidView({ modeSwitch, initialKey }: { modeSwitch: ReactNode; 
     },
   });
 
-  const wheel = (e: React.WheelEvent): void => {
+  useWheel(() => [canvasRef.current], (e) => {
     e.preventDefault();
     setZoomV(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoomRef.current * (e.deltaY < 0 ? 1.15 : 1 / 1.15))));
     queueMove();
-  };
+  });
 
   const e = capsid?.entry;
   const pickText = ((): string => {
@@ -230,12 +232,12 @@ export function CapsidView({ modeSwitch, initialKey }: { modeSwitch: ReactNode; 
   })();
 
   return (
-    <>
+    <Stage preview>
       <div className="view-title" id="title-capsid">
         <h1>Capsid</h1>
         <p>{e ? `${e.name} · ${e.lattice} · ${e.pdbId}` : 'a whole virus shell from its asymmetric unit'}</p>
       </div>
-      <div className="dock" id="dock-capsid">
+      <Dock id="dock-capsid">
         {modeSwitch}
         <div className="sep" />
         <div className="grp">
@@ -279,7 +281,7 @@ export function CapsidView({ modeSwitch, initialKey }: { modeSwitch: ReactNode; 
               + (moving ? ` · turning: ${LEVEL_LABEL[moving.level]} ${moving.count.toLocaleString()} in ${Math.round(moving.ms)} ms` : '')
             : '')}</span></Chip>
         </div>
-      </div>
+      </Dock>
       <div id="view-capsid" className="panes" data-testid="capsid">
         <div className="pane">
           <div className="pane-head">
@@ -289,14 +291,13 @@ export function CapsidView({ modeSwitch, initialKey }: { modeSwitch: ReactNode; 
           <div className="stage">
             <canvas id="c-capsid" ref={canvasRef} width={W} height={H}
               role="img" aria-label="Virus capsid assembly rendering (education overlay)"
-              onPointerDown={onOrbitDown} onPointerMove={onOrbitMove} onPointerUp={onOrbitUp} onPointerCancel={onOrbitUp}
-              onWheel={wheel} />
+              onPointerDown={onOrbitDown} onPointerMove={onOrbitMove} onPointerUp={onOrbitUp} onPointerCancel={onOrbitUp} />
           </div>
           <div className="hint" id="capsid-src">{e && index
             ? `${index.attribution} · ${e.pdbId} (${e.organism || e.name}, revision ${e.revision}${e.resolutionA ? `, ${e.resolutionA} Å` : ''}): assembly ${e.assemblyId}, ${e.assemblyDetails}, ${e.operators} operators; within ${e.maxDeviationA.toFixed(4)} Å of RCSB's own assembly · ${e.citation}`
             : 'Protein Data Bank (CC0)'}</div>
         </div>
       </div>
-    </>
+    </Stage>
   );
 }

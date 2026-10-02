@@ -66,14 +66,16 @@ jobs:
   ui:
     # Every route, panel and tool state against the design system and axe
     # (test/e2e/uiaudit.mjs). One screen per runner: a state takes seconds,
-    # there are about 70 of them, and the screens do not depend on each other.
+    # there are about 80 of them, and the screens do not depend on each other.
+    # The phones are the screens the layout rule is asserted on: a 360x640
+    # phone and a phone on its side break first.
     name: ui audit (${{ matrix.screen }})
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        screen: [desktop, tablet, phone]
+        screen: [desktop, tablet, tabletP, phone, small, landscape]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

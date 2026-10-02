@@ -82,11 +82,21 @@
   :root { --deck-h: calc(var(--screen-h) * 0.46); }
 
   .rail { display: none; }
-  .shell { display: block; }
 
-  html:has(.viewgrid), body:has(.viewgrid) { height: var(--screen-h); }
-  #root:has(.viewgrid) { height: var(--screen-h); overflow: hidden; }
-  .frame:has(.viewgrid) { height: var(--screen-h); }
+  /* The page opts into viewport-fit=cover, so it runs under a phone's notch,
+     its rounded corners and (installed) its status bar. The frame keeps clear
+     of them; the deck already clears the home indicator itself. */
+  .frame {
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
+  }
+
+  /* The screen is one column of exactly the screen's height, on every route:
+     the top bar, then the route, which owns whatever it scrolls. This was
+     `.shell { display: block }` with the height pinned for the viewer only,
+     so on every other route `.frame` grew to its content, `#root` (overflow
+     hidden) clipped it, and nothing below the first screen could be reached
+     on a phone: Studies, Learn, the protein sequence, the atlas. */
+  html, body, #root { height: var(--screen-h); }
 
   .top { padding: var(--sp-2) var(--sp-3); gap: var(--sp-2); }
   .top .iconbtn.burger { display: inline-flex; }
@@ -166,6 +176,19 @@
   }
   .mobilebar .seg { width: 100%; }
   .mobilebar .seg button { flex: 1; justify-content: center; padding-inline: var(--sp-1); }
+
+  /* Stack scrolling lives in the bar, under the viewport switcher: the most
+     used control of a 2D view, in reach. The rail it replaces ran up the
+     image's far edge, at the top of the screen. Fullscreen hides the deck,
+     so there the rail stays. */
+  .scrub { display: flex; align-items: center; gap: var(--sp-1); }
+  .scrub .iconbtn { flex: none; width: var(--tap); padding: 0; justify-content: center; }
+  .scrub input[type="range"] { flex: 1 1 auto; min-width: 0; margin: 0; }
+  .vp2d .vrail { display: none; }
+  .viewgrid[data-full]:not([data-full=""]) .vp2d .vrail { display: flex; }
+  /* the 3-up emphasis only changes how three panes share a desktop screen;
+     a phone shows one at a time, so the control would do nothing */
+  .deck-body .grp:has(> #layoutseg) { display: none; }
 
   .deck-tabs {
     flex: none; display: flex; align-items: center; gap: var(--sp-1);
@@ -247,14 +270,131 @@
      spent on controls the gestures already cover. */
   .vp3d .vrail { display: none; }
 
-  /* non-viewer routes: ordinary page flow, deck absent */
-  .main:not(:has(.viewgrid)) { display: block; padding: var(--sp-4) var(--sp-3); }
+  /* A page route (Learn): a column that scrolls inside its own region, so
+     the top bar stays put and the last block clears the home indicator. A
+     flex item must not shrink below its content here, or a block with
+     overflow hidden would squash instead of letting the page scroll. */
+  .main:not(:has(.viewgrid)):not(:has(.stage-main)) {
+    display: flex; flex-direction: column; padding: var(--sp-4) var(--sp-3) 0;
+  }
+  .main:not(:has(.viewgrid)):not(:has(.stage-main)) > .viewport {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+    padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+  }
+  .main:not(:has(.viewgrid)):not(:has(.stage-main)) > .viewport > * { flex: none; }
   .status { display: none; }
+
+  /* The command palette is a sheet like the others: from the bottom edge, and
+     lifted clear of the keyboard its field raises (--kb, ui/Palette). */
+  .pal-wrap { align-items: flex-end; padding: 0 0 var(--kb, 0px); }
+  .pal {
+    width: 100%; display: flex; flex-direction: column;
+    max-height: calc(var(--screen-h) * 0.72);
+    border-bottom: 0; border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    animation-name: sheet-in;
+  }
+  .pal input { flex: none; }
+  .pal ul { max-height: none; flex: 1 1 auto; min-height: 0; }
+
+  /* A message is not a control: it goes under the top bar, not over the deck
+     where the controls it would hide are. */
+  #toasts { bottom: auto; top: calc(var(--ctl-h) + var(--sp-6)); }
 
   /* mobile fullscreen: pure viewport, deck and chrome out of the way */
   #root:has(.viewgrid[data-full]:not([data-full=""])) .top,
   #root:has(.viewgrid[data-full]:not([data-full=""])) .ftop,
   #root:has(.viewgrid[data-full]:not([data-full=""])) .deck { display: none; }
+  /* With the tabs and the deck gone, the image is the only item left, and a
+     grid places it in its first row, the one that is `auto`: it collapsed to
+     nothing and fullscreen was a black screen. It takes the one row. */
+  .main:has(.viewgrid[data-full]:not([data-full=""])) .viewport,
+  .main:has(.viewgrid[data-full]:not([data-full=""])) .viewport:has(.deck[data-open="false"]) {
+    grid-template-rows: minmax(0, 1fr);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* ---- stage routes ---------------------------------------------------
+     The viewer's split for every other route with something to look at:
+     what you look at owns the top, and its controls are a deck on the
+     bottom (ui/Stage.tsx). The deck is the same surface as the viewer's. */
+  .main:has(.stage-main) {
+    display: flex; flex-direction: column; height: 100%; min-height: 0;
+    padding: var(--sp-2) var(--sp-3) 0; gap: 0;
+  }
+  .main:has(.stage-main) > .viewport {
+    flex: 1 1 auto; min-height: 0; overflow: hidden;
+    display: grid; grid-template-rows: minmax(0, 1fr) auto; row-gap: var(--sp-2);
+  }
+  .stage-main {
+    min-height: 0; min-width: 0; display: flex; flex-direction: column;
+    overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  }
+  .stage-main > * { flex: none; }
+  .stage-main > .view-title { margin-bottom: var(--sp-2); }
+  /* a list or a report: the deck is as tall as its controls, to the cap */
+  .stage-deck { height: auto; max-height: var(--deck-h); }
+  /* a canvas: the deck holds one height, so the image never jumps when a
+     toolbar grows a chip */
+  .stage-deck[data-preview="true"][data-open="true"] { height: var(--deck-h); max-height: none; }
+  .deck-body[hidden], .dock[hidden] { display: none; }
+
+  /* the row that folds the deck: the whole bar is the target */
+  .deck-grip, .deck-fold-head {
+    flex: none; display: flex; align-items: center; justify-content: space-between;
+    width: 100%; min-height: var(--tap); padding: 0 var(--sp-3);
+    background: transparent; border: 0; color: var(--color-muted);
+    font-size: var(--fs-sm); font-weight: 600; text-align: left;
+  }
+  .deck-grip { border-bottom: 1px solid var(--color-line); }
+  .deck[data-open="false"] .deck-grip { border-bottom-color: transparent; }
+  .deck-grip:hover, .deck-fold-head:hover { color: var(--color-text); }
+  .deck-grip svg, .deck-fold-head svg { transition: transform var(--dur-fast) var(--ease); }
+  /* the deck folds downward, so it points down while open and up while folded;
+     a section inside it unfolds in place, so it points down while shut */
+  .deck[data-open="false"] .deck-grip svg, .deck-fold[data-open="true"] .deck-fold-head svg { transform: rotate(180deg); }
+  /* a labelled toolbar is a section of the deck, shut until opened */
+  .deck-fold { border-top: 1px solid var(--color-line); }
+  .deck-fold-head { border-radius: var(--radius-sm); }
+  .deck-body > .deck-fold:first-child { border-top: 0; }
+
+  /* A route whose content is a canvas fills the region above the deck: the
+     first pane takes what is left, any pane after it (the sequence, the
+     channel table) is capped so it never takes the image's room, and what a
+     pane holds under its canvas (credits, a card) scrolls inside it. The
+     canvas keeps its aspect ratio (the pointer maths reads its box), so it
+     is sized by both limits at once, never stretched. */
+  .stage-main[data-preview="true"] { overflow: hidden; }
+  .stage-main[data-preview="true"] > .panes {
+    flex: 1 1 0; min-height: 0; margin: 0; gap: var(--sp-2);
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch;
+  }
+  .stage-main[data-preview="true"] > .panes > .pane { flex: 0 1 auto; max-width: none; min-height: 0; }
+  .stage-main[data-preview="true"] > .panes > .pane:first-child { flex: 1 1 0; }
+  .stage-main[data-preview="true"] > .panes > .pane:not(:first-child) { max-height: 34%; overflow-y: auto; }
+  .stage-main[data-preview="true"] .pane { overflow-y: auto; overscroll-behavior: contain; }
+  /* the canvas keeps at least 60% of its pane; the credits and cards under
+     it scroll inside the pane rather than squeezing the image */
+  .stage-main[data-preview="true"] .pane > .stage {
+    flex: 1 0 60%; min-height: 150px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .stage-main[data-preview="true"] .pane > .stage canvas {
+    flex: none; width: auto; height: auto; max-width: 100%; max-height: 100%; margin: 0;
+  }
+}
+
+/* ------------------------------------------------- short phone (≤720 tall)
+   On a 360×640 screen the region above the deck is ~250px. Two panes cannot
+   share it (the protein's structure and its sequence, the cells' composite and
+   its channel table): the image was left ~100px. The image keeps a third of
+   the screen, and the pane after it waits below in the same region, which
+   scrolls. A route with one pane is unaffected: it already has the region. */
+@media (max-width: 980px) and (max-height: 720px) and (orientation: portrait) {
+  .stage-main[data-preview="true"]:has(> .panes > .pane + .pane) { overflow-y: auto; }
+  .stage-main[data-preview="true"] > .panes:has(> .pane + .pane) { flex: none; }
+  .stage-main[data-preview="true"] > .panes:has(> .pane + .pane) > .pane:first-child { flex: none; height: calc(var(--screen-h) * 0.34); }
+  .stage-main[data-preview="true"] > .panes:has(> .pane + .pane) > .pane:not(:first-child) { max-height: none; overflow: visible; }
 }
 
 /* ----------------------------------------------------- phone: 560 down */
@@ -293,17 +433,47 @@
     border-radius: var(--radius-lg);
     padding-bottom: var(--sp-3);
   }
+  /* fullscreen: the image alone, across the whole screen, in the only row */
+  .main:has(.viewgrid[data-full]:not([data-full=""])) .viewport {
+    grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr);
+  }
+  .main:has(.viewgrid[data-full]:not([data-full=""])) .viewport > .viewgrid { grid-column: 1; grid-row: 1; }
+  /* the same for a stage route: image left, deck a column on the right. A
+     folded deck gives its column back and rests in the corner. */
+  .main:has(.stage-main) > .viewport {
+    grid-template-columns: minmax(0, 1fr) min(42vw, 360px); grid-template-rows: minmax(0, 1fr);
+    column-gap: var(--sp-2); padding-bottom: var(--sp-2);
+  }
+  .main:has(.stage-main) > .viewport:has(> .stage-deck[data-open="false"]) { grid-template-columns: minmax(0, 1fr) auto; }
+  .stage-main { grid-column: 1; grid-row: 1; }
+  .stage-deck, .stage-deck[data-preview="true"][data-open="true"] {
+    grid-column: 2; grid-row: 1; height: 100%; max-height: none;
+    border-bottom: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-lg);
+    padding-bottom: var(--sp-3);
+  }
+  .stage-deck[data-open="false"] { height: auto; align-self: end; }
 }
 
 /* ------------------------------------------------------- coarse pointers */
 @media (pointer: coarse) {
+  /* the keys it names are not on this device */
+  .pal-foot { display: none; }
   input:not([type="range"]):not([type="checkbox"]):not([type="color"]), select, select.dark, textarea {
     font-size: max(var(--fs-field-touch), 1em);
   }
-  #view-mpr canvas, #view3d { touch-action: none; }
+  /* a canvas a finger orbits, pans or paints on must own the drag, or the
+     browser takes it to scroll the page under the image */
+  #view-mpr canvas, #view3d, .stage canvas { touch-action: none; }
   .chip.zoom { padding: var(--sp-2) var(--sp-4); }
   /* 18px reads fine under a mouse; a finger needs the full floor (§22) */
   .chk input[type="checkbox"] { width: 24px; height: 24px; }
   .chip.zoom { min-height: var(--tap); }
   .switch { --sw-w: 46px; --sw-h: 26px; --sw-thumb: 20px; }
+  /* a slider's knob is the thing a thumb drags: half the target's height,
+     not the 14px a mouse pointer is happy with */
+  input[type="range"].styled::-webkit-slider-thumb { width: calc(var(--tap) / 2); height: calc(var(--tap) / 2); margin-top: calc((4px - var(--tap) / 2) / 2); }
+  input[type="range"].styled::-moz-range-thumb { width: calc(var(--tap) / 2 - 4px); height: calc(var(--tap) / 2 - 4px); }
+  .vrail input[type="range"].styled.vert::-webkit-slider-thumb { width: calc(var(--tap) / 2); height: calc(var(--tap) / 2); margin-top: 0; margin-left: calc((4px - var(--tap) / 2) / 2); }
+  .vrail input[type="range"].styled.vert::-moz-range-thumb { width: calc(var(--tap) / 2 - 4px); height: calc(var(--tap) / 2 - 4px); }
 }

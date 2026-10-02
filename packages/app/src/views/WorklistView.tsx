@@ -16,6 +16,7 @@ import {
   compressionAudit, deidReportCard, doseRegistry, phantomTrend,
 } from '@carys/study';
 import { EDUCATION_BADGE } from '@carys/study';
+import { useIsMobile } from '../lib/isMobile';
 import { useVersion, bump } from '../lib/version';
 import { SERIES } from '../lib/catalog';
 import { openDicomDirSeries, parseDicomDirFile } from '../lib/dicomdir';
@@ -25,11 +26,13 @@ import { missingHint, probeSamples } from '../lib/sampleAvailability';
 import { setStatus } from '../lib/status';
 import { toast } from '../lib/toasts';
 import { Chip, DarkSelect, Seg } from '../ui/primitives';
+import { Dock, Stage } from '../ui/Stage';
 import { PacsPanel } from './PacsPanel';
 
 const PAGE = 'worklist';
 
 export function WorklistView({ onOpen }: { onOpen: (key: string) => void }): JSX.Element {
+  const mobile = useIsMobile();
   const [records, setRecords] = useState<StudyRecord[]>(() =>
     Object.entries(SERIES).map(([key, spec]) => {
       const r = buildRecord(key, { img: spec.img, seg: spec.seg, dicom: spec.dicom });
@@ -152,99 +155,105 @@ export function WorklistView({ onOpen }: { onOpen: (key: string) => void }): JSX
     });
   };
 
+  // Local or PACS is a control, so on a phone it is the deck's first row
+  // and not a switch in the title at the top of the screen.
+  const sourceSeg = (
+    <Seg ariaLabel="Study source" value={tab} onChange={setTab} options={[
+      { value: 'local', label: 'Local' }, { value: 'pacs', label: 'PACS' },
+    ]} />
+  );
   return (
-    <section className="worklist" data-page={PAGE}>
-      <div className="view-title">
-        <h1>Studies</h1>
-        <p>
-          {rows.length} of {records.length} series — search, filter, open, anonymize
-          {openable !== null && (
-            <> · <span id="wl-avail" title="Series whose files this server has; the rest say what fills them">{openable} of {avail!.size} can open here</span></>
-          )}
-        </p>
-        <span className="wl-tabs">
-          <Seg ariaLabel="Study source" value={tab} onChange={setTab} options={[
-            { value: 'local', label: 'Local' }, { value: 'pacs', label: 'PACS' },
-          ]} />
-        </span>
-      </div>
-      {tab === 'pacs' ? <PacsPanel onPull={onOpen} /> : (
-      <>
-      <div className="dock" id="dock-worklist">
-        <div className="grp">
-          <input
-            className="wl-search" placeholder="Search key, patient, UID, modality…" aria-label="Search studies"
-            value={text} onChange={(e) => setText((e.target as HTMLInputElement).value)}
-          />
+    <Stage>
+      <section className="worklist" data-page={PAGE}>
+        <div className="view-title">
+          <h1>Studies</h1>
+          <p>
+            {rows.length} of {records.length} series — search, filter, open, anonymize
+            {openable !== null && (
+              <> · <span id="wl-avail" title="Series whose files this server has; the rest say what fills them">{openable} of {avail!.size} can open here</span></>
+            )}
+          </p>
+          {!mobile && <span className="wl-tabs">{sourceSeg}</span>}
         </div>
-        <div className="sep" />
-        <div className="grp">
-          <label className="iconbtn" htmlFor="dicomdir-upload" title="Open a DICOMDIR + its referenced files (multi-select)">DICOMDIR</label>
-          <input
-            type="file" id="dicomdir-upload" multiple hidden
-            onChange={(e) => {
-              const files = [...((e.target as HTMLInputElement).files ?? [])];
-              (e.target as HTMLInputElement).value = '';
-              if (files.length > 0) void openDirFiles(files);
-            }}
-          />
-        </div>
-        {dir && (
-          <div className="grp" id="dock-dir">
-            <span className="lbl">Dir series</span>
-            <DarkSelect value={dirPick} title="DICOMDIR series to open" ariaLabel="DICOMDIR series"
-              onChange={(v) => setDirPick(v)}>
-              {dir.studies.flatMap((st) => st.series.map((se) => (
-                <option key={seriesKey(dir, se)} value={seriesKey(dir, se)}>
-                  {se.modality ?? '?'} {se.seriesNumber ?? ''} · {se.images.length} img
-                </option>
-              )))}
-            </DarkSelect>
-            <button className="iconbtn" id="dir-open" title="Open the picked DICOMDIR series"
-              onClick={openDirPick}>Open</button>
-            <Chip title="Parsed DICOMDIR studies + image refs"><span id="ro-dir">{dir.studies.length} studie(s) · {dir.imageCount} refs</span></Chip>
+        {mobile && <Dock><div className="grp">{sourceSeg}</div></Dock>}
+        {tab === 'pacs' ? <PacsPanel onPull={onOpen} /> : (
+        <>
+        <Dock id="dock-worklist">
+          <div className="grp">
+            <input
+              className="wl-search" placeholder="Search key, patient, UID, modality…" aria-label="Search studies"
+              value={text} onChange={(e) => setText((e.target as HTMLInputElement).value)}
+            />
           </div>
-        )}
-        <div className="sep" />
-        <div className="grp">
-          {facets.map((f) => (
-            <button
-              key={f.modality}
-              className={`fchip${modalities.has(f.modality) ? ' on' : ''}`}
-              aria-pressed={modalities.has(f.modality)}
-              onClick={() => toggleModality(f.modality)}
-            >
-              {f.modality} <span>{f.count}</span>
-            </button>
+          <div className="sep" />
+          <div className="grp">
+            <label className="iconbtn" htmlFor="dicomdir-upload" title="Open a DICOMDIR + its referenced files (multi-select)">DICOMDIR</label>
+            <input
+              type="file" id="dicomdir-upload" multiple hidden
+              onChange={(e) => {
+                const files = [...((e.target as HTMLInputElement).files ?? [])];
+                (e.target as HTMLInputElement).value = '';
+                if (files.length > 0) void openDirFiles(files);
+              }}
+            />
+          </div>
+          {dir && (
+            <div className="grp" id="dock-dir">
+              <span className="lbl">Dir series</span>
+              <DarkSelect value={dirPick} title="DICOMDIR series to open" ariaLabel="DICOMDIR series"
+                onChange={(v) => setDirPick(v)}>
+                {dir.studies.flatMap((st) => st.series.map((se) => (
+                  <option key={seriesKey(dir, se)} value={seriesKey(dir, se)}>
+                    {se.modality ?? '?'} {se.seriesNumber ?? ''} · {se.images.length} img
+                  </option>
+                )))}
+              </DarkSelect>
+              <button className="iconbtn" id="dir-open" title="Open the picked DICOMDIR series"
+                onClick={openDirPick}>Open</button>
+              <Chip title="Parsed DICOMDIR studies + image refs"><span id="ro-dir">{dir.studies.length} studie(s) · {dir.imageCount} refs</span></Chip>
+            </div>
+          )}
+          <div className="sep" />
+          <div className="grp">
+            {facets.map((f) => (
+              <button
+                key={f.modality}
+                className={`fchip${modalities.has(f.modality) ? ' on' : ''}`}
+                aria-pressed={modalities.has(f.modality)}
+                onClick={() => toggleModality(f.modality)}
+              >
+                {f.modality} <span>{f.count}</span>
+              </button>
+            ))}
+          </div>
+          <div className="sep" />
+          <div className="grp">
+            <Seg ariaLabel="Source" value={source} onChange={setSource} options={[
+              { value: 'all', label: 'All' }, { value: 'nifti', label: 'NIfTI' },
+              { value: 'dicom', label: 'DICOM' }, { value: 'upload', label: 'Uploads' },
+            ]} />
+          </div>
+          <div className="grp">
+            <span className="lbl">Sort</span>
+            <DarkSelect value={sort} onChange={(v) => setSort(v as WorklistQuery['sort'])} title="Sort" ariaLabel="Sort studies">
+              <option value="name">Name</option>
+              <option value="modality">Modality</option>
+              <option value="voxels">Size</option>
+            </DarkSelect>
+          </div>
+        </Dock>
+        <CohortSection onOpen={onOpen} />
+        <QcSection />
+        <div className="wl-rows">
+          {rows.map((r) => (
+            <WorklistRow key={r.key} record={r} available={avail?.get(r.key)} onOpen={() => onOpen(r.key)} onStats={(patch) =>
+              setRecords((all) => all.map((x) => (x.key === r.key ? { ...x, ...patch } : x)))} />
           ))}
+          {rows.length === 0 && <div className="wl-empty">No series match. Clear the search or filters.</div>}
         </div>
-        <div className="sep" />
-        <div className="grp">
-          <Seg ariaLabel="Source" value={source} onChange={setSource} options={[
-            { value: 'all', label: 'All' }, { value: 'nifti', label: 'NIfTI' },
-            { value: 'dicom', label: 'DICOM' }, { value: 'upload', label: 'Uploads' },
-          ]} />
-        </div>
-        <div className="grp">
-          <span className="lbl">Sort</span>
-          <DarkSelect value={sort} onChange={(v) => setSort(v as WorklistQuery['sort'])} title="Sort" ariaLabel="Sort studies">
-            <option value="name">Name</option>
-            <option value="modality">Modality</option>
-            <option value="voxels">Size</option>
-          </DarkSelect>
-        </div>
-      </div>
-      <CohortSection onOpen={onOpen} />
-      <QcSection />
-      <div className="wl-rows">
-        {rows.map((r) => (
-          <WorklistRow key={r.key} record={r} available={avail?.get(r.key)} onOpen={() => onOpen(r.key)} onStats={(patch) =>
-            setRecords((all) => all.map((x) => (x.key === r.key ? { ...x, ...patch } : x)))} />
-        ))}
-        {rows.length === 0 && <div className="wl-empty">No series match. Clear the search or filters.</div>}
-      </div>
-      </>)}
-    </section>
+        </>)}
+      </section>
+    </Stage>
   );
 }
 
@@ -268,7 +277,7 @@ function QcSection(): JSX.Element {
   }));
   const trend = phantomTrend(points);
   return (
-    <div className="dock" id="dock-qc">
+    <Dock id="dock-qc" label="Lab QC" shut>
       <div className="grp">
         <span className="lbl">QC</span>
         <Seg<'phantom' | 'dose' | 'compression' | 'deid'> ariaLabel="QC panel"
@@ -305,7 +314,7 @@ function QcSection(): JSX.Element {
           })()} · {EDUCATION_BADGE}</span></Chip>
         </div>
       )}
-    </div>
+    </Dock>
   );
 }
 
@@ -334,7 +343,7 @@ function CohortSection({ onOpen }: {
     bump();
   };
   return (
-    <div className="dock" id="dock-cohort">
+    <Dock id="dock-cohort" label="Teaching cohort" shut>
       <div className="grp">
         <span className="lbl">Cohort</span>
         <DarkSelect value={cohort.id} title="Teaching cohort (curated cases + read progress)" ariaLabel="Teaching cohort"
@@ -380,7 +389,7 @@ function CohortSection({ onOpen }: {
         })}
       </dl>
       <div className="hint" id="cohort-src">{cohort.provenance.join(' · ')}</div>
-    </div>
+    </Dock>
   );
 }
 

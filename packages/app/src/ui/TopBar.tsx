@@ -77,7 +77,7 @@ export function TopBar({ route, go, onOpenPalette, onSelectSeries }: {
   return (
     <header className="top">
       <Popover
-        open={navOpen} onOpenChange={(v) => setUi({ mSheet: v ? 'nav' : null })} align="start"
+        open={navOpen} onOpenChange={(v) => setUi({ mSheet: v ? 'nav' : null })} align="start" sheet="Views"
         trigger={(
           <button className="iconbtn burger" id="navtoggle" title="Views" aria-label="Views">
             <IconMenu />
@@ -92,7 +92,9 @@ export function TopBar({ route, go, onOpenPalette, onSelectSeries }: {
               <Icon />{label}
             </button>
           ))}
-          <button role="menuitem" onClick={() => { setUi({ mSheet: null }); onOpenPalette(); }}>
+          {/* The closing sheet hands focus back to this menu's button a tick
+              later; the palette opens after that, or its field never keeps it. */}
+          <button role="menuitem" onClick={() => { setUi({ mSheet: null }); window.setTimeout(onOpenPalette, 80); }}>
             <IconSearch />Search
           </button>
         </div>
@@ -115,7 +117,7 @@ export function TopBar({ route, go, onOpenPalette, onSelectSeries }: {
       {isMobile && <StatusBar inline />}
 
       <Popover
-        open={appearOpen} onOpenChange={setAppearOpen}
+        open={appearOpen} onOpenChange={setAppearOpen} sheet="Appearance"
         trigger={(
           <button className="iconbtn gear" id="appearance" title="Appearance: text + layout size" aria-label="Appearance settings">
             <IconGear />

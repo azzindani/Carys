@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from 'react';
 import type { JSX } from 'react';
-import { Popover as RxPopover, Tooltip as RxTooltip } from 'radix-ui';
+import { Dialog as RxDialog, Popover as RxPopover, Tooltip as RxTooltip } from 'radix-ui';
+import { useIsMobile } from '../lib/isMobile';
 
 /**
  * The design system's component layer.
@@ -190,12 +191,18 @@ export function TipProvider({ children }: { children: ReactNode }): JSX.Element 
  * outside click and Escape, focus returned to the trigger, collision-aware
  * placement.
  */
-export function Popover({ open, onOpenChange, trigger, children, align = 'end', className = '', anchorRef }: {
+export function Popover({ open, onOpenChange, trigger, children, align = 'end', className = '', anchorRef, sheet }: {
   open: boolean; onOpenChange: (v: boolean) => void;
   trigger: ReactNode; children: ReactNode;
   align?: 'start' | 'center' | 'end'; className?: string;
   anchorRef?: RefObject<HTMLElement | null>;
+  /** On a phone the panel is a sheet from the bottom edge, with this title */
+  sheet?: string;
 }): JSX.Element {
+  const mobile = useIsMobile();
+  if (mobile && sheet !== undefined) {
+    return <Sheet open={open} onOpenChange={onOpenChange} trigger={trigger} title={sheet}>{children}</Sheet>;
+  }
   return (
     <RxPopover.Root open={open} onOpenChange={onOpenChange}>
       <RxPopover.Trigger asChild>{trigger}</RxPopover.Trigger>
@@ -226,5 +233,36 @@ export function UndoGroup({ onUndo, onClear, undoTitle = 'Undo', clearTitle = 'C
         <IconBtn onClick={onClear} title={clearTitle}>Clear</IconBtn>
       </span>
     </div>
+  );
+}
+
+/**
+ * A panel that rises from the bottom edge of a phone, where a thumb is. It
+ * is a modal dialog (focus held inside, Escape and a press on the scrim both
+ * close it), and always carries its own close button, because a phone has no
+ * Escape key.
+ */
+export function Sheet({ open, onOpenChange, trigger, title, children }: {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  trigger: ReactNode; title: string; children: ReactNode;
+}): JSX.Element {
+  return (
+    <RxDialog.Root open={open} onOpenChange={onOpenChange}>
+      <RxDialog.Trigger asChild>{trigger}</RxDialog.Trigger>
+      <RxDialog.Portal>
+        <RxDialog.Overlay className="sheet-scrim" />
+        <RxDialog.Content className="sheet" aria-describedby={undefined}>
+          <div className="sheet-head">
+            <RxDialog.Title className="sheet-title">{title}</RxDialog.Title>
+            <RxDialog.Close className="iconbtn" aria-label={`Close ${title}`}>
+              <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <path d="M4 4l8 8M12 4l-8 8" />
+              </svg>
+            </RxDialog.Close>
+          </div>
+          {children}
+        </RxDialog.Content>
+      </RxDialog.Portal>
+    </RxDialog.Root>
   );
 }

@@ -8,6 +8,7 @@ import {
 } from '../lib/pacs';
 import { setStatus } from '../lib/status';
 import { Chip, DarkSelect } from '../ui/primitives';
+import { Dock } from '../ui/Stage';
 
 function uid(): string {
   return `pacs-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
@@ -82,7 +83,7 @@ export function PacsPanel({ onPull }: { onPull: (key: string) => void }): JSX.El
 
   return (
     <div className="pacs">
-      <div className="dock" id="dock-pacs">
+      <Dock id="dock-pacs">
         <div className="grp">
           <span className="lbl">Endpoint</span>
           <DarkSelect
@@ -128,7 +129,7 @@ export function PacsPanel({ onPull }: { onPull: (key: string) => void }): JSX.El
             {busy ? '…' : 'Search'}
           </button>
         </div>
-      </div>
+      </Dock>
 
       {studies.length > 0 && (
         <div className="wl-rows">

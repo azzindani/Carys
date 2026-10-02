@@ -296,7 +296,9 @@
 /* Viewport header: one line carrying the view's name, its readouts and its
    own controls, with a hairline under it. */
 .pane-head {
-  display: flex; align-items: center; gap: var(--sp-3); flex: none;
+  /* wraps rather than pushing its last buttons past the pane's edge: at the
+     largest text level the zoom and fullscreen controls of a narrow pane did */
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); flex: none;
   min-height: calc(var(--ctl-h) + var(--sp-3));
   padding: 0 var(--sp-2) 0 var(--sp-4);
   font-size: var(--fs-sm);
@@ -678,6 +680,32 @@ input[type="range"].styled::-moz-range-thumb {
 .navdrop button svg { width: 18px; height: 18px; flex: none; }
 .navdrop button:hover { background: var(--color-surface-3); }
 .navdrop button[data-on="true"] { color: var(--color-accent-hi); background: var(--color-accent-dim); }
+
+/* A sheet: the panel a phone gets in place of a popover (ui/primitives Sheet).
+   It rises from the bottom edge, where a thumb is, over a scrim. */
+.sheet-scrim {
+  position: fixed; inset: 0; z-index: 44;
+  background: var(--color-scrim); animation: fade-in var(--dur) var(--ease);
+}
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  max-height: calc(var(--screen-h) * 0.82); overflow-y: auto; overscroll-behavior: contain;
+  padding: var(--sp-2) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px));
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line-strong); border-bottom: 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-pop);
+  animation: sheet-in var(--dur) var(--ease);
+}
+@keyframes sheet-in { from { transform: translateY(24px); opacity: 0; } }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; min-height: var(--tap); }
+.sheet-title { font-size: var(--fs-md); font-weight: 600; }
+/* the panel is the sheet: no second box inside it */
+.sheet :is(.appear, .navdrop) {
+  min-width: 0; max-width: none; width: 100%; padding: 0;
+  background: transparent; border: 0; box-shadow: none;
+}
 
 /* --------------------------------------------------------------- tooltip */
 .tip {

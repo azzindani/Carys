@@ -177,3 +177,5 @@ export interface UiState {
 }
 
 export const PLANES: Plane[] = ['axial', 'coronal', 'sagittal'];
+/** What a plane is called wherever a person reads it. */
+export const PLANE_TITLES: Record<Plane, string> = { axial: 'Axial', coronal: 'Coronal', sagittal: 'Sagittal' };

@@ -17,6 +17,7 @@
 // Fails loud, prints PASS.
 // NOTE: waitForSelector takes (selector, options) — TWO args.
 import { spawn } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import { launchChromium } from './browser.mjs';
 import { openPop } from './popout.mjs';
 
@@ -138,6 +139,44 @@ try {
   }
   console.log(`worklist: ${title}; ${rows.length - present.length} rows say what fills them`);
   await wl.close();
+
+  // ---- 5. A phone: the previewer is on top and the controls are a deck at the
+  // bottom, on the viewer and on the routes that share its layout. The slice
+  // scrubber in the deck steps the stack, and a long page scrolls under the
+  // wheel (none of the non-viewer routes did on a phone, for want of a height).
+  const phoneCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  if (session.length) await phoneCtx.addCookies(session);
+  const ph = await phoneCtx.newPage();
+  ph.on('pageerror', (e) => fail(`phone pageerror: ${(e.stack || String(e)).slice(0, 600)}`));
+  const above = async (page, a, b) => page.evaluate(([x, y]) => {
+    const ra = document.querySelector(x)?.getBoundingClientRect(), rb = document.querySelector(y)?.getBoundingClientRect();
+    return ra && rb ? ra.bottom <= rb.top + 1 : null;
+  }, [a, b]);
+  await ph.goto(`${BASE}#/`, { waitUntil: 'networkidle' });
+  const dicomDir = 'samples/ct-head-series';
+  await ph.setInputFiles('input#upload', readdirSync(dicomDir).filter((f) => f.endsWith('.dcm')).map((f) => `${dicomDir}/${f}`));
+  await ph.locator('#mviewseg button[data-mview="axial"]').tap();
+  await ph.waitForSelector('#m-slice', { timeout: 60000 });
+  if (await above(ph, '#c-axial', '.deck') !== true) fail('phone viewer: the image is not above the control deck');
+  const slice = async () => Number((await ph.locator('#ro-axial').textContent()).split('/')[0]);
+  const at = await slice();
+  await ph.locator('button[aria-label="Next slice"]').tap();
+  await ph.waitForFunction((n) => Number(document.getElementById('ro-axial')?.textContent?.split('/')[0]) === n + 1, at, { timeout: 10000 })
+    .catch(() => fail(`phone scrubber: Next slice did not step ${at} to ${at + 1}`));
+  if (await ph.locator('#m-slice').inputValue() !== String(await slice())) fail('phone scrubber disagrees with the slice header');
+  for (const [route, view, dock] of [['protein', '#c-protein', '#dock-protein'], ['cells', '#c-cells', '#dock-cells'], ['atlas', '#c-atlas', '#dock-atlas']]) {
+    await ph.goto(`${BASE}#/${route}`, { waitUntil: 'networkidle' });
+    await ph.waitForSelector(dock, { timeout: 60000 });
+    if (await above(ph, view, dock) !== true) fail(`phone ${route}: the image is not above its controls`);
+  }
+  await ph.goto(`${BASE}#/worklist`, { waitUntil: 'networkidle' });
+  await ph.waitForSelector('.wl-row', { timeout: 60000 });
+  await ph.mouse.move(195, 300);
+  for (let i = 0; i < 4; i++) await ph.mouse.wheel(0, 400);
+  await ph.waitForTimeout(300);
+  if (!await ph.evaluate(() => [...document.querySelectorAll('*')].some((e) => e.scrollTop > 0))) fail('phone studies: the page does not scroll');
+  if (!failed) console.log('phone: image above its controls on viewer, protein, cells, atlas; scrubber steps the stack; studies scroll');
+  await phoneCtx.close();
 } catch (e) {
   fail(`exception: ${(e.stack || String(e)).slice(0, 800)}`);
 } finally {

@@ -4,6 +4,7 @@ import { SERIES } from '../lib/catalog';
 import type { Route } from '../lib/router';
 import type { MeasureKind, View } from '../lib/types';
 import { ROUTES } from './Rail';
+import { useKeyboardInset } from '../lib/useKeyboardInset';
 
 export interface PaletteCommand {
   label: string;
@@ -66,6 +67,7 @@ export function Palette({ open, onClose, commands }: {
     }
   }, [open ]);
 
+  const kb = useKeyboardInset(open);
   if (!open) return null;
   const run = (i: number): void => {
     const c = items[i];
@@ -74,7 +76,7 @@ export function Palette({ open, onClose, commands }: {
     c.run();
   };
   return (
-    <div className="pal-wrap open" id="palwrap" onClick={(e) => { if ((e.target as HTMLElement).id === 'palwrap') onClose(); }}>
+    <div className="pal-wrap open" id="palwrap" style={{ ['--kb' as string]: `${kb}px` }} onClick={(e) => { if ((e.target as HTMLElement).id === 'palwrap') onClose(); }}>
       <div className="pal" role="dialog" aria-label="Command palette">
         <input
           id="palinput" ref={inputRef} placeholder="Type a command or series…" autoComplete="off"

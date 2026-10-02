@@ -10,6 +10,7 @@ import { queueResidueLink } from '../lib/linkBus';
 import { setStatus } from '../lib/status';
 import { toast } from '../lib/toasts';
 import { Chip, DarkSelect, IconBtn } from '../ui/primitives';
+import { Dock, Stage } from '../ui/Stage';
 
 interface Row { chr: string; start: number; end: number; label: string; pos?: number }
 
@@ -198,12 +199,12 @@ export function TracksView(): JSX.Element {
   };
 
   return (
-    <>
+    <Stage>
       <div className="view-title" id="title-tracks">
         <h1>Tracks</h1>
         <p>{name || 'load a .bed/.gff/.vcf — feature table filtered by locus (igv.js parsers + reference-frame math)'}</p>
       </div>
-      <div className="dock" id="dock-tracks">
+      <Dock id="dock-tracks">
         <div className="grp">
           <label className="iconbtn" htmlFor="track-upload" title="Open a .bed/.gff/.gff3/.vcf file">Open track</label>
           <input
@@ -273,7 +274,7 @@ export function TracksView(): JSX.Element {
         <div className="grp">
           <Chip><span id="ro-tracktypes" title="Registered track classes">{classes.length > 0 ? classes.join(', ') : '—'}</span></Chip>
         </div>
-      </div>
+      </Dock>
       <div id="view-tracks" className="panes" data-testid="tracks">
         <div className="pane" id="pane-tracks">
           <div className="pane-head"><span className="name">Features</span></div>
@@ -309,6 +310,6 @@ export function TracksView(): JSX.Element {
           </div>
         </div>
       </div>
-    </>
+    </Stage>
   );
 }

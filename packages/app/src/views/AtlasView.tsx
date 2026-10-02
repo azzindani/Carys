@@ -13,11 +13,15 @@ import { STAGE_BG } from '../lib/palette';
 import { session } from '../lib/session';
 import { setAmbientStatus, setStatus } from '../lib/status';
 import { toast } from '../lib/toasts';
+import { useWheel } from '../lib/useWheel';
 import { bump } from '../lib/version';
 import { Chip, DarkSelect, IconBtn, Seg, SliderRow } from '../ui/primitives';
+import { Dock, Stage } from '../ui/Stage';
 import { BodyAtlasView } from './BodyAtlasView';
+import { useOrbitPointer } from './orbitPointer';
 
 const W = 560, H = 560;
+const ZOOM_MIN = 0.5, ZOOM_MAX = 4;
 /** Bone tint on near-black (quarantine: never the measurement grayscale). */
 const BONE: [number, number, number] = [224, 213, 184];
 const BG = STAGE_BG;
@@ -190,6 +194,20 @@ function BonesAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Element 
   };
 
   useEffect(() => { void paint(sel, orbit, tilt, zoom); });
+
+  // Drag turns the bone, a pinch or the wheel zooms: the sliders' gestures.
+  const angles = useRef({ orbit, tilt });
+  angles.current = { orbit, tilt };
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const { onOrbitDown, onOrbitMove, onOrbitUp } = useOrbitPointer({
+    angles, setOrbit, setTilt, queueOrbit: () => {}, onTap: () => {},
+    zoom: { get: () => zoomRef.current, set: setZoom, min: ZOOM_MIN, max: ZOOM_MAX },
+  });
+  useWheel(() => [canvasRef.current], (e) => {
+    e.preventDefault();
+    setZoom(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoomRef.current * (e.deltaY < 0 ? 1.15 : 1 / 1.15))));
+  });
    
   useEffect(() => { bump(); }, []);
   useEffect(() => {
@@ -266,12 +284,12 @@ function BonesAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Element 
   };
 
   return (
-    <>
+    <Stage preview>
       <div className="view-title" id="title-atlas">
         <h1>Atlas</h1>
         <p>BodyParts3D skeleton (47 structures) · FMA terms · {EDUCATION_BADGE}</p>
       </div>
-      <div className="dock" id="dock-atlas">
+      <Dock id="dock-atlas">
         {modeSwitch}
         <div className="grp">
           <span className="lbl">Bone</span>
@@ -297,7 +315,7 @@ function BonesAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Element 
         <div className="sep" />
         <SliderRow label="Orbit" min={0} max={6.283} step={0.01} value={orbit} onInput={(v) => { setOrbit(v); void paint(sel, v, tilt, zoom); }} />
         <SliderRow label="Tilt" min={-1.2} max={1.2} step={0.01} value={tilt} onInput={(v) => { setTilt(v); void paint(sel, orbit, v, zoom); }} />
-        <SliderRow label="Zoom" min={0.5} max={4} step={0.05} value={zoom} onInput={(v) => { setZoom(v); void paint(sel, orbit, tilt, v); }} />
+        <SliderRow label="Zoom" min={ZOOM_MIN} max={ZOOM_MAX} step={0.05} value={zoom} onInput={(v) => { setZoom(v); void paint(sel, orbit, tilt, v); }} />
         <div className="sep" />
         <div className="grp">
           <IconBtn title="Reload the current mesh (drops the cache)" onClick={() => { meshCache.delete(sel); void paint(sel, orbit, tilt, zoom); }}>Reload</IconBtn>
@@ -307,7 +325,7 @@ function BonesAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Element 
             <Chip><span id="ro-atlas">{err ? `atlas error: ${err}` : `${tris.toLocaleString()} tris · ${s?.bpId ?? ''}`}</span></Chip>
           </div>
         )}
-      </div>
+      </Dock>
       <div id="view-atlas" className="panes" data-testid="atlas">
         <div className="pane" id="pane-atlas">
           <div className="pane-head">
@@ -322,11 +340,12 @@ function BonesAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.Element 
           {gloss && <GlossaryCard fma={gloss} onClose={() => setGloss(null)} />}
           <div className="stage">
             <canvas id="c-atlas" ref={canvasRef} width={W} height={H}
-              role="img" aria-label="Atlas bone rendering (education overlay)" />
+              role="img" aria-label="Atlas bone rendering (education overlay). Drag to turn it, pinch to zoom."
+              onPointerDown={onOrbitDown} onPointerMove={onOrbitMove} onPointerUp={onOrbitUp} onPointerCancel={onOrbitUp} />
           </div>
           <div className="hint" id="atlas-src">{ATLAS_ATTRIBUTION}</div>
         </div>
       </div>
-    </>
+    </Stage>
   );
 }

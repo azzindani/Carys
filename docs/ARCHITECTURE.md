@@ -287,11 +287,41 @@ The layout has three real modes:
   it never covers the image.
 - **Tablet** keeps the rail; the drawer lies over the viewport there,
   which is too narrow to give up its width.
-- **Mobile** gives the top half to imaging and the bottom half to a
-  permanent control deck, so tools never cover the image they act on. A
-  phone on its side (≤520px tall) puts the deck in a column beside the
-  image instead. Every other route's toolbar wraps into rows rather than
-  scrolling sideways, so no control sits off screen.
+- **Mobile** follows one rule on every route: what you look at is on top,
+  and the controls are on the bottom, where a thumb rests. The top half
+  belongs to the previewer, and a permanent deck takes the bottom half, so
+  tools never cover the image they act on. A phone on its side (≤520px
+  tall) puts the deck in a column beside the image instead.
+
+  - The **viewer** deck holds the viewport switcher, the **slice
+    scrubber** (a 2D view's stack control: step buttons and a slider that
+    mirror the pane's own slider, which the wheel, keys and a crosshair jump
+    also move, announced through `sliceBus`), and the Tools, Display and
+    Files tabs. The side rail that ran up the image's edge is hidden on a
+    phone, except in fullscreen, where the deck is not shown.
+  - **Every other route with something to look at** (Protein, Capsid, Cells,
+    Atlas, Tracks, Studies and PACS, Report) is a `Stage`
+    (`ui/Stage.tsx`). A view writes its page once, in desktop order, and
+    marks each toolbar `<Dock>`. Wider than 980px a `Stage` is a fragment and
+    a `Dock` is the plain toolbar. On a phone the content goes in the region
+    above and every `Dock` is portalled into the deck below, so the DOM order
+    is the order on screen. A route whose content is a canvas (`preview`)
+    locks the region to the screen, fixes the deck's height so the image
+    never jumps, and lets the deck fold to one row for a full-screen image;
+    a list or a report scrolls above a deck as tall as its controls. A
+    labelled `Dock` is a section of the deck, shut until opened (Studies'
+    cohort and QC). A canvas keeps its aspect ratio, because pointer maths
+    reads its box: it is sized by both limits, never stretched.
+  - **Learn** is a document, not a previewer: it scrolls as a page, with
+    each section's controls beside what they drive.
+  - Overlays rise from the bottom too: the appearance panel and the views
+    menu are `Sheet`s (a modal dialog with its own close button), the command
+    palette docks to the bottom edge and lifts above the keyboard its field
+    raises, and toasts sit under the top bar, not over the deck.
+
+  Every route sits in a column of exactly the screen's height (`--screen-h`)
+  and owns whatever it scrolls, so nothing below the first screen is out of
+  reach.
 
 Screen height goes through `--screen-h` (`dvh`, falling back to `vh` on
 engines without it). Under a touch pointer, text fields are at least 16px,
@@ -314,10 +344,16 @@ on every route, and that prefs persist and reset.
 every route, pop-out, tool, panel and dialog state, at desktop, tablet and
 phone (`UIAUDIT_VP=` takes seven screens), and at both ends of the appearance
 scales. In each state it asserts no sideways scroll, nothing off-screen or
-covered, no clipped text, no target under 24px, controls on a row sharing a
-centre line, every font size on the type ramp, every radius on the radius ramp,
-every colour a palette colour (token values are read back from the page), and
-zero axe violations. A new view or panel adds a state there.
+covered, no control cut off by a container that cannot be scrolled to it, no
+clipped text, no target under 24px, controls on a row sharing a centre line,
+every font size on the type ramp, every radius on the radius ramp, every
+colour a palette colour (token values are read back from the page), and zero
+axe violations. On a portrait phone it also asserts the layout rule above: the
+previewer is on top, fully on screen and not squeezed, no control sits above
+it (the file tabs, its own header and the top bar excepted), and every control
+of a deck is in the lower part of the screen. A state can carry its own
+behavioural check (the slice scrubber) and can demand that the page scroll.
+A new view or panel adds a state there.
 
 980px is the mobile edge, shared with `lib/isMobile.ts`. Control height is
 28px under a mouse (24 to 36px by the Controls level) and 44px under a finger, set by one variable, so the

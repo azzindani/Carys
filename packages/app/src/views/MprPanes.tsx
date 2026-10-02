@@ -7,7 +7,7 @@ import {
   fuseSlices, labelOutlines, labelSlice, labelSliceOblique, mipRotate, obliqueBasis, reslice, resliceOblique, slabLabels,
   slabProject, tintLabels, voxelSlices,
 } from '@carys/render-cpu';
-import { paintBus } from '../lib/paintBus';
+import { paintBus, sliceBus } from '../lib/paintBus';
 import { LABEL_FILL_ALPHA, LABEL_LUT } from '../lib/palette';
 import { fmtDims, session } from '../lib/session';
 import { drawChrome, drawMeasures, fmtVal } from './paneChrome';
@@ -24,9 +24,8 @@ import { ViewportOverlay } from '../ui/ViewportOverlay';
 import { undoBus } from '../lib/undoBus';
 import type { FullVp, Plane } from '../lib/types';
 import type { SliceInit } from '../lib/sessionOps';
-import { PLANES } from '../lib/types';
-
-const TITLES: Record<Plane, string> = { axial: 'Axial', coronal: 'Coronal', sagittal: 'Sagittal' };
+import { PLANES, PLANE_TITLES as TITLES } from '../lib/types';
+import { useWheel } from '../lib/useWheel';
 
 /** Opening slices already applied (module-wide: a remount keeps where the
  *  panes are rather than going back to them). */
@@ -119,6 +118,7 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     const [nx, ny, nz] = dims;
     const idx = Number(slider.value);
     session.slices[plane] = idx;
+    sliceBus.emit();
     const max = plane === 'axial' ? nz - 1 : plane === 'coronal' ? ny - 1 : nx - 1;
     const vol = { dims, spacing: [1, 1, 1] as [number, number, number], origin: [0, 0, 0] as [number, number, number], dtype: 'float64' as const, data };
     const W = plane === 'axial' ? nx : plane === 'coronal' ? nx : ny;
@@ -557,7 +557,7 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
    * radiologist scrolls a stack far more often than they zoom. Zoom keeps
    * the modifier, the ± buttons and the zoom chip.
    */
-  const wheelZoom = (plane: Plane) => (e: React.WheelEvent): void => {
+  const wheelZoom = (plane: Plane) => (e: WheelEvent): void => {
     e.preventDefault();
     if (e.ctrlKey || e.metaKey) {
       zoomRef.current[plane] = Math.min(8, Math.max(0.5, zoomRef.current[plane] * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
@@ -575,6 +575,10 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
     s.value = String(next);
     paint(plane);
   };
+  useWheel(
+    () => PLANES.map((p) => canvasRefs.current[p]),
+    (e, el) => { const p = PLANES.find((q) => canvasRefs.current[q] === el); if (p) wheelZoom(p)(e); },
+  );
   const zoomStep = (plane: Plane, f: number): void => {
     zoomRef.current[plane] = Math.min(8, Math.max(0.5, zoomRef.current[plane] * f));
     setZoomTick((t) => t + 1);
@@ -621,7 +625,6 @@ export function MprPanes({ sliceInit, axialCanvasRef }: {
                     (axialCanvasRef as React.MutableRefObject<HTMLCanvasElement | null>).current = cv;
                   }
                 }}
-                onWheel={wheelZoom(p)}
                 onDoubleClick={() => resetZoom(p)}
                 onPointerDown={onCanvasDown(p)}
                 onPointerMove={(e) => {

@@ -64,8 +64,63 @@ export const STATES = [
   { name: 'm-deck-display', when: 'narrow', wait: 5000, setup: mobileSheet('Display') },
   { name: 'm-deck-files', when: 'narrow', wait: 5000, setup: mobileSheet('Files') },
   { name: 'm-nav', when: 'narrow', wait: 4000, setup: (p) => click(p, '#navtoggle') },
+  // the slice scrubber: the stack scrolls from the bar at the bottom, and the
+  // bar follows the slice when something else moves it
+  { name: 'm-scrub', when: 'narrow', needs: 'samples', wait: 3000,
+    setup: async (p, { fx }) => {
+      const fs = await import('node:fs');
+      await loadViewerFiles(fs.readdirSync(fx.dicom).filter((f) => f.endsWith('.dcm')).map((f) => `${fx.dicom}/${f}`))(p);
+      await click(p, '#mviewseg button[data-mview="axial"]');
+      await p.waitForTimeout(800);
+    },
+    check: async (p) => {
+      const bad = [];
+      const idx = async () => ({ head: (await p.locator('#ro-axial').textContent()).split('/')[0].trim(), bar: await p.locator('#m-slice').inputValue(), rail: await p.locator('#s-axial').inputValue() });
+      const a = await idx();
+      if (a.head !== a.bar || a.head !== a.rail) bad.push(`scrubber, header and slider disagree at the start: ${JSON.stringify(a)}`);
+      await p.locator('button[aria-label="Next slice"]').click();
+      await p.waitForTimeout(300);
+      const b = await idx();
+      if (Number(b.head) !== Number(a.head) + 1 || b.bar !== b.head) bad.push(`Next slice did not step the stack by one: ${JSON.stringify(a)} -> ${JSON.stringify(b)}`);
+      const box = await p.locator('#c-axial').boundingBox();
+      await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await p.mouse.wheel(0, -300);
+      await p.waitForTimeout(400);
+      const c = await idx();
+      if (c.bar !== c.head) bad.push(`the scrubber did not follow the wheel: ${JSON.stringify(c)}`);
+      if (await p.locator('.vp2d .vrail').first().isVisible()) bad.push('the slice rail is still up the image edge: the scrubber replaces it on a phone');
+      return bad;
+    } },
+  // fullscreen on a phone: the image takes the whole screen (it was a black
+  // one: the grid left it a zero-height row), and the stack's rail comes back
+  // because the deck that holds the scrubber is hidden
+  { name: 'm-fullscreen-3d', when: 'narrow', wait: 5000, setup: (p) => click(p, '#full-v3d'),
+    check: async (p) => {
+      const box = await p.locator('#view3d').boundingBox();
+      return box && box.height > 200 ? [] : [`fullscreen 3D draws no image: the canvas is ${box ? Math.round(box.height) : 0}px tall`];
+    } },
+  { name: 'm-fullscreen-axial', when: 'narrow', needs: 'samples', wait: 3000,
+    setup: async (p, { fx }) => {
+      const fs = await import('node:fs');
+      await loadViewerFiles(fs.readdirSync(fx.dicom).filter((f) => f.endsWith('.dcm')).map((f) => `${fx.dicom}/${f}`))(p);
+      await click(p, '#mviewseg button[data-mview="axial"]');
+      await click(p, '#full-axial');
+      await p.waitForTimeout(800);
+    },
+    check: async (p) => {
+      const bad = [];
+      const box = await p.locator('#c-axial').boundingBox();
+      if (!box || box.height < 200) bad.push(`fullscreen axial draws no image: the canvas is ${box ? Math.round(box.height) : 0}px tall`);
+      if (!(await p.locator('#pane-axial .vrail').isVisible())) bad.push('fullscreen hides the deck, and with it the only way to scroll the stack: the rail must be back');
+      return bad;
+    } },
+  // ---- every other route on a phone: the deck ---------------------------------
+  { name: 'm-deck-folded', route: 'protein', when: 'narrow', setup: (p) => click(p, '.deck-grip') },
+  { name: 'm-deck-folded-atlas', route: 'atlas', when: 'narrow', wait: 4000, setup: (p) => click(p, '.deck-grip') },
+  { name: 'm-studies-cohort', route: 'worklist', when: 'narrow', setup: (p) => click(p, '.deck-fold-head:has-text("Teaching cohort")') },
+  { name: 'm-studies-pacs', route: 'worklist', when: 'narrow', setup: (p) => click(p, 'button[aria-pressed]:has-text("PACS")') },
   // ---- studies / report ------------------------------------------------------
-  { name: 'studies', route: 'worklist' },
+  { name: 'studies', route: 'worklist', scrolls: true },
   { name: 'studies-nomatch', route: 'worklist', setup: async (p) => { await p.fill('input[type=search], .wl-filter input, #wl-filter', 'zzzz-no-such-study').catch(() => {}); } },
   { name: 'report', route: 'report' },
   // ---- protein -------------------------------------------------------------------
@@ -81,7 +136,7 @@ export const STATES = [
   { name: 'atlas-bones-details', route: 'atlas', wait: 4000, setup: details },
   { name: 'atlas-body', route: 'atlas', wait: 4000, setup: async (p) => { await click(p, '#atlas-mode button[data-atlas-mode="body"]'); await p.waitForTimeout(3000); } },
   { name: 'atlas-body-details', route: 'atlas', wait: 4000, setup: async (p) => { await click(p, '#atlas-mode button[data-atlas-mode="body"]'); await p.waitForTimeout(3000); await details(p); } },
-  { name: 'learn', route: 'learn' },
+  { name: 'learn', route: 'learn', scrolls: true },
   { name: 'learn-answered', route: 'learn', setup: async (p) => { await p.locator('#learn-quiz button').first().click(); await p.waitForTimeout(500); } },
   { name: 'learn-selftest', route: 'learn', setup: async (p) => { await click(p, '#dock-selftest button:has-text("Start")'); await p.waitForTimeout(1500); await p.locator('#selftest-quiz button').first().click().catch(() => {}); await p.waitForTimeout(400); } },
   { name: 'learn-measure-verdict', route: 'learn', setup: async (p) => { await p.fill('#trainer-measured', '40'); await click(p, '#dock-measuretrainer button:has-text("Check")').catch(() => {}); await p.waitForTimeout(400); } },

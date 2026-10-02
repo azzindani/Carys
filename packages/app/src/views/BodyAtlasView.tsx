@@ -30,7 +30,9 @@ import {
 import { session } from '../lib/session';
 import { setAmbientStatus, setStatus } from '../lib/status';
 import { bump } from '../lib/version';
+import { useWheel } from '../lib/useWheel';
 import { Chip, DarkSelect, IconBtn, SliderRow, Switch } from '../ui/primitives';
+import { Dock, Stage } from '../ui/Stage';
 import { useOrbitPointer } from './orbitPointer';
 
 type V3 = [number, number, number];
@@ -384,11 +386,11 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
     },
   });
 
-  const wheel = (e: React.WheelEvent): void => {
+  useWheel(() => [canvasRef.current], (e) => {
     e.preventDefault();
     setZoomV(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoomRef.current * (e.deltaY < 0 ? 1.15 : 1 / 1.15))));
     queueMove();
-  };
+  });
 
   const toggle = (s: BodySystem, v: boolean): void => {
     const next = new Set(want.current.on);
@@ -532,12 +534,12 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
   const systems = idx ? (Object.keys(idx.systems) as BodySystem[]) : [];
   const p = picked?.part;
   return (
-    <>
+    <Stage preview>
       <div className="view-title" id="title-atlas">
         <h1>Atlas</h1>
         <p>Whole body: BodyParts3D and HRA organs ({idx ? idx.parts.length.toLocaleString() : '…'} structures, {systems.length} systems) · FMA terms · {EDUCATION_BADGE}</p>
       </div>
-      <div className="dock" id="dock-body">
+      <Dock id="dock-body">
         {modeSwitch}
         <div className="sep" />
         <div className="syslist">
@@ -625,7 +627,7 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
                 .map(([j, a]) => `${j} ${a.slice(0, POSE_DOF[j]).map((v) => `${Math.round(v / DEG)}°`).join('/')}`).join(', ')}`)
             : 'loading…')}</span></Chip>
         </div>
-      </div>
+      </Dock>
       <div id="view-atlas" className="panes" data-testid="atlas">
         <div className="pane">
           <div className="pane-head">
@@ -635,8 +637,7 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
           <div className="stage">
             <canvas id="c-body" className="tall" ref={canvasRef} width={W} height={H}
               role="img" aria-label="Whole-body atlas rendering (education overlay)"
-              onPointerDown={onOrbitDown} onPointerMove={onOrbitMove} onPointerUp={onOrbitUp} onPointerCancel={onOrbitUp}
-              onWheel={wheel} />
+              onPointerDown={onOrbitDown} onPointerMove={onOrbitMove} onPointerUp={onOrbitUp} onPointerCancel={onOrbitUp} />
           </div>
           {picked && idx && <BodyCard picked={picked} atlas={idx} />}
           <div className="hint" id="body-src">{idx ? `${idx.indexes[BODY_DIGEST_ID].attribution} · ${idx.indexes[BODY_DIGEST_ID].pin}` : 'BodyParts3D'}</div>
@@ -646,6 +647,6 @@ export function BodyAtlasView({ modeSwitch }: { modeSwitch: ReactNode }): JSX.El
           <div className="hint" id="body-hra-src">{idx ? `${idx.indexes[HRA_DIGEST_ID].attribution} · ${idx.hra.organs.size} organs, cited on tap` : 'HRA'}</div>
         </div>
       </div>
-    </>
+    </Stage>
   );
 }

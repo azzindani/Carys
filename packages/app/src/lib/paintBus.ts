@@ -26,3 +26,19 @@ export const paintBus: {
   setMprView: () => {},
   jumpTo: () => {},
 };
+
+const sliceListeners = new Set<() => void>();
+
+/** Where each plane's slice is changes from many places (the side rails, the
+ *  wheel, the arrow keys, a tap that jumps every pane, a series that opens).
+ *  The panes announce each paint here, so a control elsewhere on the screen
+ *  (the phone's scrubber) can mirror the position without owning it. */
+export const sliceBus = {
+  subscribe(fn: () => void): () => void {
+    sliceListeners.add(fn);
+    return () => { sliceListeners.delete(fn); };
+  },
+  emit(): void {
+    for (const fn of sliceListeners) fn();
+  },
+};

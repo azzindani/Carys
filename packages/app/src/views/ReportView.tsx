@@ -4,10 +4,12 @@ import {
   buildReproSidecar, checkOrientation, compressionWarning, reproSidecarToJSON,
   studyReportHtml, teachingSheetHtml, validateVolume,
 } from '@carys/study';
+import { useIsMobile } from '../lib/isMobile';
 import { session } from '../lib/session';
 import { getUi } from '../lib/store';
 import { toast } from '../lib/toasts';
 import { bump, useVersion } from '../lib/version';
+import { Dock, Stage } from '../ui/Stage';
 
 function downloadFile(name: string, text: string, type: string): void {
   const a = document.createElement('a');
@@ -20,6 +22,7 @@ function downloadFile(name: string, text: string, type: string): void {
 /** Validation + printable report for the open series (Week-4 slice). */
 export function ReportView(): JSX.Element {
   useVersion();
+  const mobile = useIsMobile();
   const ui = getUi();
   const img = session.img;
   if (!img) return <div className="hint">Open a series first, then report on it.</div>;
@@ -95,34 +98,40 @@ export function ReportView(): JSX.Element {
     downloadFile(`repro-${ui.series || 'series'}.json`, reproSidecarToJSON(sidecar), 'application/json');
     toast(`Sidecar saved: ${sidecar.series} · mask v${sidecar.maskVer} · ${sidecar.measurements.length} measurement(s)`, 'ok');
   };
-  return (
+  // The actions are controls: beside the title on a desktop, in the deck on a
+  // phone (four buttons in the title row ran off the right edge of one).
+  const actions = (
     <>
+      <button className="iconbtn" id="report-refresh" title="Recompute the report from the open series" onClick={() => bump()}>Refresh</button>
+      <button className="iconbtn accent" id="report-download" title="Download standalone HTML report"
+        onClick={() => downloadFile(`report-${ui.series || 'series'}.html`, html, 'text/html')}>Download HTML</button>
+      <button className="iconbtn" id="report-sidecar" title="Download reproducibility JSON sidecar"
+        onClick={downloadSidecar}>Download JSON</button>
+      <button className="iconbtn" id="report-sheet" title="Download print-ready teaching sheet (labels + quiz, no answers)"
+        onClick={() => {
+          const pins = Object.entries(session.digestPins);
+          downloadFile(`sheet-${ui.series || 'series'}.html`, teachingSheetHtml({
+            title: `${ui.series || 'series'} — teaching sheet`,
+            labels: pins.map(([k, v]) => `${k} · ${v}`),
+            notes: validation.issues.map((i) => `${i.level} ${i.code}: ${i.message}`),
+            quiz: session.measurements.slice(0, 5).map((m) => ({
+              prompt: `${m.label} reads ${m.value} ${m.unit} — within tolerance?`,
+              options: ['Agree (within band)', 'Outside band', 'Cannot tell from this view'],
+            })),
+            provenance: ['Carys teaching sheet (education only — not for diagnosis)'],
+          }), 'text/html');
+          toast('Teaching sheet saved (no answers on the sheet)', 'ok');
+        }}>Sheet</button>
+    </>
+  );
+  return (
+    <Stage fold={false}>
       <div className="view-title" id="title-report">
         <h1>Report</h1>
         <p>{ui.series || '—'} · {validation.ok ? 'valid' : `${validation.issues.length} issue(s)`} · {session.measurements.length} measurement(s)</p>
-        <span className="right">
-          <button className="iconbtn" id="report-refresh" title="Recompute the report from the open series" onClick={() => bump()}>Refresh</button>
-          <button className="iconbtn accent" id="report-download" title="Download standalone HTML report"
-            onClick={() => downloadFile(`report-${ui.series || 'series'}.html`, html, 'text/html')}>Download HTML</button>
-          <button className="iconbtn" id="report-sidecar" title="Download reproducibility JSON sidecar"
-            onClick={downloadSidecar}>Download JSON</button>
-          <button className="iconbtn" id="report-sheet" title="Download print-ready teaching sheet (labels + quiz, no answers)"
-            onClick={() => {
-              const pins = Object.entries(session.digestPins);
-              downloadFile(`sheet-${ui.series || 'series'}.html`, teachingSheetHtml({
-                title: `${ui.series || 'series'} — teaching sheet`,
-                labels: pins.map(([k, v]) => `${k} · ${v}`),
-                notes: validation.issues.map((i) => `${i.level} ${i.code}: ${i.message}`),
-                quiz: session.measurements.slice(0, 5).map((m) => ({
-                  prompt: `${m.label} reads ${m.value} ${m.unit} — within tolerance?`,
-                  options: ['Agree (within band)', 'Outside band', 'Cannot tell from this view'],
-                })),
-                provenance: ['Carys teaching sheet (education only — not for diagnosis)'],
-              }), 'text/html');
-              toast('Teaching sheet saved (no answers on the sheet)', 'ok');
-            }}>Sheet</button>
-        </span>
+        {!mobile && <span className="right">{actions}</span>}
       </div>
+      {mobile && <Dock><div className="grp">{actions}</div></Dock>}
       <div className="report">
         <section className="rcard" aria-label="Validation issues">
           <h2>Validation <span className={`chip ${validation.ok ? 'ok' : 'bad'}`}>{validation.ok ? 'valid' : `${validation.issues.length} issue(s)`}</span></h2>
@@ -159,6 +168,6 @@ export function ReportView(): JSX.Element {
           </section>
         )}
       </div>
-    </>
+    </Stage>
   );
 }
