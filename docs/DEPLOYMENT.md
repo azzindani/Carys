@@ -32,8 +32,8 @@ What the container serves, all from one origin:
 
 | Path | Content |
 |---|---|
-| `/` | 302 to `/packages/app/dist/` |
-| `/packages/app/dist/` | The app. The Vite `base` is this path, so it cannot move without a rebuild. |
+| `/` | The app itself (no redirect), so the address stays the bare domain |
+| `/packages/app/dist/` | The same app, and where its hashed assets live. The Vite `base` is this path, so the assets cannot move without a rebuild. |
 | `/digests/` | The data sets the app fetches at runtime: atlases, structures, motion, catalogs ([DATA.md](DATA.md)) |
 | `/samples/` | The sample set, a read-only mount. It is empty and 404s when nothing is mounted. |
 | `/README.md`, `/THIRD-PARTY.md` | The overview and the third-party notices |

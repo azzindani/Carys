@@ -80,8 +80,10 @@ if (KEY) {
 const health = await get('/healthz', { body: true });
 expect(health.status === 200 && health.text.trim() === 'ok', `/healthz 200 ok (got ${health.status})`);
 
-const root = await get('/');
-expect(root.status === 302 && root.h('location') === '/packages/app/dist/', `/ 302 -> ${root.h('location')}`);
+const root = await get('/', { body: true });
+expect(root.status === 200 && root.h('content-type').startsWith('text/html') && root.h('cache-control') === 'no-cache', `/ serves the app itself, with no redirect (${root.status} ${root.h('content-type')})`);
+const rootDist = await get('/packages/app/dist/', { body: true });
+expect(root.text === rootDist.text, '/ and /packages/app/dist/ are the same document');
 
 const page = await get('/packages/app/dist/', { body: true });
 const csp = page.h('content-security-policy');
@@ -180,7 +182,7 @@ try {
 
   // behind the gate the browser logs in the way a reader does, once
   await pg.goto(KEY ? `${BASE}/?token=${KEY}` : `${BASE}/`, { waitUntil: 'networkidle' });
-  expect(pg.url() === `${BASE}/packages/app/dist/`, `browser lands on the app (${pg.url()})`);
+  expect(pg.url() === `${BASE}/`, `browser lands on the app at the bare domain (${pg.url()})`);
   if (served.has(SAMPLE_NII)) {
     await pg.waitForFunction(() => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''), null, { timeout: 90000 })
       .then(() => console.log('ok    viewer booted and loaded the default series'), () => fail('viewer never loaded the default series'));

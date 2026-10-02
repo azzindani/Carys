@@ -79,7 +79,7 @@ echo "healthy on 127.0.0.1:$PORT"
 # caddy-router) and carry the <your domain> block; see docs/DEPLOYMENT.md.
 # /healthz is public; the app itself must refuse a caller with no key.
 if curl -fsS -m 10 -o /dev/null https://<your domain>/healthz; then
-  code=$(curl -s -m 10 -o /dev/null -w '%{http_code}' https://<your domain>/packages/app/dist/)
+  code=$(curl -s -m 10 -o /dev/null -w '%{http_code}' https://<your domain>/)
   [ "$code" = 401 ] || { echo "the public site answered $code without a key, not 401" >&2; exit 1; }
   echo "LIVE: https://<your domain>/ (gated: open it once with ?token=<key from deploy/.env>)"
 else

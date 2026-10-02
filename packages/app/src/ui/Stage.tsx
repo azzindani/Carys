@@ -37,14 +37,14 @@ function useScrollStops(root: RefObject<HTMLElement | null>, enabled: boolean): 
     let frame = 0;
     const sync = (): void => {
       frame = 0;
-      for (const r of [el, ...el.querySelectorAll<HTMLElement>('.pane')]) {
+      for (const r of [el, ...el.querySelectorAll<HTMLElement>('.pane, .seqstrip')]) {
         const scrolls = /auto|scroll/.test(getComputedStyle(r).overflowY) && r.scrollHeight > r.clientHeight + 1;
         if (scrolls && r.dataset.scrollStop === undefined) {
           r.dataset.scrollStop = r.getAttribute('tabindex') === null ? 'set' : 'kept';
           if (r.dataset.scrollStop === 'set') {
             r.tabIndex = 0;
             r.setAttribute('role', 'region');
-            r.setAttribute('aria-label', r.querySelector('.pane-head .name')?.textContent?.trim() || 'Scrollable content');
+            r.setAttribute('aria-label', r.querySelector('.pane-head .name')?.textContent?.trim() || (r.classList.contains('seqstrip') ? 'Sequence' : 'Scrollable content'));
           }
         } else if (!scrolls && r.dataset.scrollStop === 'set') {
           r.removeAttribute('tabindex');
@@ -60,7 +60,7 @@ function useScrollStops(root: RefObject<HTMLElement | null>, enabled: boolean): 
     const resize = new ResizeObserver(later);
     const watch = (): void => {
       resize.disconnect();
-      for (const r of [el, ...el.querySelectorAll<HTMLElement>('.pane')]) {
+      for (const r of [el, ...el.querySelectorAll<HTMLElement>('.pane, .seqstrip')]) {
         resize.observe(r);
         for (const k of r.children) resize.observe(k);
       }
