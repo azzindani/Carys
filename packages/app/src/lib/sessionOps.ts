@@ -125,7 +125,7 @@ export async function loadSeries(name: string, uploadedVol?: Volume): Promise<Sl
     // opens read-ready. With no modality at all the window is data-driven:
     // a CT preset left over from the previous series would put an MR or a
     // microscopy stack on a Hounsfield window and show it white.
-    const modality = spec.modality ?? dicomMeta?.modality ?? null;
+    const modality = (session.modality = spec.modality ?? dicomMeta?.modality ?? null);
     if (modality && (!uploadedVol || dicomMeta)) {
       const hang = hangingProtocol(modality, spec.bodyPart ?? dicomMeta?.seriesDescription ?? name);
       setUi({ layout: hang.layout, preset: hang.preset, proj: hang.proj, hang: hang.protocol });
@@ -175,7 +175,7 @@ export async function loadSeries(name: string, uploadedVol?: Volume): Promise<Sl
     // Hounsfield volume, and a fixed ceiling of 1000 could not reach cortical
     // bone at ~1100 HU. A catalog entry may still pin its own.
     const haveMask = session.editMask.some((v) => v > 0);
-    const imageHint = autoThreshold(img.data, 256, imgHist);
+    const imageHint = autoThreshold(img.data, 256, imgHist, modality);
     const maskHint = autoThreshold(session.editMask);
     session.thresholds = {
       image: { hint: imageHint, value: spec.threshold3d ?? imageHint.value },

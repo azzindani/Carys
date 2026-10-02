@@ -60,6 +60,45 @@ describe('auto threshold', () => {
     assert.equal(autoThreshold(d).kind, 'otsu');
   });
 
+  // Real-data calibration: the sample set's cardiac cine, sagittal spine MR
+  // and uint8 T1 each opened on a useless default surface.
+  it('a few bright outliers do not drag the Otsu cut above the anatomy', () => {
+    // 95% of a cine MR under 270, a flow artefact at 4000: the cut used to
+    // land near 810
+    const d = new Float64Array(20000);
+    for (let i = 0; i < d.length; i++) {
+      const t = i / d.length;
+      d[i] = t < 0.3 ? 0 : t < 0.7 ? 80 + (i % 7) : t < 0.998 ? 250 + (i % 11) : 4000;
+    }
+    const t = autoThreshold(d);
+    assert.equal(t.kind, 'otsu');
+    assert.ok(t.value > 0 && t.value < 250, `cut ${t.value} must sit below the blood pool`);
+    assert.equal(t.hi, 4000, 'the slider still reaches every value');
+  });
+
+  it('an MR padded below air is not cut as Hounsfield', () => {
+    const d = Float64Array.from(ctHead(), (v) => (v < 0 ? -1000 : v));
+    assert.equal(autoThreshold(d, 256, undefined, 'MR').kind, 'otsu');
+    assert.equal(autoThreshold(d, 256, undefined, 'CT').kind, 'hounsfield');
+    assert.equal(autoThreshold(d).kind, 'hounsfield', 'no modality: the values decide');
+  });
+
+  it('an 8-bit image is not a label map; a thin binary mask still is', () => {
+    // uint8 T1: background, then noisy tissue over many grey levels
+    const img = new Float64Array(8192);
+    let s = 7;
+    for (let i = 0; i < img.length; i++) {
+      s = (s * 16807) % 2147483647;
+      img[i] = i < 3000 ? 0 : 40 + (s % 90);
+    }
+    assert.equal(autoThreshold(img).kind, 'otsu');
+    // vessels one voxel wide: no foreground voxel matches its neighbour,
+    // yet 0/1 is a mask
+    const mask = new Float64Array(8192);
+    for (let i = 0; i < mask.length; i++) mask[i] = i % 3 === 0 ? 1 : 0;
+    assert.equal(autoThreshold(mask).kind, 'mask');
+  });
+
   it('CT presets rise skin < soft tissue < bone, and the default is the bone preset', () => {
     assert.deepEqual(CT_SURFACE_PRESETS.map((p) => p.id), ['skin', 'soft', 'bone']);
     for (let i = 1; i < CT_SURFACE_PRESETS.length; i++) {

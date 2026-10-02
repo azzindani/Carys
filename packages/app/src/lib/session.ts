@@ -32,6 +32,10 @@ class Session {
    *  threshold carried a 0/1 mask's cut onto a CT (a skin surface at 0 HU)
    *  and a CT's 300 onto a mask (nothing at all). */
   thresholds: Record<Source, { hint: ThresholdSuggestion; value: number }> | null = null;
+  /** The series' modality (catalog, else the DICOM tag): only CT can carry
+   *  Hounsfield units, so an MR padded below -500 is not cut or drawn on CT
+   *  values. Null when nothing says. */
+  modality: string | null = null;
   /** compare overlay window (resolved when the overlay volume loads) */
   compareWl: { width: number; center: number } | null = null;
   axialFrac = 0.5;

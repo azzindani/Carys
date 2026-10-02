@@ -79,16 +79,70 @@ function otsu(hist: ArrayLike<number>, min: number, max: number): number {
   return min + ((best + 0.5) / bins) * (max - min || 1);
 }
 
-/** True when every value is a small non-negative integer — a label map. */
+/** Neighbouring foreground voxels that must match for a label map: a label
+ *  is a region, so a voxel and the next one along x mostly agree, where an
+ *  image's noise makes them differ. */
+const LABEL_RUN = 0.6;
+/** This few distinct values is a label map whatever its shape: a mask of
+ *  vessels two voxels wide fails the run test and is still a mask. */
+const FEW_LABELS = 16;
+
+/** True when every value is a small non-negative integer and the values are
+ *  few or come in flat regions — a label map. An 8-bit image (a uint8 T1)
+ *  passes the first test and fails both of the others: as a "mask" it was
+ *  cut at 0, a surface round every voxel above background. */
 function looksLikeLabels(data: ArrayLike<number>, min: number, max: number): boolean {
   if (min < 0 || max > MAX_LABEL) return false;
   // a full scan is wasted here: a label map is uniform, so a stride samples it
   const step = Math.max(1, Math.floor(data.length / 4096));
+  const seen = new Set<number>();
+  let fg = 0, same = 0;
   for (let i = 0; i < data.length; i += step) {
     const v = data[i]!;
     if (!Number.isInteger(v)) return false;
+    if (seen.size <= FEW_LABELS) seen.add(v);
+    if (i + 1 >= data.length) continue;
+    const w = data[i + 1]!;
+    if (v === min && w === min) continue;
+    fg++;
+    if (v === w) same++;
   }
-  return true;
+  return seen.size <= FEW_LABELS || same >= fg * LABEL_RUN;
+}
+
+/** The share of voxels Otsu may leave above its range: a few bright outliers
+ *  (flow artefact, a vessel, a fiducial) must not stretch the histogram. */
+const OTSU_TAIL = 0.005;
+
+/**
+ * Otsu over [min, p99.5] rather than [min, max]. On a cardiac cine MR the
+ * full range ran to 4025 while 95% of the voxels sat under 270: the
+ * anatomy filled the bottom 17 of 256 bins, the cut landed at 810, above
+ * nearly all of it, and the default surface was a sliver.
+ */
+function robustOtsu(
+  data: ArrayLike<number>, hist: ArrayLike<number>, min: number, max: number,
+): number {
+  const bins = hist.length;
+  let total = 0;
+  for (let i = 0; i < bins; i++) total += hist[i]!;
+  let acc = 0, top = bins - 1;
+  for (let i = 0; i < bins; i++) {
+    acc += hist[i]!;
+    if (acc >= total * (1 - OTSU_TAIL)) { top = i; break; }
+  }
+  const cap = min + ((top + 1) / bins) * (max - min);
+  // the tail is already inside the histogram's own resolution
+  if (!(cap < min + (max - min) / 2)) return otsu(hist, min, max);
+  const h = new Float64Array(bins);
+  const scale = bins / (cap - min);
+  for (let i = 0; i < data.length; i++) {
+    const v = data[i]!;
+    if (!Number.isFinite(v)) continue;
+    const b = Math.floor((Math.min(v, cap) - min) * scale);
+    h[b < 0 ? 0 : b >= bins ? bins - 1 : b]++;
+  }
+  return otsu(h, min, cap);
 }
 
 /**
@@ -96,17 +150,24 @@ function looksLikeLabels(data: ArrayLike<number>, min: number, max: number): boo
  *
  * - a label map cuts at 0, the mask boundary (unchanged behaviour);
  * - Hounsfield data cuts at bone, which is what a CT surface is for;
- * - anything else falls back to Otsu.
+ * - anything else falls back to Otsu over the bulk of the values.
+ *
+ * `modality`, when the series names one, rules Hounsfield out for anything
+ * but CT: an MR padded with -1000 outside its field of view reaches below
+ * air and above bone like a CT does, and was cut at 300 as if it were one.
  */
 export function autoThreshold(
   data: ArrayLike<number>, bins = 256,
   /** A histogram of `data` the caller already has (same bins): saves a pass. */
   pre?: { hist: Uint32Array; min: number; max: number },
+  modality?: string | null,
 ): ThresholdSuggestion {
   const { hist, min, max } = pre && pre.hist.length === bins ? pre : histogram(data, bins);
   const lo = Math.floor(min);
   const hi = Math.ceil(max);
   if (looksLikeLabels(data, min, max)) return { value: 0, lo: 0, hi: Math.max(1, hi), kind: 'mask' };
-  if (min <= AIR_HU && max >= BONE_HU) return { value: BONE_HU, lo, hi, kind: 'hounsfield' };
-  return { value: Math.round(otsu(hist, min, max)), lo, hi, kind: 'otsu' };
+  const mod = (modality ?? '').toUpperCase();
+  const maybeCt = mod === '' || mod === 'CT';
+  if (maybeCt && min <= AIR_HU && max >= BONE_HU) return { value: BONE_HU, lo, hi, kind: 'hounsfield' };
+  return { value: Math.round(robustOtsu(data, hist, min, max)), lo, hi, kind: 'otsu' };
 }

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { JSX } from 'react';
-import { addPass, filterTracts, presetTF, renderMesh, TF_PRESETS, type TF, type TFPresetName } from '@carys/render-cpu';
+import {
+  addPass, defaultTFPreset, filterTracts, presetTFFor, renderMesh, tfDomain, TF_PRESETS, type TF, type TFDomain, type TFPresetName,
+} from '@carys/render-cpu';
 import {
   CT_SURFACE_PRESETS, ctSurfacePresetAt, presetRois, tractPresetById, TRACT_PRESETS, type CtSurfacePresetId,
 } from '@carys/volume-core';
@@ -72,8 +74,12 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     return c;
   };
   // Volume-render state: TF stops, preset, density, quality. Local to 3D.
-  const [tfPreset, setTfPreset] = useState<TFPresetName>('bone');
+  // A null preset is the field's own default (defaultTFPreset), and a null
+  // tf is the preset's stops for the field on screen: both go back to null
+  // on a new series, so one series' stops never draw the next.
+  const [tfPreset, setTfPreset] = useState<TFPresetName | null>(null);
   const [tf, setTf] = useState<TF | null>(null);
+  const domainRef = useRef<{ img: unknown; modality: string | null; d: TFDomain } | null>(null);
   const [density, setDensity] = useState(1);
   const [quality, setQuality] = useState<'draft' | 'full'>('draft');
   const [cinematic, setCinematic] = useState(false);
@@ -130,11 +136,31 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
     setUi({ src: v, threshold: t[v].value });
   };
 
-  const currentTF = (): TF => {
-    if (tf) return tf;
-    const [mn, mx] = fieldRange();
-    return presetTF(tfPreset, mn, mx);
+  /** What the presets are built against (render-cpu/tf.ts): Hounsfield or
+   *  a robust range. Measured once per loaded image. */
+  const fieldDomain = (): TFDomain => {
+    const u = getUi();
+    if (u.src === 'mask' && session.editMask) return { lo: 0, hi: 1, hounsfield: false };
+    const img = session.img;
+    if (!img) return { lo: 0, hi: 1, hounsfield: false };
+    const c = domainRef.current;
+    if (c && c.img === img && c.modality === session.modality) return c.d;
+    const d = tfDomain(img.data, session.modality);
+    domainRef.current = { img, modality: session.modality, d };
+    return d;
   };
+  const presetName = (): TFPresetName => tfPreset ?? defaultTFPreset(fieldDomain());
+
+  const currentTF = (): TF => tf ?? presetTFFor(presetName(), fieldDomain());
+
+  /** The editor's axis: the data's range, widened to the stops (HU stops
+   *  reach past a CT that stops short of cortical bone). */
+  const editorRange = (stops: TF): [number, number] => {
+    const [mn, mx] = fieldRange();
+    return [Math.min(mn, stops[0]?.value ?? mn), Math.max(mx, stops[stops.length - 1]?.value ?? mx)];
+  };
+
+  useEffect(() => { setTfPreset(null); setTf(null); }, [ui.series]);
 
   const paintVr = async (): Promise<void> => {
     const img = session.img;
@@ -550,12 +576,10 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
             <div className="grp">
               <span className="lbl">TF</span>
               <DarkSelect
-                value={tfPreset} title="Transfer function" ariaLabel="Transfer function"
+                value={presetName()} title="Transfer function" ariaLabel="Transfer function"
                 onChange={(v) => {
-                  const name = v as TFPresetName;
-                  setTfPreset(name);
-                  const [mn, mx] = fieldRange();
-                  setTf(presetTF(name, mn, mx));
+                  setTfPreset(v as TFPresetName);
+                  setTf(null);
                   bump();
                 }}
               >
@@ -650,7 +674,7 @@ export function SurfaceView({ extractor, bare }: { extractor: Extractor | null; 
         <div className="pane tfpane" id="pane-tf">
           <div className="pane-head"><span className="name">Transfer function</span></div>
           <div className="tfwrap">
-            <TfEditor tf={currentTF()} range={fieldRange()} onCommit={(stops) => { setTf(stops); bump(); }} />
+            <TfEditor tf={currentTF()} range={editorRange(currentTF())} onCommit={(stops) => { setTf(stops); bump(); }} />
           </div>
         </div>
       )}

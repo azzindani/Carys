@@ -149,6 +149,18 @@ created and no three.js import exists: `verify.test.ts` enforces both.
     keeps the field between passes.
   - Cinematic lighting (`vr-light.ts`): soft shadows and ambient light
     propagated through a coarse extinction grid.
+  - **Transfer-function presets** (`tf.ts`) are calibrated on the real
+    sample set. A CT in Hounsfield units takes fixed HU stops: bone from
+    150 HU, lung parenchyma with the air left clear. Any other field
+    stretches the relative presets from its floor to the 99th percentile of
+    its foreground, so padding and bright outliers cannot move them. Only
+    CT can be Hounsfield. The 3D view opens a CT on bone and anything else
+    on the soft brain ramp.
+- **Isosurface threshold** (`volume-core/threshold.ts`). A label map cuts
+  at its boundary and a CT at 300 HU. Anything else takes Otsu over the
+  values below the 99.5th percentile. A label map is small integers that
+  are either few or in flat regions, so an 8-bit image is not mistaken
+  for one.
 - **Picking** (`pick.ts`): the point under a pixel, taken from the
   renderer's own frame. For a surface it is the nearest drawn triangle; for
   a volume, the depth where the ray turns half opaque. A tap in 3D moves the
