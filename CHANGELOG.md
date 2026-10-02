@@ -1,8 +1,6 @@
 # Changelog
 
-## Unreleased (draft, proposed v0.2.0)
-
-Not released. Nothing here is tagged or published until the owner says so.
+## v0.2.0 (2026-10-02)
 
 ### Added
 - Phone layout on every route: the image on top, the controls in a bottom
