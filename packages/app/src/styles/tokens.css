@@ -19,19 +19,19 @@
      than sitting in one muddy band, which is what makes a dense toolbar
      scannable. */
   --color-stage: #000000;
-  --color-bg: #05070a;
-  --color-chrome: #080b0f;
-  --color-sunken: #020305;
-  --color-surface-1: #0f131a;
-  --color-surface-2: #161c25;
-  --color-surface-3: #1f2733;
-  --color-surface-4: #2a3441;
+  --color-bg: #080a0f;
+  --color-chrome: #0c0f15;
+  --color-sunken: #0a0d13;
+  --color-surface-1: #131822;
+  --color-surface-2: #1b2130;
+  --color-surface-3: #232b3d;
+  --color-surface-4: #2f384c;
 
   /* -- hairlines: visible on every surface above, not decorative -- */
-  --color-line: #232b37;
-  --color-line-strong: #2b3646;
-  --color-line-hover: #52627a;
-  --color-line-accent: #25604a;
+  --color-line: rgb(255 255 255 / 0.06);
+  --color-line-strong: rgb(255 255 255 / 0.08);
+  --color-line-hover: rgb(255 255 255 / 0.22);
+  --color-line-accent: #34665a;
 
   /* -- ink --
      Measured, not chosen by eye (§22a): every step clears WCAG AA on every
@@ -52,7 +52,7 @@
   --color-accent: #56c79d;
   --color-accent-hi: #8fe0c0;
   --color-accent-lo: #3aa57c;
-  --color-accent-dim: #11322a;
+  --color-accent-dim: #1f3a36;
   --color-accent-a: rgb(86 199 157 / 0.3);
   --color-violet: #a8a4ff;
   --color-danger: #ff6b78;
@@ -95,13 +95,13 @@
      zero clamps to square).
 
      Pills stay for status dots and switches only. */
-  --radius-2xs: calc(4.5px * var(--rs));
-  --radius-xs: calc(6px * var(--rs));
-  --radius-sm: calc(9px * var(--rs));
-  --radius-md: calc(12px * var(--rs));
-  --radius-lg: calc(15px * var(--rs));
-  --radius-xl: calc(18px * var(--rs));
-  --radius-2xl: calc(24px * var(--rs));
+  --radius-2xs: calc(6px * var(--rs));
+  --radius-xs: calc(12px * var(--rs));
+  --radius-sm: calc(21px * var(--rs));
+  --radius-md: calc(27px * var(--rs));
+  --radius-lg: calc(27px * var(--rs));
+  --radius-xl: calc(33px * var(--rs));
+  --radius-2xl: calc(42px * var(--rs));
   --radius-pill: 999px;
 
   /* type ramp: every size in the app resolves through one of these. Floor

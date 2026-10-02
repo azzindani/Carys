@@ -196,7 +196,7 @@
   }
   .mbtn {
     flex: 1; min-height: var(--tap); padding: var(--sp-2) var(--sp-3);
-    background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm);
+    background: transparent; border: 1px solid transparent; border-radius: var(--radius-pill);
     color: var(--color-muted); font-size: var(--fs-sm); font-weight: 600;
     transition: all var(--dur-fast) var(--ease);
   }

@@ -370,8 +370,9 @@ The control system has four rules (`styles/components.css`):
 1. **One height.** Buttons, selects, inputs, segmented controls and scrub
    fields are all `--ctl-h` tall (28px under a mouse, 44px under a finger),
    so any mix of them sits on one line.
-2. **One shape.** Round: 9px corners on every control, 12px on panels, 18px on
-   what floats (the Corners level scales the whole ramp).
+2. **One shape.** Round: 21px corners on every control (a pill at desktop
+   height), 27px on panels, 33px on what floats (the Corners level scales the
+   whole ramp). Outlines are 6 to 8% white, so surfaces do the separating.
 3. **Two states, told apart.** A tint with a thin ring means the active mode
    (the selected tool or segment); a tint alone means an action you can take;
    a solid fill is kept for a switch that is on; everything else is neutral.

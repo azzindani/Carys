@@ -126,9 +126,9 @@
      made every phone screen a stack of giant boxes. Interactive chips
      (.chip.zoom) take the floor below; plain readouts stay compact. */
   min-height: 22px; padding: 0 var(--sp-3);
-  border: 1px solid var(--color-line);
+  border: 1px solid transparent;
   border-radius: var(--radius-pill);
-  background: transparent;
+  background: var(--color-surface-2);
   color: var(--color-muted);
   font-size: var(--fs-xs); font-weight: 500; line-height: 1;
   white-space: nowrap;
@@ -450,7 +450,7 @@ input[type="range"].styled::-webkit-slider-runnable-track {
 }
 input[type="range"].styled::-webkit-slider-thumb {
   -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px;
-  border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-text);
+  border-radius: 50%; background: var(--color-text); border: 0;
   box-shadow: var(--shadow-1);
   transition: transform var(--dur-fast) var(--ease);
 }
@@ -469,13 +469,13 @@ input[type="range"].styled::-moz-range-thumb {
 .switch input { opacity: 0; width: 100%; height: 100%; position: absolute; margin: 0; cursor: pointer; }
 .switch .tr {
   position: absolute; inset: 0; background: var(--color-surface-3);
-  border: 1px solid var(--color-line-strong); border-radius: var(--radius-pill);
+  border: 1px solid transparent; border-radius: var(--radius-pill);
   transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 .switch .tr::after {
   content: ""; position: absolute; top: 2px; left: 2px;
   width: var(--sw-thumb); height: var(--sw-thumb);
-  border-radius: 50%; background: var(--color-muted);
+  border-radius: 50%; background: var(--color-text);
   transition: transform var(--dur) var(--ease), background var(--dur) var(--ease);
 }
 .switch:hover .tr { border-color: var(--color-line-hover); }
