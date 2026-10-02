@@ -201,7 +201,7 @@
     transition: all var(--dur-fast) var(--ease);
   }
   .mbtn:hover { color: var(--color-text); background: var(--color-surface-2); }
-  .mbtn.on { color: var(--color-accent-hi); background: var(--color-accent-dim); border-color: var(--color-line-accent); }
+  .mbtn.on { color: var(--color-accent-hi); background: var(--color-accent-dim); border-color: transparent; }
 
   .deck-body {
     flex: 1; min-height: 0; min-width: 0;

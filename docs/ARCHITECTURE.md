@@ -362,7 +362,7 @@ touch-target floor and desktop density do not fight.
 The look is built for reading images, as a reading-room workstation is: a
 true black imaging stage that every renderer clears to (`STAGE_BG` in
 `lib/palette.ts`, the CSS `--color-stage`), cool neutral near-black chrome
-around it, and one clinical blue accent. Contrast is measured, not judged:
+around it, and one muted green accent. Contrast is measured, not judged:
 every ink step clears WCAG AA on every surface, and the a11y gate checks it.
 
 The control system has four rules (`styles/components.css`):
@@ -370,11 +370,12 @@ The control system has four rules (`styles/components.css`):
 1. **One height.** Buttons, selects, inputs, segmented controls and scrub
    fields are all `--ctl-h` tall (28px under a mouse, 44px under a finger),
    so any mix of them sits on one line.
-2. **One shape.** 6px corners on every control, 8px on panels, 12px only on
-   what floats.
-3. **Two states, told apart.** A solid accent fill means the active mode (the
-   selected tool or segment, a pressed toggle); a tinted accent means an
-   action you can take; everything else is neutral.
+2. **One shape.** Round: 9px corners on every control, 12px on panels, 18px on
+   what floats (the Corners level scales the whole ramp).
+3. **Two states, told apart.** A tint with a thin ring means the active mode
+   (the selected tool or segment); a tint alone means an action you can take;
+   a solid fill is kept for a switch that is on; everything else is neutral.
+   Outlines are faint, so a toolbar reads as surfaces, not drawn boxes.
 4. **Every button looks like a button.** Only toolbar glyphs (a pane's zoom
    and fullscreen, the top bar's icons) go bare.
 

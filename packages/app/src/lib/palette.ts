@@ -8,11 +8,11 @@ import { IMAGE_TEXT_SCALE } from './appearance';
 import { getUi } from './store';
 import type { BodySystem } from '@carys/render-cpu';
 
-export const ACCENT = '#3ba4ff';
-export const ACCENT_HI = '#7cc3ff';
-export const ACCENT_DIM = 'rgba(59,164,255,0.55)';
-export const ACCENT_DIM_FILL = 'rgba(59,164,255,0.9)';
-export const ON_ACCENT = '#04101e';
+export const ACCENT = '#56c79d';
+export const ACCENT_HI = '#8fe0c0';
+export const ACCENT_DIM = 'rgba(86,199,157,0.55)';
+export const ACCENT_DIM_FILL = 'rgba(86,199,157,0.9)';
+export const ON_ACCENT = '#04170f';
 /** Every imaging viewport clears to this black (the CSS `--color-stage`):
  *  grey levels are read against it, so no render sits on a tinted or
  *  lifted ground, and a render never shows as a box on its stage. */

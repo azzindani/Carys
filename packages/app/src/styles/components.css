@@ -5,10 +5,11 @@
    The control system, in four rules:
    1. One height. Buttons, selects, inputs, segmented controls and scrub
       fields are all --ctl-h tall, so any mix of them sits on one line.
-   2. One shape. 6px corners on every control, 8px on panels.
-   3. Two states, told apart. SOLID accent = this is the active mode (the
-      selected tool, the pressed toggle, the chosen segment). TINTED accent =
-      an action you can take. Everything else is neutral.
+   2. One shape. 9px corners on every control, 12px on panels.
+   3. Two states, told apart. A tint with a ring = this is the active mode
+      (the selected tool, the chosen segment); a solid fill is kept for a
+      switch that is on. A tint alone = an action you can take. Everything
+      else is neutral.
    4. Every button looks like a button. Only chrome that is plainly a
       toolbar glyph (a pane's zoom and close, the top bar's icons) goes bare.
    ========================================================================= */
@@ -33,16 +34,16 @@
 /* An action worth finding (a demo, an export): tinted, never solid. */
 .iconbtn.accent {
   color: var(--color-accent-hi); background: var(--color-accent-dim);
-  border-color: var(--color-line-accent);
+  border-color: transparent;
 }
-.iconbtn.accent:hover { background: var(--color-line-accent); border-color: var(--color-accent); color: var(--color-text); }
+.iconbtn.accent:hover { background: var(--color-line-accent); border-color: transparent; color: var(--color-text); }
 
-/* On: solid. The one thing here that is the active mode. */
+/* On: a tint with a ring, the same as a chosen segment. */
 .iconbtn.on, .iconbtn[aria-pressed="true"] {
-  color: var(--color-on-accent); background: var(--color-accent);
-  border-color: var(--color-accent); font-weight: 600;
+  color: var(--color-accent-hi); background: var(--color-accent-dim);
+  border-color: var(--color-line-accent); font-weight: 600;
 }
-.iconbtn.on:hover, .iconbtn[aria-pressed="true"]:hover { background: var(--color-accent-hi); border-color: var(--color-accent-hi); }
+.iconbtn.on:hover, .iconbtn[aria-pressed="true"]:hover { background: var(--color-accent-dim); border-color: var(--color-accent); }
 .iconbtn.danger:hover { color: var(--color-danger); background: var(--color-danger-dim); border-color: var(--color-danger); }
 
 /* Toolbar glyphs go bare: they are in a strip whose edge already frames them,
@@ -54,7 +55,7 @@
 }
 :is(.pane-head, .vrail, .top, .vptools) .iconbtn:hover { background: var(--color-surface-3); color: var(--color-text); border-color: transparent; }
 :is(.pane-head, .vrail, .top, .vptools) .iconbtn:active { background: var(--color-surface-4); }
-:is(.pane-head, .vrail, .top, .vptools) .iconbtn.on { color: var(--color-on-accent); background: var(--color-accent); }
+:is(.pane-head, .vrail, .top, .vptools) .iconbtn.on { color: var(--color-accent-hi); background: var(--color-accent-dim); border-color: transparent; }
 
 /* solid call-to-action (primary confirms) */
 .btn-primary {
@@ -97,23 +98,24 @@
   display: inline-flex; align-items: stretch; gap: 2px;
   min-height: var(--ctl-h); padding: 2px;
   background: var(--color-sunken);
-  border: 1px solid var(--color-line-strong);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
 }
 .seg button {
   display: inline-flex; align-items: center; justify-content: center;
   min-height: calc(var(--ctl-h) - 6px); padding: 0 var(--sp-3);
   border: none; background: transparent; color: var(--color-muted);
   /* concentric inside the 2px padding and 1px border of the track */
-  border-radius: calc(var(--radius-sm) - 3px);
+  border-radius: calc(var(--radius-md) - 3px);
   font-size: var(--fs-sm); font-weight: 500; line-height: 1; white-space: nowrap;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .seg button:hover { color: var(--color-text); background: var(--color-surface-3); }
 .seg button.on, .seg button[aria-pressed="true"] {
-  background: var(--color-accent); color: var(--color-on-accent); font-weight: 600;
+  background: var(--color-accent-dim); color: var(--color-accent-hi); font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--color-line-accent);
 }
-.seg button.on[data-accent], .seg button[aria-pressed="true"][data-accent] { color: var(--color-on-accent); }
+.seg button.on:hover, .seg button[aria-pressed="true"]:hover { background: var(--color-accent-dim); color: var(--color-accent-hi); }
 
 /* ------------------------------------------------------------------ chips
    Readouts: outlined, flat, not clickable. A readout must never be mistaken
@@ -125,7 +127,7 @@
      (.chip.zoom) take the floor below; plain readouts stay compact. */
   min-height: 22px; padding: 0 var(--sp-3);
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--color-muted);
   font-size: var(--fs-xs); font-weight: 500; line-height: 1;
@@ -408,7 +410,7 @@ select.dark option { background: var(--color-surface-2); color: var(--color-text
    clear of the label and the figure that sit on the tint */
 .field-fill::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
-  background: var(--color-accent);
+  background: var(--color-accent); opacity: 0;
 }
 .field-lbl {
   position: relative; z-index: 1; flex: 1; min-width: 0;

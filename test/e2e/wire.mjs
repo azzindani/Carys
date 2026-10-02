@@ -1734,9 +1734,9 @@ try {
     () => /^\d+ \/ \d+/.test(document.getElementById('ro-axial')?.textContent ?? ''),
     null, { timeout: 90000 },
   );
-  // The reference lines are drawn in the accent blue (lib/palette.ts ACCENT),
+  // The reference lines are drawn in the accent green (lib/palette.ts ACCENT),
   // which the image, the red mask tint and the white chrome text never are.
-  const ACCENT_PX = '(d[i + 2] > 200 && d[i] < 120 && d[i + 1] > 120 && d[i + 1] < 200)';
+  const ACCENT_PX = '(d[i + 1] > 170 && d[i] < 120 && d[i + 2] > 130 && d[i + 2] < 190)';
   const tealCount = () => page10.evaluate((test) => {
     const cv = document.getElementById('c-coronal');
     const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
