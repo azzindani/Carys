@@ -9,26 +9,27 @@ images open in the tab and stay there. Nothing a user opens is uploaded.
 > use.** Carys has no regulatory clearance. Its measurements and renderings
 > are there to learn and explore with.
 
-Production: **https://<your domain>**. The site is token-gated and
-currently paused. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) explains how to
-resume and access it.
+A production deployment runs behind an access key; see
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) to run your own.
 
 ## A look
 
 On a phone the image owns the screen. The controls start hidden behind a
 slim handle; swipe it up for half, again for full, and down to put them away.
 
-| Viewer: 3D and three reformats | Protein |
+| Viewer: a real T1 MRI, its vessels in 3D | Protein |
 |---|---|
-| ![The viewer: a surface render beside axial, coronal and sagittal reformats of the head phantom](docs/screenshots/viewer.png) | ![Protein: crambin (1CRN) as atoms, with its sequence](docs/screenshots/protein.png) |
-| **Capsid** | **Cells** |
-| ![A whole SV40 capsid, 958,980 atoms, rendered on the CPU](docs/screenshots/capsid.png) | ![A two-channel OME-Zarr composite](docs/screenshots/cells.png) |
-| **Atlas** | **Phone: controls hidden, then half open** |
-| ![The whole-body atlas, 2,234 structures](docs/screenshots/atlas.png) | <img src="docs/screenshots/phone-hidden.png" width="160" alt="Phone, controls hidden"> <img src="docs/screenshots/phone-half.png" width="160" alt="Phone, controls half open"> |
+| ![The viewer on the OpenNeuro ds000001 T1 MRI: a 3D surface of its bright vessels beside axial, coronal and sagittal reformats](docs/screenshots/viewer.png) | ![Protein: the SARS-CoV-2 spike receptor-binding domain bound to ACE2 (6M0J), with its sequence](docs/screenshots/protein.png) |
+| **Capsid** | **Atlas** |
+| ![A whole SV40 capsid, 958,980 atoms, rendered on the CPU](docs/screenshots/capsid.png) | ![The whole-body atlas, 2,234 structures](docs/screenshots/atlas.png) |
 
-Every image is made from data that is safe to publish: the generated head
-phantom and cell images (`npm run gen:samples`), RCSB PDB structures (CC0)
-and BodyParts3D (CC BY 4.0, DBCLS). `test/e2e/readme-shots.mjs` redraws them.
+| Phone: controls hidden | Phone: controls half open |
+|---|---|
+| <img src="docs/screenshots/phone-hidden.png" width="260" alt="Phone: the sagittal T1 slice fills the screen, the controls are a handle"> | <img src="docs/screenshots/phone-half.png" width="260" alt="Phone: the deck is raised to half, with the viewport switcher and the slice scrubber"> |
+
+Every image is real data that may be published: the OpenNeuro ds000001 T1
+crop (CC0), RCSB PDB entries 6M0J and 1SVA (CC0) and BodyParts3D (CC BY 4.0,
+DBCLS). `test/e2e/readme-shots.mjs` redraws them.
 
 ## What it does
 
@@ -121,7 +122,7 @@ are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 | Document | Contents |
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Packages, the data model, rendering on the CPU, the app shell and how it is served |
-| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | The image, production at <your domain>, configuration, access keys, operations |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | The image, the production deployment, configuration, access keys, operations |
 | [SECURITY.md](docs/SECURITY.md) | Threat model, CSP and headers, the access gate, container hardening, privacy |
 | [DATA.md](docs/DATA.md) | Data licensing policy, the shipped data sets, the sample set and its manifest |
 | [TESTING.md](docs/TESTING.md) | The gates, CI, unit and browser suites, fixtures |

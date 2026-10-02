@@ -1,6 +1,6 @@
 #!/bin/sh
-# Carys production on this host: https://<your domain> through the
-# shared Caddy router (/root/caddy-router), the arrangement Thoth uses.
+# Carys production on this host: https://$CARYS_DOMAIN through a shared
+# Caddy router on the same docker host.
 # Run from anywhere; rerun to redeploy (the image is rebuilt, the sample set
 # is kept).
 #
@@ -14,11 +14,12 @@
 #    unpublished: its licence is unverified, and the worklist says so.
 # 2. The image (Dockerfile, which runs the gate in its build stage), then
 #    `docker compose up` (project `carys`) on the `carys_edge` network.
-# 3. Checks: health over loopback, then the site over its public name.
+# 3. Checks: health over loopback, then the site over its public name
+#    (CARYS_DOMAIN in deploy/.env; without it the public check is skipped).
 #
 # Access: deploy/.env holds CARYS_ACCESS_KEY (created here on the first run,
-# mode 600, never printed). Log in once per browser at
-# https://<your domain>/?token=<key>; read the key on this host with
+# mode 600, never printed, never committed). Log in once per browser at
+# https://<CARYS_DOMAIN>/?token=<key>; read the key on this host with
 # `cat deploy/.env`. Rotate it by editing the file and rerunning this script:
 # every session signed with the old key stops working.
 set -eu
@@ -32,6 +33,8 @@ if [ ! -f deploy/.env ]; then
 fi
 chmod 600 deploy/.env
 
+# the public name lives with the key, outside the repository
+DOMAIN="${CARYS_DOMAIN:-$(sed -n 's/^CARYS_DOMAIN=//p' deploy/.env)}"
 SAMPLES="${CARYS_SAMPLES:-/srv/carys/samples}"
 PORT="${CARYS_PORT:-8090}"
 # published as-is: CC0 recorded in the repo (OpenNeuro) or by the PDB (1CRN)
@@ -76,12 +79,14 @@ curl -fsS -m 3 -o /dev/null "http://127.0.0.1:$PORT/healthz" || { echo "not heal
 echo "healthy on 127.0.0.1:$PORT"
 
 # The router must have joined carys_edge (docker network connect carys_edge
-# caddy-router) and carry the <your domain> block; see docs/DEPLOYMENT.md.
+# <router>) and carry a block for $DOMAIN; see docs/DEPLOYMENT.md.
 # /healthz is public; the app itself must refuse a caller with no key.
-if curl -fsS -m 10 -o /dev/null https://<your domain>/healthz; then
-  code=$(curl -s -m 10 -o /dev/null -w '%{http_code}' https://<your domain>/)
+if [ -z "$DOMAIN" ]; then
+  echo "no CARYS_DOMAIN in deploy/.env: skipping the public check"
+elif curl -fsS -m 10 -o /dev/null "https://$DOMAIN/healthz"; then
+  code=$(curl -s -m 10 -o /dev/null -w '%{http_code}' "https://$DOMAIN/")
   [ "$code" = 401 ] || { echo "the public site answered $code without a key, not 401" >&2; exit 1; }
-  echo "LIVE: https://<your domain>/ (gated: open it once with ?token=<key from deploy/.env>)"
+  echo "LIVE: https://$DOMAIN/ (gated: open it once with ?token=<key from deploy/.env>)"
 else
-  echo "up locally, but https://<your domain>/healthz does not answer yet: check the router (docs/DEPLOYMENT.md)"
+  echo "up locally, but https://$DOMAIN/healthz does not answer yet: check the router (docs/DEPLOYMENT.md)"
 fi

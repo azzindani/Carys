@@ -1,0 +1,85 @@
+# A release is a tag. Pushing vX.Y.Z runs the gates on that exact commit,
+# builds the static app, and publishes a GitHub release whose notes are the
+# `## vX.Y.Z` section of CHANGELOG.md. Nothing is published if the tag and
+# package.json disagree, if the changelog has no section for the tag, or if a
+# gate fails.
+#
+#   1. move the changelog's draft section under `## vX.Y.Z (date)`
+#   2. bump every package.json (and the @carys/* pins) and package-lock.json
+#   3. commit, push main, wait for CI to go green
+#   4. git tag -a vX.Y.Z -m "Carys vX.Y.Z" && git push origin vX.Y.Z
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to release, e.g. v0.2.0'
+        required: true
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: gates · build · publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Tag, version and changelog agree
+        run: |
+          case "$TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "not a release tag: $TAG" >&2; exit 1 ;; esac
+          version="${TAG#v}"
+          for f in package.json packages/*/package.json; do
+            have=$(node -p "require('./$f').version")
+            [ "$have" = "$version" ] || { echo "$f is $have, the tag is $TAG" >&2; exit 1; }
+          done
+          # the section under `## vX.Y.Z`, up to the next `## `, with each
+          # wrapped bullet joined back to one line
+          awk -v t="## $TAG" 'index($0, t) == 1 { on = 1; next } on && /^## / { exit } on' CHANGELOG.md \
+            | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n  \([^ ]\)/ \1/g' > notes.md
+          grep -q '[^[:space:]]' notes.md || { echo "CHANGELOG.md has no section for $TAG" >&2; exit 1; }
+          printf '\n---\nCarys is for education and research, not for diagnosis or any other clinical use.\n' >> notes.md
+          cat notes.md
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+
+      # the same gate chain CI runs on every push (build, typecheck, lint,
+      # unit, markers, app build, entry budget, a11y, appearance)
+      - run: npm run ci
+
+      # The static app, laid out as the server expects it
+      # (/packages/app/dist/), for anyone serving it without the image.
+      - name: Package the web build
+        run: tar -czf "carys-${TAG}-web.tar.gz" packages/app/dist
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG already exists; delete it first to publish again" >&2
+            exit 1
+          fi
+          gh release create "$TAG" "carys-${TAG}-web.tar.gz" \
+            --verify-tag --title "Carys $TAG" --notes-file notes.md --latest

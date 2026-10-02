@@ -135,7 +135,7 @@ const samples = [
   [SAMPLE_DCM, 'application/dicom', true],
   [SAMPLE_PDB, 'chemical/x-pdb', true],
 ];
-// A deployment may publish part of the set (<your domain> serves the
+// A deployment may publish part of the set (production serves the
 // synthetic phantoms and CC0 files only), so each check below depends on its
 // own file rather than on the whole set being there.
 const served = new Set();

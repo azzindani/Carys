@@ -1,14 +1,14 @@
 # Carys production compose: one read-only nginx container behind the shared
-# Caddy router (/root/caddy-router), the same arrangement as Thoth.
+# Caddy router on the same docker host.
 #
 #   sh deploy/up.sh        (builds the image, fills the sample set, starts)
 #
 # Exposure: the router joins `carys_edge`, which holds this container and
-# nothing else, and proxies <your domain> to carys-app-1:8080. TLS and
+# nothing else, and proxies the public name to carys-app-1:8080. TLS and
 # HSTS are the router's (deploy/nginx.conf leaves both to the proxy in front).
 # The loopback port is for host checks only.
 #
-# Access: the image's token gate (deploy/gate.js, Thoth's model). This file
+# Access: the image's token gate (deploy/gate.js). This file
 # requires CARYS_ACCESS_KEY, which compose reads from deploy/.env (gitignored,
 # mode 600; up.sh creates it), so production cannot start open by mistake.
 # Log in once per browser at https://<your domain>/?token=<key>.

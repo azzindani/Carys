@@ -6,7 +6,8 @@ covers:
 
 - the image;
 - its configuration;
-- the production site at <your domain>;
+- releases;
+- the production site;
 - running and checking it.
 
 ## The image
@@ -78,10 +79,33 @@ A PACS on plain `http://` elsewhere on the network needs its origin in
 `CARYS_CONNECT_SRC`. If Carys itself is served over HTTPS, that PACS also
 needs TLS: browsers block mixed content whatever the CSP allows.
 
-## Production: <your domain>
+## Releases
+
+A release is a tag. `.github/workflows/release.yml` runs on a pushed
+`vX.Y.Z` tag. It checks that every `package.json` carries that version and
+that `CHANGELOG.md` has a `## vX.Y.Z` section. It then runs `npm run ci` on
+the tagged commit and publishes a GitHub release. The notes are that
+changelog section, and the asset is the static app
+(`carys-vX.Y.Z-web.tar.gz`, laid out as `packages/app/dist/`).
+
+1. Move the changelog's draft section under `## vX.Y.Z (date)`.
+2. Bump every `package.json`, the app's `@carys/*` pins and the workspace
+   entries in `package-lock.json`. If the pins are left behind, `npm ci`
+   looks for the packages on the registry and fails.
+3. Commit, push `main`, and wait for CI to pass.
+4. `git tag -a vX.Y.Z -m "Carys vX.Y.Z" && git push origin vX.Y.Z`.
+
+The workflow refuses to overwrite a release that already exists. To publish
+again, delete the release first.
+
+## Production
+
+The public name is not in the repository. It lives beside the access key
+in `deploy/.env` as `CARYS_DOMAIN`, and `deploy/up.sh` reads it from there.
+Below, `<domain>` stands for it.
 
 ```
-browser ──https──▶ caddy-router (:80/:443, TLS, HSTS)      /root/caddy-router
+browser ──https──▶ caddy-router (:80/:443, TLS, HSTS)
                         │  network carys_edge
                         ▼
                    carys-app-1:8080 (nginx: gate, CSP, cache, compression)
@@ -90,8 +114,8 @@ browser ──https──▶ caddy-router (:80/:443, TLS, HSTS)      /root/caddy
                    /srv/carys/samples
 ```
 
-- **The router** is the host's shared Caddy (`/root/caddy-router`, its own
-  git repo). It serves every site on this machine and owns ports 80 and 443
+- **The router** is the host's shared Caddy (its own git repo, outside
+  this one). It serves every site on this machine and owns ports 80 and 443
   and TLS.
   - Carys is one site block. It proxies to `carys-app-1:8080`, adds HSTS, and
     removes the `token` query parameter from its access log.
@@ -132,10 +156,10 @@ set is kept.
 
 ### Access
 
-The gate follows Thoth's token model and runs inside nginx through njs
+The gate is a token model and runs inside nginx through njs
 (`deploy/gate.js`). [SECURITY.md](SECURITY.md) describes the design.
 
-- **Browser:** open `https://<your domain>/?token=<key>` once. The
+- **Browser:** open `https://<domain>/?token=<key>` once. The
   response sets a signed session cookie and redirects to the same address
   without the token. The session lasts 30 days and is renewed on each page
   load.
@@ -155,8 +179,8 @@ chromium`). Export the key first:
 
 ```bash
 set -a; . deploy/.env; set +a
-CARYS_URL=https://<your domain> npm run test:image      # gate, headers, cache, types, every route under the CSP
-CARYS_URL=https://<your domain> npm run test:synthetic  # boot, keyboard, DICOM→3D, worklist (logs in with ?token=)
+CARYS_URL=https://$CARYS_DOMAIN npm run test:image      # gate, headers, cache, types, every route under the CSP
+CARYS_URL=https://$CARYS_DOMAIN npm run test:synthetic  # boot, keyboard, DICOM→3D, worklist (logs in with ?token=)
 ```
 
 `test:image` checks the gate's contract before anything else:
@@ -180,7 +204,7 @@ docker image rm carys:prod
 Use `docker rm`, not `docker compose down`. `down` would also try to remove
 `carys_edge`, which the router is attached to.
 
-While Carys is paused, the router answers 502 for <your domain>. Every
+While Carys is paused, the router answers 502 for `<domain>`. Every
 other site on the router is unaffected.
 
 To resume, run `sh deploy/up.sh`. The key in `deploy/.env` and the sample
@@ -191,8 +215,8 @@ set in `/srv/carys/samples` survive a pause.
 Every site on this host goes through the router, so change it without
 downtime:
 
-1. Back up the file: `cp /root/caddy-router/Caddyfile
-   /root/caddy-router/Caddyfile.bak.<date>`.
+1. Back up the file: `cp <router dir>/Caddyfile
+   <router dir>/Caddyfile.bak.<date>`.
 2. Edit it in place. The file is bind-mounted into the container, so an
    editor that saves a new file in its place leaves the router reading the
    old one.
