@@ -13,6 +13,23 @@ Production: **https://<your domain>**. The site is token-gated and
 currently paused. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) explains how to
 resume and access it.
 
+## A look
+
+On a phone the image owns the screen. The controls start hidden behind a
+slim handle; swipe it up for half, again for full, and down to put them away.
+
+| Viewer: 3D and three reformats | Protein |
+|---|---|
+| ![The viewer: a surface render beside axial, coronal and sagittal reformats of the head phantom](docs/screenshots/viewer.png) | ![Protein: crambin (1CRN) as atoms, with its sequence](docs/screenshots/protein.png) |
+| **Capsid** | **Cells** |
+| ![A whole SV40 capsid, 958,980 atoms, rendered on the CPU](docs/screenshots/capsid.png) | ![A two-channel OME-Zarr composite](docs/screenshots/cells.png) |
+| **Atlas** | **Phone: controls hidden, then half open** |
+| ![The whole-body atlas, 2,234 structures](docs/screenshots/atlas.png) | <img src="docs/screenshots/phone-hidden.png" width="160" alt="Phone, controls hidden"> <img src="docs/screenshots/phone-half.png" width="160" alt="Phone, controls half open"> |
+
+Every image is made from data that is safe to publish: the generated head
+phantom and cell images (`npm run gen:samples`), RCSB PDB structures (CC0)
+and BodyParts3D (CC BY 4.0, DBCLS). `test/e2e/readme-shots.mjs` redraws them.
+
 ## What it does
 
 The rail on the left has one route per task. Every route shares one data
